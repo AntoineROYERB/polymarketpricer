@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.DS_Store?
+
+# Mage AI
+mage/mage_data/
+mage/default_repo/.cache/
+mage/default_repo/.ssh_tunnel/
+mage/default_repo/*.db
+
+# Docker
+.docker/
+
+# Coverage
+htmlcov/
+.coverage
+coverage/
+
+# Pytest
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Alembic
+alembic/__pycache__/

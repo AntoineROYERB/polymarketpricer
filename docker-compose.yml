@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: polymarket
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  mage:
+    build:
+      context: ./mage
+      dockerfile: Dockerfile
+    depends_on: [postgres, redis]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "6789:6789"
+    volumes:
+      - ./mage:/home/src
+  app:
+    build: .
+    depends_on: [postgres, redis]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
