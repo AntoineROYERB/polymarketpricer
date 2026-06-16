@@ -28,9 +28,15 @@ class LeaderboardResponse(BaseModel):
 class PositionSummary(BaseModel):
     market_id: str
     question: str
+    side: Optional[str] = None
+    status: str = "OPEN"
     shares: Decimal
     avg_entry_price: Decimal
-    unrealized_pnl: Decimal
+    entry_time: Optional[datetime] = None
+    exit_time: Optional[datetime] = None
+    realized_pnl: Optional[Decimal] = None
+    unrealized_pnl: Optional[Decimal] = None
+    total_pnl: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 
@@ -40,9 +46,14 @@ class WalletAnalyticsData(BaseModel):
     roi: Decimal
     win_rate: Decimal
     num_trades: int
+    total_volume: Optional[Decimal] = None
     avg_position_size: Decimal
-    risk_adj_return: Optional[Decimal] = None
+    sharpe_ratio: Optional[Decimal] = None
+    profit_factor: Optional[Decimal] = None
+    max_drawdown: Optional[Decimal] = None
     avg_holding_duration: Optional[str] = None
+    consistency_score: Optional[Decimal] = None
+    experience_score: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 
@@ -50,8 +61,12 @@ class WalletAnalyticsData(BaseModel):
 class WalletProfile(BaseModel):
     wallet: str
     main_wallet: Optional[str] = None
+    label: Optional[str] = None
+    is_tracked: bool = True
     first_seen: Optional[datetime] = None
     last_seen: Optional[datetime] = None
+    last_position_sync: Optional[datetime] = None
+    last_trade_sync: Optional[datetime] = None
     analytics: Optional[WalletAnalyticsData] = None
     current_positions: list[PositionSummary] = []
     rank: Optional[int] = None
@@ -63,9 +78,13 @@ class MarketSummary(BaseModel):
     id: str
     question: str
     category: Optional[str] = None
+    event_slug: Optional[str] = None
+    volume_usd: Optional[Decimal] = None
+    liquidity_usd: Optional[Decimal] = None
+    close_time: Optional[datetime] = None
     created_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
-    outcome: Optional[str] = None
+    winning_outcome: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

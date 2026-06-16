@@ -16,6 +16,7 @@ def make_mock_session():
     mock_result = MagicMock()
     mock_result.scalars.return_value = mock_scalars
     mock_result.scalar_one_or_none.return_value = None
+    mock_result.all.return_value = []
 
     session.execute = AsyncMock(return_value=mock_result)
 

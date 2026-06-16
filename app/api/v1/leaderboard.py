@@ -20,7 +20,7 @@ async def leaderboard(
 ):
     entries = await get_leaderboard_data(db, limit=limit, offset=offset)
     return LeaderboardResponse(
-        data=[LeaderboardEntry.model_validate(e) for e in entries],
+        data=[_to_entry(e) for e in entries],
         limit=limit,
         offset=offset,
     )
@@ -32,7 +32,7 @@ async def emerging(
     db: AsyncSession = Depends(get_db),
 ):
     entries = await get_top_emerging(db, limit=limit)
-    return [LeaderboardEntry.model_validate(e) for e in entries]
+    return [_to_entry(e) for e in entries]
 
 
 @router.get("/consistent", response_model=list[LeaderboardEntry])
@@ -41,4 +41,18 @@ async def consistent(
     db: AsyncSession = Depends(get_db),
 ):
     entries = await get_top_consistent(db, limit=limit)
-    return [LeaderboardEntry.model_validate(e) for e in entries]
+    return [_to_entry(e) for e in entries]
+
+
+def _to_entry(e) -> LeaderboardEntry:
+    return LeaderboardEntry(
+        rank=e.rank,
+        wallet=e.wallet,
+        score=e.wallet_score,
+        roi=e.roi,
+        win_rate=e.win_rate,
+        total_pnl=e.total_pnl,
+        num_trades=e.num_trades,
+        consistency_score=e.consistency_score,
+        experience_score=e.experience_score,
+    )

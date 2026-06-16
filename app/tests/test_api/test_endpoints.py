@@ -64,3 +64,16 @@ async def test_markets_with_category(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert "data" in data
+
+
+@pytest.mark.asyncio
+async def test_market_summary_shape(client: AsyncClient):
+    response = await client.get("/api/v1/markets?limit=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    if data["data"]:
+        market = data["data"][0]
+        assert "volume_usd" in market
+        assert "winning_outcome" in market
+        assert "close_time" in market

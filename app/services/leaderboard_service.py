@@ -1,18 +1,18 @@
-from sqlalchemy import select, desc
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import WalletAnalytic
+from app.db.models import RankingSnapshot
 
 
 async def get_leaderboard(
     db: AsyncSession,
     limit: int = 100,
     offset: int = 0,
-) -> list[WalletAnalytic]:
+) -> list[RankingSnapshot]:
     stmt = (
-        select(WalletAnalytic)
-        .where(WalletAnalytic.wallet_score.isnot(None))
-        .order_by(desc(WalletAnalytic.wallet_score))
+        select(RankingSnapshot)
+        .where(RankingSnapshot.list_type == "top_100")
+        .order_by(RankingSnapshot.rank)
         .limit(limit)
         .offset(offset)
     )
@@ -23,11 +23,11 @@ async def get_leaderboard(
 async def get_top_emerging(
     db: AsyncSession,
     limit: int = 10,
-) -> list[WalletAnalytic]:
+) -> list[RankingSnapshot]:
     stmt = (
-        select(WalletAnalytic)
-        .where(WalletAnalytic.wallet_score.isnot(None))
-        .order_by(desc(WalletAnalytic.wallet_score))
+        select(RankingSnapshot)
+        .where(RankingSnapshot.list_type == "emerging")
+        .order_by(RankingSnapshot.rank)
         .limit(limit)
     )
     result = await db.execute(stmt)
@@ -37,11 +37,11 @@ async def get_top_emerging(
 async def get_top_consistent(
     db: AsyncSession,
     limit: int = 10,
-) -> list[WalletAnalytic]:
+) -> list[RankingSnapshot]:
     stmt = (
-        select(WalletAnalytic)
-        .where(WalletAnalytic.wallet_score.isnot(None))
-        .order_by(desc(WalletAnalytic.wallet_score))
+        select(RankingSnapshot)
+        .where(RankingSnapshot.list_type == "consistent")
+        .order_by(RankingSnapshot.rank)
         .limit(limit)
     )
     result = await db.execute(stmt)
