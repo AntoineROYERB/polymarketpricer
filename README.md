@@ -10,28 +10,54 @@ Identify the most skilled Polymarket traders, measure their performance by niche
 
 ## Architecture
 
-```
-┌─────────────┐    ┌─────────────┐    ┌──────────────┐
-│  Gamma API  │    │  Data API   │    │  CLOB API    │
-│  (metadata) │    │ (positions, │    │  (prices)    │
-│             │    │  trades)    │    │              │
-└──────┬──────┘    └──────┬──────┘    └──────┬───────┘
-       │                  │                  │
-       └──────────────────┼──────────────────┘
-                          │
-                    ┌─────▼─────┐
-                    │  Mage AI  │  Port 6789
-                    │ (ETL)     │
-                    └─────┬─────┘
-                          │ writes
-                    ┌─────▼─────┐
-                    │PostgreSQL │
-                    └─────┬─────┘
-                          │ reads
-                    ┌─────▼─────┐
-                    │  FastAPI  │  Port 8000
-                    │ (backend) │
-                    └───────────┘
+```mermaid
+flowchart LR
+    subgraph APIs["External APIs"]
+        GAMMA["Gamma API<br/>(markets, events, wallets)"]
+        DATA["Data API<br/>(trades, positions)"]
+    end
+
+    subgraph ETL["Mage AI ETL — 6 Pipelines"]
+        MD["market_discovery<br/>markets + events + outcomes"]
+        WD["wallet_discovery<br/>proxy → main wallet"]
+        TH["trade_history<br/>per-wallet trades"]
+        PS["position_sync<br/>current positions"]
+        AC["analytics_computation<br/>PnL, ROI, Sharpe, filtering"]
+        RC["ranking_computation<br/>top-100 / emerging / consistent"]
+    end
+
+    subgraph DB["PostgreSQL"]
+        MKT[(markets)]
+        EVT[(events)]
+        OUTC[(outcomes)]
+        WAL[(wallets)]
+        TRD[(trades)]
+        POS[(positions)]
+        WA[(wallet_analytics)]
+        RS[(ranking_snapshots)]
+    end
+
+    subgraph API["FastAPI — Port 8000"]
+        LB["GET /leaderboard<br/>GET /leaderboard/emerging<br/>GET /leaderboard/consistent"]
+        WP["GET /wallets/{address}"]
+        MK["GET /markets"]
+    end
+
+    GAMMA --> MD
+    GAMMA --> WD
+    DATA --> TH
+    DATA --> PS
+    MD --> MKT & EVT & OUTC
+    WD --> WAL
+    TH --> TRD
+    PS --> POS
+    MKT & EVT & OUTC & WAL & TRD & POS --> AC
+    AC --> WA
+    WA --> RC
+    RC --> RS
+    MKT & WAL & WA & RS --> LB
+    WAL & WA & POS --> WP
+    MKT --> MK
 ```
 
 ---
@@ -118,9 +144,9 @@ python -m pytest app/tests/ -v
 python -m pytest app/tests/ --cov=app -v
 ```
 
-The **32 integration tests** validate row counts, referential integrity,
-not-null constraints, data quality ranges, timestamp sanity, and
-cross-table consistency across all ETL tables.
+The **41 tests** (9 unit + 32 integration) validate row counts, referential integrity,
+not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
+and data filtering — with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
 
 ### Code Quality
 
