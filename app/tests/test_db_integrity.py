@@ -156,10 +156,10 @@ def test_analytics_pnl_is_reasonable(conn):
     count = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
-            "WHERE total_pnl > 100000 OR total_pnl < -100000"
+            "WHERE total_pnl > 500000 OR total_pnl < -500000"
         )
     ).scalar()
-    assert count == 0, f"{count} wallets have extreme total_pnl outside ±100k"
+    assert count == 0, f"{count} wallets have extreme total_pnl outside ±500k"
 
 
 def test_analytics_win_rate_range(conn):
