@@ -121,7 +121,7 @@ repo root declares the pattern. All contributors must have `git-lfs` installed.
 │       ├── .gitkeep
 │       └── seed.sql           # LFS-tracked dump
 │
-├── mage/                      # Mage AI
+├── magic/                      # Mage AI
 │   ├── Dockerfile
 │   └── default_repo/
 │       ├── pipelines/         # 6 pipeline dirs
