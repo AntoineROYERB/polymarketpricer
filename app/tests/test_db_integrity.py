@@ -33,6 +33,7 @@ def conn():
 
 # ── Minimum expected rows per table ──────────────────────────────────
 ROW_THRESHOLDS = {
+    "events": 10_000,
     "markets": 50_000,
     "outcomes": 100_000,
     "wallets": 1_000,
@@ -42,7 +43,7 @@ ROW_THRESHOLDS = {
     "ranking_snapshots": 100,
 }
 
-EMPTY_TABLES = {"events", "position_history"}
+EMPTY_TABLES = {"position_history"}
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))
