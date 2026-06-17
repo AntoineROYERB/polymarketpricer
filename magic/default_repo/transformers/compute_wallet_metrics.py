@@ -1,6 +1,6 @@
 import math
-from datetime import date
-from pandas import DataFrame, to_numeric, NaT
+from datetime import date, timedelta
+from pandas import DataFrame, to_numeric, NaT, Timestamp
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
@@ -14,7 +14,47 @@ def safe_div(n, d):
     return n / d
 
 
-def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFrame) -> dict:
+MIN_RESOLVED_TRADES = 50
+MIN_VOLUME_USD = 1000
+MIN_HISTORY_DAYS = 90
+
+
+def should_include(
+    resolved_total: int,
+    num_trades: int,
+    total_volume: float,
+    first_seen: date | None,
+    today: date,
+) -> bool:
+    """Check if a wallet meets the minimum quality thresholds.
+
+    Uses resolved trades when available, falls back to total trade count
+    if the position resolution pipeline has not yet marked positions as RESOLVED.
+
+    Returns True if the wallet should be included in analytics.
+    """
+    if resolved_total >= MIN_RESOLVED_TRADES:
+        pass  # Meets resolved-trade threshold
+    elif num_trades >= MIN_RESOLVED_TRADES:
+        pass  # Falls back to total trade count as proxy
+    else:
+        return False
+
+    if total_volume < MIN_VOLUME_USD:
+        return False
+    if first_seen is not None:
+        age_days = (today - first_seen).days
+        if age_days < MIN_HISTORY_DAYS:
+            return False
+    return True
+
+
+def compute_metrics_for_wallet(
+    wallet: str,
+    trades: DataFrame,
+    positions: DataFrame,
+    first_seen: date | None = None,
+) -> dict | None:
     today = date.today()
 
     total_realized_pnl = 0
@@ -146,6 +186,11 @@ def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFr
         0.5 * trade_component + 0.3 * resolve_component + 0.2 * hold_component, 6
     )
 
+    if not should_include(resolved_total, num_trades, total_volume, first_seen, today):
+        print(f"  filtering out {wallet}: "
+              f"resolved={resolved_total}, volume={total_volume}, first_seen={first_seen}")
+        return None
+
     return {
         "wallet": wallet,
         "snapshot_date": today,
@@ -169,6 +214,39 @@ def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFr
     }
 
 
+def _compute_first_seen(trades: DataFrame, positions: DataFrame) -> dict[str, date]:
+    """Build a mapping of wallet → earliest known activity date."""
+    first_seen: dict[str, date] = {}
+
+    if not trades.empty and "wallet" in trades.columns and "timestamp" in trades.columns:
+        ts = trades[["wallet", "timestamp"]].copy()
+        ts["timestamp"] = to_numeric(ts["timestamp"], errors="coerce")
+        ts = ts.dropna(subset=["timestamp"])
+        if not ts.empty:
+            earliest = ts.groupby("wallet")["timestamp"].min()
+            for wallet, ts_val in earliest.items():
+                try:
+                    first_seen[wallet] = Timestamp(ts_val).date()
+                except Exception:
+                    pass
+
+    if not positions.empty and "wallet" in positions.columns and "entry_time" in positions.columns:
+        ps = positions[["wallet", "entry_time"]].copy()
+        ps["entry_time"] = to_numeric(ps["entry_time"], errors="coerce")
+        ps = ps.dropna(subset=["entry_time"])
+        if not ps.empty:
+            earliest = ps.groupby("wallet")["entry_time"].min()
+            for wallet, ts_val in earliest.items():
+                try:
+                    d = Timestamp(ts_val).date()
+                    if wallet not in first_seen or d < first_seen[wallet]:
+                        first_seen[wallet] = d
+                except Exception:
+                    pass
+
+    return first_seen
+
+
 @transformer
 def transform_df(positions: DataFrame, trades: DataFrame, *args, **kwargs) -> DataFrame:
     wallets = set()
@@ -177,15 +255,20 @@ def transform_df(positions: DataFrame, trades: DataFrame, *args, **kwargs) -> Da
     if not trades.empty:
         wallets.update(trades["wallet"].unique())
 
+    wallet_first_seen = _compute_first_seen(trades, positions)
+
     sorted_wallets = sorted(wallets)
     print(f"Computing analytics for {len(sorted_wallets)} wallets")
     rows = []
     for i, w in enumerate(sorted_wallets, 1):
-        rows.append(compute_metrics_for_wallet(w, trades, positions))
+        fs = wallet_first_seen.get(w)
+        result = compute_metrics_for_wallet(w, trades, positions, first_seen=fs)
+        if result is not None:
+            rows.append(result)
         if i % 50 == 0 or i == len(sorted_wallets):
             print(f"  computed wallet {i}/{len(sorted_wallets)}")
 
-    print(f"Analytics computed for {len(rows)} wallets")
+    print(f"Analytics computed: {len(rows)} wallets passed filters out of {len(sorted_wallets)}")
     return DataFrame(rows)
 
 

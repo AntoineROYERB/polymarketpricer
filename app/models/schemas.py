@@ -42,12 +42,12 @@ class PositionSummary(BaseModel):
 
 
 class WalletAnalyticsData(BaseModel):
-    total_pnl: Decimal
-    roi: Decimal
-    win_rate: Decimal
-    num_trades: int
+    total_pnl: Optional[Decimal] = None
+    roi: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    num_trades: Optional[int] = None
     total_volume: Optional[Decimal] = None
-    avg_position_size: Decimal
+    avg_position_size: Optional[Decimal] = None
     sharpe_ratio: Optional[Decimal] = None
     profit_factor: Optional[Decimal] = None
     max_drawdown: Optional[Decimal] = None

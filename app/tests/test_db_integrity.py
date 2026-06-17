@@ -38,7 +38,7 @@ ROW_THRESHOLDS = {
     "wallets": 1_000,
     "positions": 5_000,
     "trades": 50_000,
-    "wallet_analytics": 500,
+    "wallet_analytics": 100,
     "ranking_snapshots": 100,
 }
 
