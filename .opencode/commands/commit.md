@@ -27,3 +27,4 @@ Requirements:
   - 3-5 bullet points summarizing the changes
 - Do not commit automatically.
 - Do not add unnecessary explanations.
+- All test have to pass before commiting
