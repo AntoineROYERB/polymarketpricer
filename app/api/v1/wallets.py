@@ -16,7 +16,7 @@ router = APIRouter()
 async def wallet_profile(
     address: str,
     db: AsyncSession = Depends(get_db),
-):
+) -> WalletProfile:
     wallet = await get_wallet_profile(db, address)
     if wallet is None:
         raise HTTPException(status_code=404, detail="Wallet not found")

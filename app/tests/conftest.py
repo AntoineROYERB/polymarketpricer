@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,7 +8,7 @@ from app.api.dependencies import get_db
 from app.main import app
 
 
-def make_mock_session():
+def make_mock_session() -> AsyncMock:
     session = AsyncMock()
 
     mock_scalars = MagicMock()
@@ -24,9 +25,10 @@ def make_mock_session():
 
 
 @pytest.fixture
-async def client():
+async def client() -> AsyncGenerator[AsyncClient, None]:
     mock_session = make_mock_session()
-    async def override_get_db():
+
+    async def override_get_db() -> AsyncGenerator[AsyncMock, None]:
         yield mock_session
 
     app.dependency_overrides[get_db] = override_get_db
