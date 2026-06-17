@@ -1,0 +1,39 @@
+blocks:
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - load_positions
+  name: load_tracked_wallets
+  status: not_executed
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_tracked_wallets
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - merge_positions
+  name: load_positions
+  status: not_executed
+  type: data_loader
+  upstream_blocks:
+  - load_tracked_wallets
+  uuid: load_positions
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - export_positions
+  name: merge_positions
+  status: not_executed
+  type: transformer
+  upstream_blocks:
+  - load_positions
+  uuid: merge_positions
+- all_upstream_blocks_executed: true
+  downstream_blocks: []
+  name: export_positions
+  status: not_executed
+  type: data_exporter
+  upstream_blocks:
+  - merge_positions
+  uuid: export_positions
+name: position_sync
+type: python
+uuid: position_sync
+widgets: []
