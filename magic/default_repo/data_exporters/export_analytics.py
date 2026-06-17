@@ -35,6 +35,15 @@ def export_data(df: DataFrame, **kwargs) -> None:
     print(f"Exporting analytics for {len(df)} wallets")
     engine = create_engine(DATABASE_URL)
     with engine.begin() as conn:
+        # Replace all rows for the current snapshot_date
+        snapshot_dates = df["snapshot_date"].unique()
+        for sd in snapshot_dates:
+            conn.execute(
+                text("DELETE FROM wallet_analytics WHERE snapshot_date = :sd"),
+                {"sd": sd},
+            )
+            print(f"  cleared wallet_analytics for snapshot_date={sd}")
+
         for _, row in df.iterrows():
             params = {}
             for c in STR_COLS:
@@ -60,24 +69,7 @@ def export_data(df: DataFrame, **kwargs) -> None:
                         :num_resolved_positions, :profit_factor, :sharpe_ratio, :max_drawdown,
                         :avg_position_size, :avg_holding_duration, :consistency_score,
                         :experience_score, :wallet_score
-                    ) ON CONFLICT (wallet, snapshot_date) DO UPDATE SET
-                        total_pnl = EXCLUDED.total_pnl,
-                        total_realized_pnl = EXCLUDED.total_realized_pnl,
-                        total_unrealized_pnl = EXCLUDED.total_unrealized_pnl,
-                        roi = EXCLUDED.roi,
-                        total_volume = EXCLUDED.total_volume,
-                        total_cost_basis = EXCLUDED.total_cost_basis,
-                        win_rate = EXCLUDED.win_rate,
-                        num_trades = EXCLUDED.num_trades,
-                        num_resolved_positions = EXCLUDED.num_resolved_positions,
-                        profit_factor = EXCLUDED.profit_factor,
-                        sharpe_ratio = EXCLUDED.sharpe_ratio,
-                        max_drawdown = EXCLUDED.max_drawdown,
-                        avg_position_size = EXCLUDED.avg_position_size,
-                        avg_holding_duration = EXCLUDED.avg_holding_duration,
-                        consistency_score = EXCLUDED.consistency_score,
-                        experience_score = EXCLUDED.experience_score,
-                        wallet_score = EXCLUDED.wallet_score
+                    )
                 """),
                 params,
             )
