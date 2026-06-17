@@ -203,8 +203,8 @@ Once all items above are ✅:
 3. Refresh seed dump: `./scripts/refresh-seed.sh` → **171 MB dump committed**
 4. Tag the release:
    ```bash
-   git tag -a v1.0.0 -m "Phase 1 — MVP Leaderboard"
-   git push origin v1.0.0
+   git tag -a v0.1.0 -m "Phase 1 — MVP Leaderboard"
+   git push origin v0.1.0
    ```
 5. Mark ROADMAP Phase 1 as complete
 6. Begin Phase 2 — Niche Expertise Detection
