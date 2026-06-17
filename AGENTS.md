@@ -94,6 +94,47 @@ Refresh when:
 `docker/initdb/seed.sql` is tracked via Git LFS. The `.gitattributes` file in the
 repo root declares the pattern. All contributors must have `git-lfs` installed.
 
+## Testing
+
+The project has two test suites:
+
+### Unit / API Tests
+
+Mock-based tests in `app/tests/test_api/` that verify endpoint behaviour without a real database.
+
+```bash
+python3 -m pytest app/tests/test_api/ -v
+```
+
+### Integration Tests (real database)
+
+`app/tests/test_db_integrity.py` connects to the actual PostgreSQL instance and validates
+ETL pipeline output. Requires `docker compose up -d` (postgres service running).
+
+```bash
+# Run only integration tests
+python3 -m pytest app/tests/test_db_integrity.py -m integration -v
+
+# Run all tests
+python3 -m pytest app/tests/ -v
+```
+
+What the 32 integration tests check:
+
+| Category | Tests | What it validates |
+|---|---|---|
+| Row counts | 6 | Each populated table meets a minimum row threshold |
+| Empty tables | 3 | `events`, `position_history`, `ranking_snapshots` remain empty |
+| Referential integrity | 7 | No orphaned foreign keys across all FK relationships |
+| Not-null constraints | 5 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics) have no NULLs |
+| Analytics quality | 6 | PNL within ±100k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0 |
+| Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
+| Cross-table consistency | 3 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome |
+
+**Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
+concurrency issues with parametrized test functions. The sync URL is derived from
+the async `DATABASE_URL` config by replacing the driver prefix.
+
 ## Project Layout
 
 ```
@@ -110,7 +151,14 @@ repo root declares the pattern. All contributors must have `git-lfs` installed.
 │   ├── api/                   # Routes
 │   ├── db/                    # AsyncEngine + models
 │   ├── services/              # Business logic
-│   └── models/                # Pydantic schemas
+│   ├── models/                # Pydantic schemas
+│   └── tests/                 # Test suites
+│       ├── test_api/              # Mock-based API tests
+│       │   ├── __init__.py
+│       │   └── test_endpoints.py  # 9 endpoint tests
+│       ├── __init__.py
+│       ├── conftest.py            # Shared mock fixtures
+│       └── test_db_integrity.py   # 32 integration tests
 │
 ├── alembic/                   # DB migrations
 │   └── versions/
@@ -134,6 +182,10 @@ repo root declares the pattern. All contributors must have `git-lfs` installed.
 │   ├── run-all-pipelines.sh   # Bash wrapper
 │   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql
 │
+├── magic/scripts/
+│   └── run_all.py             # Mage-inside pipeline runner
+│
 └── plans/
-    └── db-seed-dump.md        # This plan
+    ├── db-seed-dump.md
+    └── trade-history-fix.md
 ```

@@ -100,13 +100,25 @@ uvicorn app.main:app --reload
 
 ### Testing
 
+The project has two test suites:
+
 ```bash
-# Unit tests (no Docker needed)
+# Unit / API tests (mocked, no Docker needed)
+python -m pytest app/tests/test_api/ -v
+
+# Integration tests (requires docker compose up -d)
+python -m pytest app/tests/test_db_integrity.py -m integration -v
+
+# Run all tests
 python -m pytest app/tests/ -v
 
 # With coverage
 python -m pytest app/tests/ --cov=app -v
 ```
+
+The **32 integration tests** validate row counts, referential integrity,
+not-null constraints, data quality ranges, timestamp sanity, and
+cross-table consistency across all ETL tables.
 
 ### Code Quality
 
