@@ -46,13 +46,13 @@ async def consistent(
 
 def _to_entry(e) -> LeaderboardEntry:
     return LeaderboardEntry(
-        rank=e.rank,
+        rank=getattr(e, "rank", 0),
         wallet=e.wallet,
-        score=e.wallet_score,
-        roi=e.roi,
-        win_rate=e.win_rate,
-        total_pnl=e.total_pnl,
-        num_trades=e.num_trades,
-        consistency_score=e.consistency_score,
-        experience_score=e.experience_score,
+        score=e.wallet_score or 0,
+        roi=e.roi or 0,
+        win_rate=e.win_rate or 0,
+        total_pnl=e.total_pnl or 0,
+        num_trades=e.num_trades or 0,
+        consistency_score=getattr(e, "consistency_score", None) or 0,
+        experience_score=getattr(e, "experience_score", None) or 0,
     )

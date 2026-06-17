@@ -11,7 +11,7 @@ if 'test' not in globals():
 def normalize(series, default=0.5):
     mn, mx = series.min(), series.max()
     if mx == mn:
-        return DataFrame(default, index=series.index)
+        return pd.Series(default, index=series.index)
     return (series - mn) / (mx - mn)
 
 

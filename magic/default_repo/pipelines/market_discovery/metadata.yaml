@@ -82,7 +82,8 @@ remote_variables_dir: null
 retry_config: {}
 run_pipeline_in_one_process: false
 settings:
-  triggers: null
+  triggers:
+    - POLYMARKET_TRIGGER_MARKET_DISCOVERY_SCHEDULE
 spark_config: {}
 tags: []
 type: python

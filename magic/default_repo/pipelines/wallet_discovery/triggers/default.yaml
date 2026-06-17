@@ -1,0 +1,12 @@
+name: POLYMARKET_TRIGGER_WALLET_DISCOVERY_SCHEDULE
+pipeline_uuid: wallet_discovery
+schedule_interval: null
+schedule_type: api
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+
+settings:
+  sla: 120
+  allow_parallel_runs: false

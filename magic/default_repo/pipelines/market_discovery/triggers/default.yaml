@@ -1,0 +1,26 @@
+name: POLYMARKET_TRIGGER_MARKET_DISCOVERY_SCHEDULE
+pipeline_uuid: market_discovery
+schedule_interval: "@daily"
+schedule_type: time
+start_time: "2026-06-17T00:00:00"
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+  backfill_days: 1
+
+settings:
+  sla: 120
+  allow_parallel_runs: false
+  landing_time_enabled: true
+  landing_time_interval: 300
+
+runtime_parameters:
+  - name: run_date
+    type: string
+    required: true
+    default: "{{ execution_date }}"
+  - name: backfill_days
+    type: int
+    required: false
+    default: 1

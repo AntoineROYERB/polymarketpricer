@@ -1,0 +1,11 @@
+name: POLYMARKET_TRIGGER_POSITION_SYNC_SCHEDULE
+pipeline_uuid: position_sync
+schedule_interval: null
+schedule_type: api
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+
+settings:
+  sla: 120
