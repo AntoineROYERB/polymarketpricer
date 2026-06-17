@@ -39,9 +39,10 @@ ROW_THRESHOLDS = {
     "positions": 5_000,
     "trades": 50_000,
     "wallet_analytics": 500,
+    "ranking_snapshots": 100,
 }
 
-EMPTY_TABLES = {"events", "position_history", "ranking_snapshots"}
+EMPTY_TABLES = {"events", "position_history"}
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))
@@ -117,11 +118,9 @@ NOT_NULL_CHECKS = [
     ("wallets", "wallet"),
 ]
 
-NULLABLE_ANALYTICS = (
-    "total_pnl",
-    "roi",
-    "num_trades",
-    "sharpe_ratio",
+REQUIRED_ANALYTICS = (
+    "wallet",
+    "snapshot_date",
 )
 
 
@@ -136,7 +135,7 @@ def test_not_null_critical_columns(conn, tbl: str, col: str):
 
 
 def test_analytics_critical_not_null(conn):
-    for col in NULLABLE_ANALYTICS:
+    for col in REQUIRED_ANALYTICS:
         count = conn.execute(
             text(f"SELECT count(*) FROM wallet_analytics WHERE {col} IS NULL")
         ).scalar()
