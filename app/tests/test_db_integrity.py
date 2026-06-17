@@ -9,9 +9,11 @@ These tests connect to the real database and validate:
 """
 
 from datetime import date, datetime, timezone
+from typing import Generator
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 
 from app.config import settings
 
@@ -24,11 +26,13 @@ _engine = create_engine(SYNC_URL)
 
 
 @pytest.fixture
-def conn():
+def conn() -> Generator[Connection, None, None]:
     c = _engine.connect()
-    yield c
-    c.rollback()
-    c.close()
+    try:
+        yield c
+    finally:
+        c.rollback()
+        c.close()
 
 
 # ── Minimum expected rows per table ──────────────────────────────────
@@ -47,16 +51,16 @@ EMPTY_TABLES = {"position_history"}
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))
-def test_table_row_counts(conn, tbl: str, min_rows: int):
-    count = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar()
+def test_table_row_counts(conn: Connection, tbl: str, min_rows: int) -> None:
+    count: int = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar() or 0
     assert count >= min_rows, (
         f"{tbl} has {count} rows, expected at least {min_rows}"
     )
 
 
 @pytest.mark.parametrize("tbl", list(EMPTY_TABLES))
-def test_empty_tables_stay_empty(conn, tbl: str):
-    count = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar()
+def test_empty_tables_stay_empty(conn: Connection, tbl: str) -> None:
+    count: int = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar() or 0
     assert count == 0, f"Expected {tbl} to be empty, found {count} rows"
 
 
@@ -75,7 +79,13 @@ FK_CHECKS = [
     FK_CHECKS,
     ids=[f"{c}.{cc} → {p}.{pc}" for c, p, cc, pc in FK_CHECKS],
 )
-def test_referential_integrity(conn, child_tbl, parent_tbl, child_col, parent_col):
+def test_referential_integrity(
+    conn: Connection,
+    child_tbl: str,
+    parent_tbl: str,
+    child_col: str,
+    parent_col: str,
+) -> None:
     count = conn.execute(
         text(
             f"SELECT count(*) FROM {child_tbl} c "
@@ -89,7 +99,7 @@ def test_referential_integrity(conn, child_tbl, parent_tbl, child_col, parent_co
     )
 
 
-def test_market_event_reference(conn):
+def test_market_event_reference(conn: Connection) -> None:
     count = conn.execute(
         text(
             "SELECT count(*) FROM markets m "
@@ -100,7 +110,7 @@ def test_market_event_reference(conn):
     assert count == 0, f"{count} markets reference non-existent events"
 
 
-def test_outcome_market_reference(conn):
+def test_outcome_market_reference(conn: Connection) -> None:
     count = conn.execute(
         text(
             "SELECT count(*) FROM outcomes o "
@@ -128,23 +138,23 @@ REQUIRED_ANALYTICS = (
 @pytest.mark.parametrize(
     "tbl,col", NOT_NULL_CHECKS, ids=[f"{t}.{c}" for t, c in NOT_NULL_CHECKS]
 )
-def test_not_null_critical_columns(conn, tbl: str, col: str):
-    count = conn.execute(
+def test_not_null_critical_columns(conn: Connection, tbl: str, col: str) -> None:
+    count: int = conn.execute(
         text(f"SELECT count(*) FROM {tbl} WHERE {col} IS NULL")
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{tbl}.{col} has {count} NULL values"
 
 
-def test_analytics_critical_not_null(conn):
+def test_analytics_critical_not_null(conn: Connection) -> None:
     for col in REQUIRED_ANALYTICS:
-        count = conn.execute(
+        count: int = conn.execute(
             text(f"SELECT count(*) FROM wallet_analytics WHERE {col} IS NULL")
-        ).scalar()
+        ).scalar() or 0
         assert count == 0, f"wallet_analytics.{col} has {count} NULL values"
 
 
 # ── wallet_analytics data quality ────────────────────────────────────
-def test_analytics_snapshot_date_is_today(conn):
+def test_analytics_snapshot_date_is_today(conn: Connection) -> None:
     today = date.today()
     dates = conn.execute(
         text("SELECT DISTINCT snapshot_date FROM wallet_analytics")
@@ -153,108 +163,106 @@ def test_analytics_snapshot_date_is_today(conn):
         assert d == today, f"Found stale snapshot_date {d}, expected {today}"
 
 
-def test_analytics_pnl_is_reasonable(conn):
-    count = conn.execute(
+def test_analytics_pnl_is_reasonable(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
             "WHERE total_pnl > 500000 OR total_pnl < -500000"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} wallets have extreme total_pnl outside ±500k"
 
 
-def test_analytics_win_rate_range(conn):
-    count = conn.execute(
+def test_analytics_win_rate_range(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
             "WHERE win_rate IS NOT NULL AND (win_rate < 0 OR win_rate > 1)"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} wallets have win_rate outside [0, 1]"
 
 
-def test_analytics_wallet_score_range(conn):
-    count = conn.execute(
+def test_analytics_wallet_score_range(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
             "WHERE wallet_score IS NOT NULL AND (wallet_score < 0 OR wallet_score > 100)"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} wallets have wallet_score outside [0, 100]"
 
 
-def test_analytics_max_drawdown_non_positive(conn):
-    count = conn.execute(
+def test_analytics_max_drawdown_non_positive(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
             "WHERE max_drawdown IS NOT NULL AND max_drawdown > 0"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} wallets have positive max_drawdown"
 
 
-def test_analytics_profit_factor_non_negative(conn):
-    count = conn.execute(
+def test_analytics_profit_factor_non_negative(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics "
             "WHERE profit_factor IS NOT NULL AND profit_factor < 0"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} wallets have negative profit_factor"
 
 
 # ── Timestamp sanity ─────────────────────────────────────────────────
-def test_no_future_timestamps_in_trades(conn):
+def test_no_future_timestamps_in_trades(conn: Connection) -> None:
     now = datetime.now(timezone.utc)
-    count = conn.execute(
+    count: int = conn.execute(
         text("SELECT count(*) FROM trades WHERE timestamp > :now"),
         {"now": now},
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} trades have future timestamps"
 
 
-def test_no_future_dates_in_analytics(conn):
+def test_no_future_dates_in_analytics(conn: Connection) -> None:
     today = date.today()
-    count = conn.execute(
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics WHERE snapshot_date > :today"
         ),
         {"today": today},
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} analytics rows have future snapshot_date"
 
 
 # ── Cross-table consistency ──────────────────────────────────────────
-def test_analytics_wallets_subset_of_wallets(conn):
-    count = conn.execute(
+def test_analytics_wallets_subset_of_wallets(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM wallet_analytics wa "
             "LEFT JOIN wallets w ON wa.wallet = w.wallet "
             "WHERE w.wallet IS NULL"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} analytics wallets not in wallets table"
 
 
-def test_trade_wallets_subset_of_wallets(conn):
-    count = conn.execute(
+def test_trade_wallets_subset_of_wallets(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(DISTINCT t.wallet) FROM trades t "
             "LEFT JOIN wallets w ON t.wallet = w.wallet "
             "WHERE w.wallet IS NULL"
         )
-    ).scalar()
-    assert count == 0 or count is None, (
-        f"{count} trade wallets not in wallets table"
-    )
+    ).scalar() or 0
+    assert count == 0, f"{count} trade wallets not in wallets table"
 
 
-def test_markets_have_at_least_one_outcome(conn):
-    count = conn.execute(
+def test_markets_have_at_least_one_outcome(conn: Connection) -> None:
+    count: int = conn.execute(
         text(
             "SELECT count(*) FROM markets m "
             "LEFT JOIN outcomes o ON m.id = o.market_id "
             "WHERE o.id IS NULL"
         )
-    ).scalar()
+    ).scalar() or 0
     assert count == 0, f"{count} markets have no outcomes"

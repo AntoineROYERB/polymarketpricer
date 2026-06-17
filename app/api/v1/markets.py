@@ -17,7 +17,7 @@ async def markets(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-):
+) -> MarketListResponse:
     stmt = select(Market)
     if category:
         stmt = stmt.where(Market.category == category)
