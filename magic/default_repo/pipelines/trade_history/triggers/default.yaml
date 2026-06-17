@@ -1,0 +1,11 @@
+name: POLYMARKET_TRIGGER_TRADE_HISTORY_SCHEDULE
+pipeline_uuid: trade_history
+schedule_interval: null
+schedule_type: api
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+
+settings:
+  sla: 120

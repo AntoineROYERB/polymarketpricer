@@ -126,6 +126,26 @@ def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFr
         avg_seconds = total_holding_seconds / holding_count
         avg_holding_duration = avg_seconds
 
+    consistency_score = None
+    if num_trades >= 10 and len(trade_pnls) > 1:
+        mean_abs = sum(abs(x) for x in trade_pnls) / len(trade_pnls)
+        if mean_abs > 0:
+            variance = sum((x - sum(trade_pnls) / len(trade_pnls)) ** 2 for x in trade_pnls) / (len(trade_pnls) - 1)
+            stddev = math.sqrt(variance)
+            cv = stddev / mean_abs
+            consistency_score = round(1 / (1 + cv), 6)
+
+    experience_score = None
+    trade_component = min(num_trades / 2000, 1.0)
+    resolve_component = min(resolved_total / 100, 1.0)
+    hold_component = 0.0
+    if holding_count > 0:
+        avg_days = total_holding_seconds / holding_count / 86400
+        hold_component = min(avg_days / 60, 1.0)
+    experience_score = round(
+        0.5 * trade_component + 0.3 * resolve_component + 0.2 * hold_component, 6
+    )
+
     return {
         "wallet": wallet,
         "snapshot_date": today,
@@ -143,8 +163,8 @@ def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFr
         "max_drawdown": max_drawdown,
         "avg_position_size": avg_position_size,
         "avg_holding_duration": avg_holding_duration,
-        "consistency_score": None,
-        "experience_score": None,
+        "consistency_score": consistency_score,
+        "experience_score": experience_score,
         "wallet_score": None,
     }
 

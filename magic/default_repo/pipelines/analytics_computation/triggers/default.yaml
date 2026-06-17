@@ -1,0 +1,11 @@
+name: POLYMARKET_TRIGGER_ANALYTICS_SCHEDULE
+pipeline_uuid: analytics_computation
+schedule_interval: null
+schedule_type: api
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+
+settings:
+  sla: 60
