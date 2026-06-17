@@ -80,14 +80,18 @@ def load_data_from_api(**kwargs) -> DataFrame:
                 "label": label,
                 "price": outcome_prices[i] if i < len(outcome_prices) else None,
             })
+        event = None
+        events_list = m.get("events")
+        if isinstance(events_list, list) and len(events_list) > 0:
+            event = events_list[0]
         rows.append({
-            "event_id": None,
-            "event_title": None,
-            "event_slug": None,
-            "event_category": None,
-            "event_start_date": None,
-            "event_end_date": None,
-            "event_closed": False,
+            "event_id": event["id"] if event else None,
+            "event_title": event["title"] if event else None,
+            "event_slug": event.get("slug") if event else None,
+            "event_category": m.get("category"),
+            "event_start_date": event.get("startDate") if event else None,
+            "event_end_date": event.get("endDate") if event else None,
+            "event_closed": event.get("closed", False) if event else False,
             "market_id": m["id"],
             "condition_id": m.get("conditionId"),
             "question": m.get("question"),
