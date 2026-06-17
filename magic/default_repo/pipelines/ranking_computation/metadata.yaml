@@ -1,0 +1,48 @@
+blocks:
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - filter_eligible_wallets
+  name: load_all_analytics
+  status: not_executed
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_all_analytics
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - filter_eligible_wallets
+  name: load_wallet_metadata
+  status: not_executed
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_wallet_metadata
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - compute_wallet_scores
+  name: filter_eligible_wallets
+  status: not_executed
+  type: transformer
+  upstream_blocks:
+  - load_all_analytics
+  - load_wallet_metadata
+  uuid: filter_eligible_wallets
+- all_upstream_blocks_executed: true
+  downstream_blocks:
+  - materialize_rankings
+  name: compute_wallet_scores
+  status: not_executed
+  type: transformer
+  upstream_blocks:
+  - filter_eligible_wallets
+  uuid: compute_wallet_scores
+- all_upstream_blocks_executed: true
+  downstream_blocks: []
+  name: materialize_rankings
+  status: not_executed
+  type: data_exporter
+  upstream_blocks:
+  - compute_wallet_scores
+  uuid: materialize_rankings
+name: ranking_computation
+type: python
+uuid: ranking_computation
+widgets: []

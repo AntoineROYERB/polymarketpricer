@@ -39,5 +39,9 @@ coverage/
 # Ruff
 .ruff_cache/
 
+# Mage AI runtime data
+mage_data/
+magic/mage_data/
+
 # Alembic
 alembic/__pycache__/

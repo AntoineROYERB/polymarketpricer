@@ -1,0 +1,110 @@
+blocks:
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - load_positions_data
+  - load_trades_data
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_recent_activity
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_recent_activity
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - compute_wallet_metrics
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_positions_data
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks:
+  - load_recent_activity
+  uuid: load_positions_data
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - compute_wallet_metrics
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_trades_data
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks:
+  - load_recent_activity
+  uuid: load_trades_data
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_analytics
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: compute_wallet_metrics
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_positions_data
+  - load_trades_data
+  uuid: compute_wallet_metrics
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks: []
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: export_analytics
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - compute_wallet_metrics
+  uuid: export_analytics
+cache_block_output_in_memory: false
+callbacks: []
+concurrency_config: {}
+conditionals: []
+created_at: null
+data_integration: null
+description: null
+executor_config: {}
+executor_count: 1
+executor_type: null
+extensions: {}
+name: analytics_computation
+notification_config: {}
+remote_variables_dir: null
+retry_config: {}
+run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
+tags: []
+type: python
+uuid: analytics_computation
+variables_dir: /home/src/mage_data/default_repo
+widgets: []
