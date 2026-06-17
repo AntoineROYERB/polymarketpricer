@@ -1,5 +1,7 @@
 # Polymarket Smart Money Tracker
 
+![CI](https://github.com/AntoineROYERB/polymarketpricer/actions/workflows/ci.yml/badge.svg)
+
 Identify the most skilled Polymarket traders, measure their performance by niche, detect when they open new positions, and generate actionable alerts.
 
 > **Status:** Phase 1 — MVP Leaderboard (FastAPI backend + Mage AI pipelines)
