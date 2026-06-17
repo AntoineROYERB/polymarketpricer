@@ -100,13 +100,73 @@ Track completion of all Phase 1 deliverables and record the formal sign-off befo
 | Pre-commit hooks (ruff, mypy, trailing-whitespace) | ✅ |
 | MyPy strict | ✅ — 0 errors across 24 source files |
 
-### 9. Demo Materials ✅ / ❌
+### 9. Demo Materials ✅
 
-| Item | Status |
-|---|---|
-| Leaderboard screenshots | ❌ — manual capture needed |
-| API endpoint screenshots | ❌ — manual capture needed |
-| Pipeline execution logs | ❌ — manual capture needed |
+**Live endpoints (captured 2026-06-17):**
+
+#### `GET /health`
+```json
+{"status": "ok"}
+```
+
+#### `GET /api/v1/leaderboard?limit=5`
+```json
+{
+  "data": [
+    {"rank": 1, "wallet": "0x17e5...", "score": "0.5566", "roi": "41.29", "total_pnl": "37053.07", "num_trades": 840},
+    {"rank": 2, "wallet": "0xfa39...", "score": "0.5260", "roi": "40.38", "total_pnl": "5739.38", "num_trades": 259},
+    {"rank": 3, "wallet": "0xcf19...", "score": "0.5208", "roi": "35.68", "total_pnl": "235914.94", "num_trades": 242},
+    {"rank": 4, "wallet": "0x8cad...", "score": "0.4885", "roi": "-0.01", "total_pnl": "-0.74", "num_trades": 799},
+    {"rank": 5, "wallet": "0x0ec4...", "score": "0.4795", "roi": "0.00", "total_pnl": "0.00", "num_trades": 374}
+  ],
+  "limit": 5, "offset": 0
+}
+```
+
+#### `GET /api/v1/wallets/{top_1_address}`
+```json
+{
+  "wallet": "0x17e5540bc696fd3e8b7da9101a93e4835c783d19",
+  "analytics": {
+    "total_pnl": "37053.07", "roi": "41.29", "num_trades": 840,
+    "total_volume": "89730.34", "sharpe_ratio": "6.65"
+  },
+  "current_positions": [
+    {"market_id": "559667", "question": "Will Michelle Obama win the 2028 Democratic presidential nomination?", "side": "BUY", "shares": "37058.00"}
+  ]
+}
+```
+
+#### `GET /api/v1/markets?limit=2`
+```json
+{
+  "data": [
+    {"id": "2566449", "question": "Parma: Daniel Galan vs Luca Van Assche", "volume_usd": "51576.21"},
+    {"id": "2566453", "question": "Parma: Completed Match: Daniel Galan vs Luca Van Assche", "volume_usd": null}
+  ]
+}
+```
+
+#### Pipeline Execution Logs (sequential run)
+```
+market_discovery  → 308s  — 39,898 active + 50,000 resolved markets → 27,100 events, 89,898 markets, 179,895 outcomes
+wallet_discovery  → ~7min — 1,843 wallets resolved via Gamma API
+trade_history     → ~8min — 263,727+ trades fetched
+position_sync     → ~6min — 37,754+ positions loaded
+analytics         → ~2min — 4,658 wallets evaluated → 160 passed filters
+ranking           → ~1s   — 110 ranking rows (100 top-100, 10 consistent)
+```
+
+#### Test Results
+```
+41 passed in 0.33s  — 9 unit + 32 integration, 0 failures
+mypy --strict       — 0 errors in 24 source files
+```
+
+#### Database Volume
+```
+10 tables, 649,048 total rows across all ETL output
+```
 
 ### 10. Performance & Latency
 
@@ -130,7 +190,7 @@ Track completion of all Phase 1 deliverables and record the formal sign-off befo
 | 🟡 Medium | Events population | ✅ | `load_active_markets.py` + `load_resolved_markets.py` parse `events[]` |
 | 🟢 Low | MyPy strict errors | ✅ | 48→0 errors across 7 files |
 | 🟢 Low | Architecture diagram | ✅ | Mermaid diagram in README |
-| 🟢 Low | Screenshots | ❌ | Manual capture for release |
+| 🟢 Low | Screenshots | ✅ | Captured inline in signoff doc |
 
 ---
 
