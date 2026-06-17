@@ -43,6 +43,9 @@ docker compose up -d
 # Run database migrations
 docker compose exec app alembic upgrade head
 
+# (Optional) Seed with pre-computed data to skip ETL pipelines (~30 min)
+# docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql
+
 # Check health
 curl http://localhost:8000/health
 
