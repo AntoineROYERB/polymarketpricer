@@ -22,12 +22,6 @@ build/
 .DS_Store
 .DS_Store?
 
-# Mage AI
-mage/mage_data/
-mage/default_repo/.cache/
-mage/default_repo/.ssh_tunnel/
-mage/default_repo/*.db
-
 # Docker
 .docker/
 
