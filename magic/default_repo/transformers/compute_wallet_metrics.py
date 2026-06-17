@@ -112,7 +112,8 @@ def compute_metrics_for_wallet(wallet: str, trades: DataFrame, positions: DataFr
         variance = sum((x - avg_pnl) ** 2 for x in trade_pnls) / (len(trade_pnls) - 1)
         stddev = math.sqrt(variance) if variance > 0 else 0
         if stddev > 0:
-            sharpe_ratio = round((avg_pnl / stddev) * math.sqrt(252), 6)
+            raw = (avg_pnl / stddev) * math.sqrt(252)
+            sharpe_ratio = round(max(min(raw, 100), -100), 6)
 
     max_drawdown = round(max(drawdowns), 6) if drawdowns else None
 

@@ -1,6 +1,8 @@
+import concurrent.futures
 import requests
 import time
 from datetime import datetime, timezone
+from sqlalchemy import create_engine, text
 from pandas import DataFrame
 
 if 'data_loader' not in globals():
@@ -8,95 +10,110 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-GAMMA_API = "https://gamma-api.polymarket.com"
-RATE_LIMIT_SPACING = 0.05
+DATA_API = "https://data-api.polymarket.com"
+DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+PAGE_SIZE = 500
+TRADE_COLS = ["id", "wallet", "market_id", "outcome_id", "side",
+              "type", "price", "shares", "amount_usd", "fee_usd",
+              "timestamp", "tx_hash"]
 
 
-def fetch_trades(proxy_wallet: str, backfill: bool = False, oldest_known: str = None) -> list[dict]:
-    all_trades = []
-    cursor = None
-    while True:
-        params = {"user": proxy_wallet, "limit": 500}
-        if cursor:
-            params["cursor"] = cursor
-        resp = requests.get(
-            f"{GAMMA_API}/trades",
-            params=params,
-            timeout=30,
+def load_condition_map() -> dict:
+    engine = create_engine(DATABASE_URL)
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text("SELECT id, condition_id FROM markets WHERE condition_id IS NOT NULL")
         )
-        if resp.status_code != 200:
-            break
-        data = resp.json()
-        if not data:
-            break
+        mapping = {row.condition_id: row.id for row in rows}
+    engine.dispose()
+    return mapping
 
-        if isinstance(data, dict):
-            trades = data.get("data", [])
-            cursor = data.get("cursor") or data.get("next_cursor")
-        elif isinstance(data, list):
-            trades = data
-            cursor = None
-        else:
-            break
 
-        if not trades:
-            break
-
-        if not backfill:
-            cutoff = None
-            for t in trades:
-                ts = t.get("timestamp") or t.get("created_at")
-                if ts and oldest_known and ts < oldest_known:
-                    cutoff = ts
-                    break
-            if cutoff:
-                all_trades.extend([t for t in trades if (t.get("timestamp") or t.get("created_at")) >= cutoff])
+def fetch_trades_for_wallet(proxy: str) -> list[dict]:
+    try:
+        all_trades = []
+        offset = 0
+        while True:
+            resp = requests.get(
+                f"{DATA_API}/trades",
+                params={"user": proxy, "limit": PAGE_SIZE, "offset": offset},
+                timeout=(5, 30),
+            )
+            if resp.status_code != 200:
                 break
+            batch = resp.json()
+            if not batch:
+                break
+            all_trades.extend(batch)
+            if len(batch) < PAGE_SIZE:
+                break
+            offset += PAGE_SIZE
+            time.sleep(0.05)
+        return all_trades
+    except requests.RequestException:
+        return []
 
-        all_trades.extend(trades)
-        if not cursor:
-            break
-        time.sleep(RATE_LIMIT_SPACING)
 
-    return all_trades
+def map_fields(trades: list[dict], wallet: str, cond_map: dict) -> list[dict]:
+    rows = []
+    for t in trades:
+        cond_id = t.get("conditionId")
+        market_id = cond_map.get(cond_id) if cond_id else None
+        if not market_id:
+            continue
+        tx_hash = t.get("transactionHash") or t.get("txHash")
+        asset = t.get("asset")
+        ts = t.get("timestamp")
+        rows.append({
+            "id": f"{tx_hash}-{asset}" if tx_hash and asset else (tx_hash or asset),
+            "wallet": wallet,
+            "market_id": market_id,
+            "outcome_id": asset,
+            "side": t.get("side", "BUY"),
+            "type": t.get("type", "MARKET"),
+            "price": t.get("price"),
+            "shares": t.get("size"),
+            "amount_usd": float(t.get("size", 0)) * float(t.get("price", 0)),
+            "fee_usd": t.get("fee"),
+            "timestamp": datetime.fromtimestamp(int(ts), tz=timezone.utc) if ts else None,
+            "tx_hash": tx_hash,
+        })
+    return rows
 
 
 @data_loader
 def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
     if tracked.empty:
-        return DataFrame(columns=["id", "wallet", "market_id", "outcome_id", "side",
-                                   "type", "price", "shares", "amount_usd", "fee_usd",
-                                   "timestamp", "tx_hash"])
+        return DataFrame(columns=TRADE_COLS)
 
-    backfill = kwargs.get("backfill", False)
-    rows = []
+    print("Loading condition_id -> market_id mapping...")
+    cond_map = load_condition_map()
+    print(f"  {len(cond_map)} markets mapped")
+
     proxy_wallets = tracked["main_wallet"].dropna().unique().tolist()
-    n = len(proxy_wallets)
-    print(f"Fetching trades for {n} wallets (backfill={backfill})")
+    n_wallets = len(proxy_wallets)
+    print(f"Fetching trades for {n_wallets} wallets")
 
-    for i, proxy in enumerate(proxy_wallets, 1):
-        trades = fetch_trades(proxy, backfill=backfill, oldest_known=None)
-        for t in trades:
-            rows.append({
-                "id": t.get("id") or t.get("transaction_id"),
-                "wallet": proxy,
-                "market_id": t.get("market") or t.get("market_id"),
-                "outcome_id": t.get("outcome_id"),
-                "side": t.get("side", "BUY"),
-                "type": t.get("type", "MARKET"),
-                "price": t.get("price"),
-                "shares": t.get("shares") or t.get("size"),
-                "amount_usd": t.get("amount_usd") or t.get("value"),
-                "fee_usd": t.get("fee_usd") or t.get("fee"),
-                "timestamp": t.get("timestamp") or t.get("created_at"),
-                "tx_hash": t.get("tx_hash") or t.get("transaction_hash"),
-            })
-        if i % 10 == 0 or i == n:
-            print(f"  wallet {i}/{n}, {len(rows)} trades collected so far")
-        time.sleep(RATE_LIMIT_SPACING)
+    all_rows = []
+    done = 0
+    t0 = time.time()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        fut_map = {
+            executor.submit(fetch_trades_for_wallet, pw): pw
+            for pw in proxy_wallets
+        }
+        for fut in concurrent.futures.as_completed(fut_map):
+            done += 1
+            trades = fut.result()
+            pw = fut_map[fut]
+            rows = map_fields(trades, pw, cond_map)
+            all_rows.extend(rows)
+            if done % 200 == 0 or done == n_wallets:
+                elapsed = time.time() - t0
+                print(f"  {done}/{n_wallets} wallets, {len(all_rows)} trades, {elapsed:.0f}s")
 
-    print(f"Total trades fetched: {len(rows)}")
-    return DataFrame(rows)
+    print(f"Total trades fetched: {len(all_rows)} in {time.time()-t0:.0f}s")
+    return DataFrame(all_rows)
 
 
 @test
