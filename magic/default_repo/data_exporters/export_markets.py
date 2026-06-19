@@ -45,10 +45,12 @@ def upsert_markets(engine, df: DataFrame):
                 text("""
                     INSERT INTO markets (id, condition_id, question, category, event_id, event_slug,
                                          volume_usd, liquidity_usd, close_time,
-                                         created_at, resolved_at, winning_outcome)
+                                         created_at, resolved_at, winning_outcome,
+                                         mapped_category)
                     VALUES (:id, :condition_id, :question, :category, :event_id, :event_slug,
                             :volume_usd, :liquidity_usd, :close_time,
-                            :created_at, :resolved_at, :winning_outcome)
+                            :created_at, :resolved_at, :winning_outcome,
+                            :mapped_category)
                     ON CONFLICT (id) DO UPDATE SET
                         condition_id = EXCLUDED.condition_id,
                         question = EXCLUDED.question,
@@ -60,7 +62,8 @@ def upsert_markets(engine, df: DataFrame):
                         close_time = EXCLUDED.close_time,
                         created_at = EXCLUDED.created_at,
                         resolved_at = EXCLUDED.resolved_at,
-                        winning_outcome = EXCLUDED.winning_outcome
+                        winning_outcome = EXCLUDED.winning_outcome,
+                        mapped_category = EXCLUDED.mapped_category
                 """),
                 {
                     "id": row["id"],
@@ -75,6 +78,7 @@ def upsert_markets(engine, df: DataFrame):
                     "created_at": row.get("created_at"),
                     "resolved_at": row.get("resolved_at"),
                     "winning_outcome": row.get("winning_outcome"),
+                    "mapped_category": row.get("mapped_category"),
                 },
             )
 

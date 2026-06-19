@@ -1,21 +1,12 @@
-import math
-
-from pandas import DataFrame, isna
+from pandas import DataFrame
 from sqlalchemy import create_engine, text
 
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
+from utils.db_helpers import safe_value
+
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
-
-
-def _val(v):
-    """Convert numpy NaN to SQL NULL."""
-    if v is None or (not isinstance(v, str) and isna(v)):
-        return None
-    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-        return None
-    return v
 
 
 NUM_COLS = [
@@ -50,11 +41,11 @@ def export_data(df: DataFrame, **kwargs) -> None:
                 params[c] = row.get(c)
             for c in INT_COLS:
                 v = row.get(c)
-                params[c] = _val(v)
+                params[c] = safe_value(v)
             for c in NUM_COLS:
-                params[c] = _val(row.get(c))
+                params[c] = safe_value(row.get(c))
             params["snapshot_date"] = row["snapshot_date"]
-            params["avg_holding_duration"] = _val(row.get("avg_holding_duration"))
+            params["avg_holding_duration"] = safe_value(row.get("avg_holding_duration"))
             conn.execute(
                 text("""
                     INSERT INTO wallet_analytics (

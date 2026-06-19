@@ -30,9 +30,10 @@ SLA = {
     "trade_history": 120,
     "analytics_computation": 60,
     "ranking_computation": 30,
+    "category_analytics": 120,
     "verify_etl_output": 30,
 }
-SLA_TOTAL = 300  # 5 minutes global
+SLA_TOTAL = 420  # 7 minutes global (with category_analytics)
 
 
 def elapsed() -> str:
@@ -65,6 +66,7 @@ def get_runner(phase: str):
         "trade_history": run_trade_history,
         "analytics_computation": run_analytics,
         "ranking_computation": run_ranking,
+        "category_analytics": run_category_analytics,
         "verify_etl_output": run_verification,
     }
     return runners[phase]
@@ -148,6 +150,22 @@ def run_ranking():
     export_data(rankings)
 
 
+def run_category_analytics():
+    from data_loaders.load_recent_activity import load_data_from_api as load_wallets
+    from data_loaders.load_positions_data import load_data_from_api as load_positions
+    from data_loaders.load_trades_data import load_data_from_api as load_trades
+    from data_loaders.load_market_categories import load_data_from_api as load_categories
+    from transformers.compute_category_metrics import transform_df
+    from data_exporters.export_category_analytics import export_data
+
+    wallets = load_wallets()
+    positions = load_positions(wallets)
+    trades = load_trades(wallets)
+    categories = load_categories()
+    result = transform_df(positions, trades, categories)
+    export_data(result)
+
+
 def run_verification():
     from data_loaders.verify_etl_output import load_data_from_api as verify
 
@@ -193,7 +211,10 @@ if __name__ == "__main__":
     # Phase 5: ranking_computation
     run_pipeline("ranking_computation", run_ranking)
 
-    # Phase 6: verification
+    # Phase 6: category_analytics
+    run_pipeline("category_analytics", run_category_analytics)
+
+    # Phase 7: verification
     run_pipeline("verify_etl_output", run_verification)
 
     # Bilan SLA global

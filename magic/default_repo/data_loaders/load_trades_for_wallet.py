@@ -2,7 +2,6 @@ import concurrent.futures
 import requests
 import time
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, text
 from pandas import DataFrame
 
 if 'data_loader' not in globals():
@@ -10,23 +9,13 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
+from utils.db_helpers import load_condition_map
+
 DATA_API = "https://data-api.polymarket.com"
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 PAGE_SIZE = 500
 TRADE_COLS = ["id", "wallet", "market_id", "outcome_id", "side",
               "type", "price", "shares", "amount_usd", "fee_usd",
               "timestamp", "tx_hash"]
-
-
-def load_condition_map() -> dict:
-    engine = create_engine(DATABASE_URL)
-    with engine.begin() as conn:
-        rows = conn.execute(
-            text("SELECT id, condition_id FROM markets WHERE condition_id IS NOT NULL")
-        )
-        mapping = {row.condition_id: row.id for row in rows}
-    engine.dispose()
-    return mapping
 
 
 def fetch_trades_for_wallet(proxy: str) -> list[dict]:
