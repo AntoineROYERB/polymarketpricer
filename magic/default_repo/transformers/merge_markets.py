@@ -6,6 +6,8 @@ if 'transformer' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
+from utils.category_classifier import infer_category
+
 
 @transformer
 def transform_df(active: DataFrame, resolved: DataFrame, *args, **kwargs) -> dict:
@@ -38,6 +40,16 @@ def transform_df(active: DataFrame, resolved: DataFrame, *args, **kwargs) -> dic
                        "volume_usd", "liquidity_usd", "close_time", "created_at",
                        "resolved_at", "winning_outcome"]
     markets = markets.reset_index(drop=True)
+
+    markets["mapped_category"] = markets.apply(
+        lambda r: infer_category(
+            question=r.get("question", "") or "",
+            raw_category=r.get("category"),
+        ),
+        axis=1,
+    )
+    mapped_count = markets["mapped_category"].notna().sum()
+    print(f"Category classification: {mapped_count}/{len(markets)} markets classified")
 
     outcome_rows = []
     for _, row in combined.iterrows():

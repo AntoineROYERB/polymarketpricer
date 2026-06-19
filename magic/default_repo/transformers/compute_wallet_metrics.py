@@ -33,13 +33,12 @@ def should_include(
 
     Returns True if the wallet should be included in analytics.
     """
-    if resolved_total >= MIN_RESOLVED_TRADES:
-        pass  # Meets resolved-trade threshold
-    elif num_trades >= MIN_RESOLVED_TRADES:
-        pass  # Falls back to total trade count as proxy
-    else:
+    has_enough_trades = (
+        resolved_total >= MIN_RESOLVED_TRADES
+        or num_trades >= MIN_RESOLVED_TRADES
+    )
+    if not has_enough_trades:
         return False
-
     if total_volume < MIN_VOLUME_USD:
         return False
     if first_seen is not None:
