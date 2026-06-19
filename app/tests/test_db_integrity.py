@@ -45,6 +45,8 @@ ROW_THRESHOLDS = {
     "trades": 50_000,
     "wallet_analytics": 100,
     "ranking_snapshots": 100,
+    "category_analytics": 100,
+    "category_rankings": 100,
 }
 
 EMPTY_TABLES = {"position_history"}
@@ -71,6 +73,8 @@ FK_CHECKS = [
     ("trades", "wallets", "wallet", "wallet"),
     ("trades", "markets", "market_id", "id"),
     ("wallet_analytics", "wallets", "wallet", "wallet"),
+    ("category_analytics", "wallets", "wallet", "wallet"),
+    ("category_rankings", "wallets", "wallet", "wallet"),
 ]
 
 
@@ -211,6 +215,58 @@ def test_analytics_profit_factor_non_negative(conn: Connection) -> None:
         )
     ).scalar() or 0
     assert count == 0, f"{count} wallets have negative profit_factor"
+
+
+# ── Category analytics data quality ────────────────────────────────
+def test_category_analytics_snapshot_date_is_today(conn: Connection) -> None:
+    today = date.today()
+    dates = conn.execute(
+        text("SELECT DISTINCT snapshot_date FROM category_analytics")
+    ).scalars().all()
+    for d in dates:
+        assert d == today, f"Found stale snapshot_date {d}, expected {today}"
+
+
+def test_category_analytics_pnl_is_reasonable(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT count(*) FROM category_analytics "
+            "WHERE total_pnl > 500000 OR total_pnl < -500000"
+        )
+    ).scalar() or 0
+    assert count == 0, f"{count} rows have extreme total_pnl outside ±500k"
+
+
+def test_category_analytics_win_rate_range(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT count(*) FROM category_analytics "
+            "WHERE win_rate IS NOT NULL AND (win_rate < 0 OR win_rate > 1)"
+        )
+    ).scalar() or 0
+    assert count == 0, f"{count} rows have win_rate outside [0, 1]"
+
+
+def test_category_ranking_wallets_subset_of_wallets(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT count(*) FROM category_rankings cr "
+            "LEFT JOIN wallets w ON cr.wallet = w.wallet "
+            "WHERE w.wallet IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"{count} ranking wallets not in wallets table"
+
+
+def test_category_analytics_wallets_subset_of_wallets(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT count(*) FROM category_analytics ca "
+            "LEFT JOIN wallets w ON ca.wallet = w.wallet "
+            "WHERE w.wallet IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"{count} analytics wallets not in wallets table"
 
 
 # ── Timestamp sanity ─────────────────────────────────────────────────
