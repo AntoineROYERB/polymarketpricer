@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -93,3 +93,63 @@ class MarketListResponse(BaseModel):
     data: list[MarketSummary]
     limit: int
     offset: int
+
+
+class CategoryAnalyticsData(BaseModel):
+    category: str
+    num_trades: Optional[int] = None
+    total_volume: Optional[Decimal] = None
+    total_cost_basis: Optional[Decimal] = None
+    total_pnl: Optional[Decimal] = None
+    total_realized_pnl: Optional[Decimal] = None
+    total_unrealized_pnl: Optional[Decimal] = None
+    roi: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    num_resolved_positions: Optional[int] = None
+    profit_factor: Optional[Decimal] = None
+    avg_position_size: Optional[Decimal] = None
+    avg_holding_duration: Optional[str] = None
+    is_specialist: bool = False
+    category_rank: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+class WalletCategorySummary(BaseModel):
+    wallet: str
+    categories: list[CategoryAnalyticsData] = []
+
+    model_config = {"from_attributes": True}
+
+
+class WalletCategoryResponse(BaseModel):
+    data: WalletCategorySummary
+
+
+class CategoryLeaderboardEntry(BaseModel):
+    rank: int
+    wallet: str
+    wallet_score: Optional[Decimal] = None
+    roi: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    total_pnl: Optional[Decimal] = None
+    num_trades: Optional[int] = None
+    total_volume: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
+class CategoryLeaderboardResponse(BaseModel):
+    category: str
+    list_type: str
+    data: list[CategoryLeaderboardEntry]
+    limit: int
+    offset: int
+
+
+class CategoryDetailResponse(BaseModel):
+    categories: list[str]
+    total_wallets_tracked: int
+    snapshot_date: date
+
+    model_config = {"from_attributes": True}
