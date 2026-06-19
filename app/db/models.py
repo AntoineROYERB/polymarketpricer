@@ -50,6 +50,7 @@ class Market(Base):
     created_at = Column(DateTime(timezone=True), nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     winning_outcome = Column(Text, nullable=True)
+    mapped_category = Column(Text, nullable=True)
 
     event = relationship("Event", back_populates="markets")
     outcomes = relationship("Outcome", back_populates="market")
@@ -58,6 +59,7 @@ class Market(Base):
         Index("idx_markets_category", "category"),
         Index("idx_markets_created_at", "created_at"),
         Index("idx_markets_event_id", "event_id"),
+        Index("idx_markets_mapped_category", "mapped_category"),
     )
 
 
@@ -209,6 +211,72 @@ class RankingSnapshot(Base):
         Index(
             "idx_rankings_list_date_score",
             "snapshot_date",
+            "list_type",
+            "rank",
+        ),
+    )
+
+
+class CategoryAnalytic(Base):
+    __tablename__ = "category_analytics"
+
+    wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
+    category = Column(Text, primary_key=True)
+    snapshot_date = Column(Date, primary_key=True)
+    num_trades = Column(Integer, nullable=True)
+    total_volume = Column(Numeric(28, 2), nullable=True)
+    total_cost_basis = Column(Numeric(28, 2), nullable=True)
+    total_pnl = Column(Numeric(28, 2), nullable=True)
+    total_realized_pnl = Column(Numeric(28, 2), nullable=True)
+    total_unrealized_pnl = Column(Numeric(28, 2), nullable=True)
+    roi = Column(Numeric(28, 6), nullable=True)
+    win_rate = Column(Numeric(28, 6), nullable=True)
+    num_resolved_positions = Column(Integer, nullable=True)
+    profit_factor = Column(Numeric(28, 6), nullable=True)
+    avg_position_size = Column(Numeric(28, 2), nullable=True)
+    avg_holding_duration = Column(Interval, nullable=True)
+    is_specialist = Column(Boolean, nullable=False, default=False)
+    category_rank = Column(Integer, nullable=True)
+
+    wallet_rel = relationship("Wallet", backref="category_analytics")
+
+    __table_args__ = (
+        Index(
+            "idx_cat_analytics_leaderboard",
+            "snapshot_date",
+            "category",
+            "category_rank",
+        ),
+        Index(
+            "idx_cat_analytics_wallet_date",
+            "wallet",
+            "snapshot_date",
+        ),
+    )
+
+
+class CategoryRanking(Base):
+    __tablename__ = "category_rankings"
+
+    wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
+    category = Column(Text, primary_key=True)
+    snapshot_date = Column(Date, primary_key=True)
+    list_type = Column(Text, primary_key=True)
+    rank = Column(Integer, nullable=False)
+    wallet_score = Column(Numeric(28, 6), nullable=True)
+    roi = Column(Numeric(28, 6), nullable=True)
+    win_rate = Column(Numeric(28, 6), nullable=True)
+    total_pnl = Column(Numeric(28, 2), nullable=True)
+    num_trades = Column(Integer, nullable=True)
+    total_volume = Column(Numeric(28, 2), nullable=True)
+
+    wallet_rel = relationship("Wallet", backref="category_rankings")
+
+    __table_args__ = (
+        Index(
+            "idx_cat_rankings_list",
+            "snapshot_date",
+            "category",
             "list_type",
             "rank",
         ),
