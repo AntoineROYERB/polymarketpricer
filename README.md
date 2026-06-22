@@ -155,7 +155,7 @@ python -m pytest app/tests/ -v
 python -m pytest app/tests/ --cov=app -v
 ```
 
-The **70 tests** (27 API + 43 integration) validate row counts, referential integrity,
+The **69 tests** (27 API + 42 integration) validate row counts, referential integrity,
 not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
 and data filtering — with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
 

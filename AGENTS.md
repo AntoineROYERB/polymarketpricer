@@ -147,7 +147,7 @@ python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 python3 -m pytest app/tests/ -v
 ```
 
-What the 43 integration tests check:
+What the 42 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
@@ -155,7 +155,7 @@ What the 43 integration tests check:
 | Empty tables | 1 | `position_history` remains empty |
 | Referential integrity | 8 | No orphaned foreign keys across all FK relationships |
 | Not-null constraints | 6 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics) have no NULLs |
-| Analytics quality | 8 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
+| Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
 | Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
 | Cross-table consistency | 4 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets` |
 

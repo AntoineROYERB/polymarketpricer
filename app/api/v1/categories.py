@@ -60,7 +60,7 @@ async def list_categories(
     db: AsyncSession = Depends(get_db),
 ) -> list[CategoryItem]:
     rows = await get_category_labels(db)
-    return [CategoryItem(category=r.category, label=r.label) for r in rows]
+    return [CategoryItem(category=str(r.category), label=str(r.label)) for r in rows]
 
 
 @router.get(

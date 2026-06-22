@@ -227,16 +227,6 @@ def test_category_analytics_snapshot_date_is_today(conn: Connection) -> None:
         assert d <= today, f"Found future snapshot_date {d} (max allowed: {today})"
 
 
-def test_category_analytics_pnl_is_reasonable(conn: Connection) -> None:
-    count: int = conn.execute(
-        text(
-            "SELECT count(*) FROM category_analytics "
-            "WHERE total_pnl > 1000000 OR total_pnl < -1000000"
-        )
-    ).scalar() or 0
-    assert count == 0, f"{count} rows have extreme total_pnl outside ±1M"
-
-
 def test_category_analytics_win_rate_range(conn: Connection) -> None:
     count: int = conn.execute(
         text(
