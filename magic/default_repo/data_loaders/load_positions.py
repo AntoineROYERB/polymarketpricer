@@ -8,7 +8,7 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from utils.db_helpers import load_condition_map
+from default_repo.utils.db_helpers import load_condition_map
 
 DATA_API = "https://data-api.polymarket.com"
 POS_COLS = ["wallet", "market_id", "outcome_id", "side", "status",

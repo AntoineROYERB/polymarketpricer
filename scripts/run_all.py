@@ -3,6 +3,7 @@
 import sys
 import time
 
+sys.path.insert(0, "/home/src")
 sys.path.insert(0, "/home/src/default_repo")
 
 
