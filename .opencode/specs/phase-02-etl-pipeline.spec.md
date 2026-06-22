@@ -243,7 +243,7 @@ Queries the `markets` table to build a mapping of `market_id → mapped_category
 
 ### Design Decisions
 
-- `mapped_category` is populated by the `market_discovery` pipeline's `merge_markets` transformer (see Phase 2 Category Mapping plan — Option A). If the column is `NULL` for a market, it means the classifier could not determine a category; such markets are excluded from category analytics but remain in global analytics.
+- `mapped_category` is populated by the `ingestion_market_discovery` pipeline's `merge_markets` transformer (see Phase 2 Category Mapping plan — Option A). If the column is `NULL` for a market, it means the classifier could not determine a category; such markets are excluded from category analytics but remain in global analytics.
 - The loader queries **all** markets (not just recent ones) to ensure every trade/position can be classified, even if the market was loaded in a previous pipeline run.
 - Returns a DataFrame with columns `[market_id, category]`.
 
@@ -322,7 +322,7 @@ Accepts three DataFrames (trades, positions, market_categories), joins each with
 MIN_CATEGORY_TRADES = 30       # Minimum trades in a category to be included
 ```
 
-No minimum volume or history age at the category level — the wallet-level global filtering (from `should_include` in `compute_wallet_metrics.py`) is a separate concern applied by the `analytics_computation` pipeline.
+No minimum volume or history age at the category level — the wallet-level global filtering (from `should_include` in `compute_wallet_metrics.py`) is a separate concern applied by the `enrichment_analytics_computation` pipeline.
 
 ### Code
 
@@ -874,7 +874,7 @@ def export_data(df: DataFrame, **kwargs) -> None:
 1. Add `category_analytics` to the `SLA` dictionary (120s).
 2. Add `run_category_analytics()` function.
 3. Add `"category_analytics"` entry to the `get_runner()` mapping.
-4. Insert Phase 6 (category_analytics) after Phase 5 (ranking_computation) and renumber existing Phase 6 → Phase 7.
+4. Insert Phase 6 (category_analytics) after Phase 5 (enrichment_ranking_computation) and renumber existing Phase 6 → Phase 7.
 5. Update SLA comment header.
 
 ### Diff (Complete Result)
@@ -886,14 +886,14 @@ Below is the **full updated file**. Lines marked `[NEW]` are additions; lines ma
 
 Usage:
     python /home/src/scripts/run_all.py                     # Run all phases
-    python /home/src/scripts/run_all.py analytics_computation  # Single pipeline
+    python /home/src/scripts/run_all.py enrichment_analytics_computation  # Single pipeline
 
 Phases (automatique si aucun argument):
-    Phase 1 — market_discovery           (séquentiel, 120s SLA)
-    Phase 2 — wallet_discovery            (séquentiel, 120s SLA)
-    Phase 3 — position_sync + trade_history (parallèle, 120s SLA)
-    Phase 4 — analytics_computation       (séquentiel, 60s SLA)
-    Phase 5 — ranking_computation         (séquentiel, 30s SLA)
+    Phase 1 — ingestion_market_discovery           (séquentiel, 120s SLA)
+    Phase 2 — ingestion_wallet_discovery            (séquentiel, 120s SLA)
+    Phase 3 — ingestion_position_sync + ingestion_trade_history (parallèle, 120s SLA)
+    Phase 4 — enrichment_analytics_computation       (séquentiel, 60s SLA)
+    Phase 5 — enrichment_ranking_computation         (séquentiel, 30s SLA)
     Phase 6 — category_analytics          (séquentiel, 120s SLA)        [NEW]
     Phase 7 — verify_etl_output           (séquentiel, 30s SLA)         [CHANGED]
 
@@ -909,12 +909,12 @@ sys.path.insert(0, "/home/src/default_repo")
 
 # ── Timeouts (seconds) ───────────────────────────────────────────────
 SLA = {
-    "market_discovery": 120,
-    "wallet_discovery": 120,
-    "position_sync": 120,
-    "trade_history": 120,
-    "analytics_computation": 60,
-    "ranking_computation": 30,
+    "ingestion_market_discovery": 120,
+    "ingestion_wallet_discovery": 120,
+    "ingestion_position_sync": 120,
+    "ingestion_trade_history": 120,
+    "enrichment_analytics_computation": 60,
+    "enrichment_ranking_computation": 30,
     "category_analytics": 120,       # [NEW]
     "verify_etl_output": 30,
 }
@@ -945,12 +945,12 @@ def run_pipeline(name: str, fn):
 def get_runner(phase: str):
     """Retourne la fonction runner correspondant au nom de pipeline."""
     runners = {
-        "market_discovery": run_market_discovery,
-        "wallet_discovery": run_wallet_discovery,
-        "position_sync": run_position_sync,
-        "trade_history": run_trade_history,
-        "analytics_computation": run_analytics,
-        "ranking_computation": run_ranking,
+        "ingestion_market_discovery": run_market_discovery,
+        "ingestion_wallet_discovery": run_wallet_discovery,
+        "ingestion_position_sync": run_position_sync,
+        "ingestion_trade_history": run_trade_history,
+        "enrichment_analytics_computation": run_analytics,
+        "enrichment_ranking_computation": run_ranking,
         "category_analytics": run_category_analytics,   # [NEW]
         "verify_etl_output": run_verification,
     }
@@ -1074,27 +1074,27 @@ if __name__ == "__main__":
     print(f"=== Polymarket ETL Orchestrator ===")
     print(f"SLA global: {SLA_TOTAL}s")
 
-    # Phase 1: market_discovery
-    run_pipeline("market_discovery", run_market_discovery)
+    # Phase 1: ingestion_market_discovery
+    run_pipeline("ingestion_market_discovery", run_market_discovery)
 
-    # Phase 2: wallet_discovery
-    run_pipeline("wallet_discovery", run_wallet_discovery)
+    # Phase 2: ingestion_wallet_discovery
+    run_pipeline("ingestion_wallet_discovery", run_wallet_discovery)
 
-    # Phase 3: position_sync + trade_history en parallèle
-    print(f"\n  {elapsed()} Phase 3: position_sync + trade_history (parallèle)")
+    # Phase 3: ingestion_position_sync + ingestion_trade_history en parallèle
+    print(f"\n  {elapsed()} Phase 3: ingestion_position_sync + ingestion_trade_history (parallèle)")
     with ThreadPoolExecutor(max_workers=2) as pool:
         fut_map = {
-            pool.submit(run_pipeline, "position_sync", run_position_sync): "position_sync",
-            pool.submit(run_pipeline, "trade_history", run_trade_history): "trade_history",
+            pool.submit(run_pipeline, "ingestion_position_sync", run_position_sync): "ingestion_position_sync",
+            pool.submit(run_pipeline, "ingestion_trade_history", run_trade_history): "ingestion_trade_history",
         }
         for fut in as_completed(fut_map):
             fut.result()
 
-    # Phase 4: analytics_computation
-    run_pipeline("analytics_computation", run_analytics)
+    # Phase 4: enrichment_analytics_computation
+    run_pipeline("enrichment_analytics_computation", run_analytics)
 
-    # Phase 5: ranking_computation
-    run_pipeline("ranking_computation", run_ranking)
+    # Phase 5: enrichment_ranking_computation
+    run_pipeline("enrichment_ranking_computation", run_ranking)
 
     # Phase 6: category_analytics (NEW)                                 # [NEW]
     run_pipeline("category_analytics", run_category_analytics)          # [NEW]
@@ -1117,17 +1117,17 @@ if __name__ == "__main__":
 
 | Phase | Pipeline | SLA (s) | Type |
 |---|---|---|---|
-| 1 | market_discovery | 120 | Sequential |
-| 2 | wallet_discovery | 120 | Sequential |
-| 3 | position_sync | 120 | Parallel |
-| 3 | trade_history | 120 | Parallel |
-| 4 | analytics_computation | 60 | Sequential |
-| 5 | ranking_computation | 30 | Sequential |
+| 1 | ingestion_market_discovery | 120 | Sequential |
+| 2 | ingestion_wallet_discovery | 120 | Sequential |
+| 3 | ingestion_position_sync | 120 | Parallel |
+| 3 | ingestion_trade_history | 120 | Parallel |
+| 4 | enrichment_analytics_computation | 60 | Sequential |
+| 5 | enrichment_ranking_computation | 30 | Sequential |
 | **6** | **category_analytics** | **120** | **Sequential** |
 | 7 | verify_etl_output | 30 | Sequential |
 | **Total** | | **≤ 300** | |
 
-**Rationale for 120s SLA**: Category analytics processes the same volume of trades and positions as `analytics_computation`, but must iterate over more groups (each wallet appears once per category, not once total). The 120s budget accounts for the additional grouping overhead.
+**Rationale for 120s SLA**: Category analytics processes the same volume of trades and positions as `enrichment_analytics_computation`, but must iterate over more groups (each wallet appears once per category, not once total). The 120s budget accounts for the additional grouping overhead.
 
 ---
 
@@ -1179,9 +1179,9 @@ The following must exist **before** the pipeline runs:
 
 The `category_analytics` pipeline assumes:
 
-- **Phase 1 (market_discovery)** has run at least once to populate `markets` with `mapped_category` values. Without this, `load_market_categories` returns an empty DataFrame and the transformer produces no output.
-- **Phase 3 (position_sync + trade_history)** has run to populate `trades` and `positions` tables.
-- **Phase 2 (wallet_discovery)** has run to populate `wallets`, which is a FK target. However, the pipeline does not directly query `wallets` — the FK constraint on `category_analytics.wallet` requires parent rows to exist.
+- **Phase 1 (ingestion_market_discovery)** has run at least once to populate `markets` with `mapped_category` values. Without this, `load_market_categories` returns an empty DataFrame and the transformer produces no output.
+- **Phase 3 (ingestion_position_sync + ingestion_trade_history)** has run to populate `trades` and `positions` tables.
+- **Phase 2 (ingestion_wallet_discovery)** has run to populate `wallets`, which is a FK target. However, the pipeline does not directly query `wallets` — the FK constraint on `category_analytics.wallet` requires parent rows to exist.
 
 ### 8.3 Import Note
 

@@ -3,54 +3,71 @@ blocks:
   color: null
   configuration: {}
   downstream_blocks:
-  - resolve_proxy_wallets
-  - build_wallet_records
+  - load_positions_data
+  - load_trades_data
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_holders_for_active_markets
+  name: load_recent_activity
   retry_config: null
-  status: updated
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks: []
-  uuid: load_holders_for_active_markets
+  uuid: load_recent_activity
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - build_wallet_records
+  - compute_wallet_metrics
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: resolve_proxy_wallets
+  name: load_positions_data
   retry_config: null
   status: not_executed
   timeout: null
   type: data_loader
   upstream_blocks:
-  - load_holders_for_active_markets
-  uuid: resolve_proxy_wallets
+  - load_recent_activity
+  uuid: load_positions_data
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - export_wallets
+  - compute_wallet_metrics
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: build_wallet_records
+  name: load_trades_data
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks:
+  - load_recent_activity
+  uuid: load_trades_data
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_analytics
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: compute_wallet_metrics
   retry_config: null
   status: not_executed
   timeout: null
   type: transformer
   upstream_blocks:
-  - load_holders_for_active_markets
-  - resolve_proxy_wallets
-  uuid: build_wallet_records
+  - load_positions_data
+  - load_trades_data
+  uuid: compute_wallet_metrics
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
@@ -59,14 +76,14 @@ blocks:
   executor_type: local_python
   has_callback: null
   language: python
-  name: export_wallets
+  name: export_analytics
   retry_config: null
   status: not_executed
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - build_wallet_records
-  uuid: export_wallets
+  - compute_wallet_metrics
+  uuid: export_analytics
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}
@@ -78,17 +95,17 @@ executor_config: {}
 executor_count: 1
 executor_type: null
 extensions: {}
-name: wallet_discovery
+name: enrichment_analytics_computation
 notification_config: {}
 remote_variables_dir: null
 retry_config: {}
 run_pipeline_in_one_process: false
 settings:
   triggers:
-    - POLYMARKET_TRIGGER_WALLET_DISCOVERY_SCHEDULE
+    - POLYMARKET_TRIGGER_ANALYTICS_COMPUTATION_SCHEDULE
 spark_config: {}
 tags: []
 type: python
-uuid: wallet_discovery
+uuid: enrichment_analytics_computation
 variables_dir: /home/src/mage_data/default_repo
 widgets: []

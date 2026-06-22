@@ -145,11 +145,11 @@ There are two strategies:
 
 ### Option A: Classify at Load Time (Recommended)
 
-Add the classification step to `market_discovery` pipeline's `merge_markets` transformer. Every market gets a `mapped_category` column after the keyword classifier runs.
+Add the classification step to `ingestion_market_discovery` pipeline's `merge_markets` transformer. Every market gets a `mapped_category` column after the keyword classifier runs.
 
 **Pros**: Category available immediately for all consumers; single source of truth.
 
-**Cons**: Requires re-running `market_discovery` to backfill categories.
+**Cons**: Requires re-running `ingestion_market_discovery` to backfill categories.
 
 ### Option B: Classify at Analytics Time
 
@@ -159,7 +159,7 @@ Classify during the `category_analytics` pipeline's transformer, on-the-fly when
 
 **Cons**: Same logic runs every analytics cycle; harder to audit.
 
-**Recommendation**: **Option A** — add a `mapped_category` column to `markets` table, populated by the `market_discovery` pipeline. This is cleaner and follows the existing pattern of storing derived data.
+**Recommendation**: **Option A** — add a `mapped_category` column to `markets` table, populated by the `ingestion_market_discovery` pipeline. This is cleaner and follows the existing pattern of storing derived data.
 
 ---
 
@@ -186,5 +186,5 @@ CREATE INDEX idx_markets_mapped_category ON markets (mapped_category);
 - [ ] Keyword classifier covers ≥ 95% of previously NULL markets
 - [ ] Tier 1 → Tier 2 → Tier 3 fallback works as expected
 - [ ] `mapped_category` populated for ≥ 95% of markets
-- [ ] No regression in existing market_discovery pipeline
+- [ ] No regression in existing ingestion_market_discovery pipeline
 - [ ] Classifier is testable with known input/output examples

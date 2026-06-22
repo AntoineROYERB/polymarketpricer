@@ -18,12 +18,12 @@ flowchart LR
     end
 
     subgraph ETL["Mage AI ETL — 6 Pipelines"]
-        MD["market_discovery<br/>markets + events + outcomes"]
-        WD["wallet_discovery<br/>proxy → main wallet"]
-        TH["trade_history<br/>per-wallet trades"]
-        PS["position_sync<br/>current positions"]
-        AC["analytics_computation<br/>PnL, ROI, Sharpe, filtering"]
-        RC["ranking_computation<br/>top-100 / emerging / consistent"]
+        MD["ingestion_market_discovery<br/>markets + events + outcomes"]
+        WD["ingestion_wallet_discovery<br/>proxy → main wallet"]
+        TH["ingestion_trade_history<br/>per-wallet trades"]
+        PS["ingestion_position_sync<br/>current positions"]
+        AC["enrichment_analytics_computation<br/>PnL, ROI, Sharpe, filtering"]
+        RC["enrichment_ranking_computation<br/>top-100 / emerging / consistent"]
     end
 
     subgraph DB["PostgreSQL"]

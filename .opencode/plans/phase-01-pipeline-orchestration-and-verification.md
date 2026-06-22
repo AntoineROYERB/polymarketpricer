@@ -59,19 +59,19 @@ Ces variables sont placées dans `magic/default_repo/__init__.py` et accessibles
 ## 2. Dépendances entre pipelines
 
 ```
-market_discovery
+ingestion_market_discovery
     │
     ▼
-wallet_discovery
+ingestion_wallet_discovery
     │
-    ├──► position_sync  ──┐
+    ├──► ingestion_position_sync  ──┐
     │                      │
-    └──► trade_history  ──┤
+    └──► ingestion_trade_history  ──┤
                            ▼
-                   analytics_computation
+                   enrichment_analytics_computation
                            │
                            ▼
-                   ranking_computation
+                   enrichment_ranking_computation
                            │
                            ▼
                    verification (block final)
@@ -79,8 +79,8 @@ wallet_discovery
 
 ### Parallélisation possible
 
-- `position_sync` et `trade_history` peuvent tourner **en parallèle** après `wallet_discovery`.
-- `load_active_markets` et `load_resolved_markets` (dans `market_discovery`) tournent déjà en parallèle dans le même pipeline.
+- `ingestion_position_sync` et `ingestion_trade_history` peuvent tourner **en parallèle** après `ingestion_wallet_discovery`.
+- `load_active_markets` et `load_resolved_markets` (dans `ingestion_market_discovery`) tournent déjà en parallèle dans le même pipeline.
 
 ---
 
@@ -88,13 +88,13 @@ wallet_discovery
 
 Chaque pipeline reçoit un trigger YAML dans `magic/default_repo/pipelines/{uuid}/triggers/`.
 
-### 3.1 Trigger pour `market_discovery`
+### 3.1 Trigger pour `ingestion_market_discovery`
 
-**Fichier :** `magic/default_repo/pipelines/market_discovery/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/ingestion_market_discovery/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_MARKET_DISCOVERY_SCHEDULE
-pipeline_uuid: market_discovery
+pipeline_uuid: ingestion_market_discovery
 schedule_interval: "@daily"
 schedule_type: time
 start_time: "2026-06-17T00:00:00"
@@ -121,13 +121,13 @@ runtime_parameters:
     default: 1
 ```
 
-### 3.2 Trigger pour `wallet_discovery`
+### 3.2 Trigger pour `ingestion_wallet_discovery`
 
-**Fichier :** `magic/default_repo/pipelines/wallet_discovery/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/ingestion_wallet_discovery/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_WALLET_DISCOVERY_SCHEDULE
-pipeline_uuid: wallet_discovery
+pipeline_uuid: ingestion_wallet_discovery
 schedule_interval: null           # pas de schedule autonome, chainé
 schedule_type: api
 status: active
@@ -140,13 +140,13 @@ settings:
   allow_parallel_runs: false
 ```
 
-### 3.3 Trigger pour `position_sync`
+### 3.3 Trigger pour `ingestion_position_sync`
 
-**Fichier :** `magic/default_repo/pipelines/position_sync/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/ingestion_position_sync/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_POSITION_SYNC_SCHEDULE
-pipeline_uuid: position_sync
+pipeline_uuid: ingestion_position_sync
 schedule_interval: null
 schedule_type: api
 status: active
@@ -158,13 +158,13 @@ settings:
   sla: 120
 ```
 
-### 3.4 Trigger pour `trade_history`
+### 3.4 Trigger pour `ingestion_trade_history`
 
-**Fichier :** `magic/default_repo/pipelines/trade_history/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/ingestion_trade_history/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_TRADE_HISTORY_SCHEDULE
-pipeline_uuid: trade_history
+pipeline_uuid: ingestion_trade_history
 schedule_interval: null
 schedule_type: api
 status: active
@@ -176,13 +176,13 @@ settings:
   sla: 120
 ```
 
-### 3.5 Trigger pour `analytics_computation`
+### 3.5 Trigger pour `enrichment_analytics_computation`
 
-**Fichier :** `magic/default_repo/pipelines/analytics_computation/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/enrichment_analytics_computation/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_ANALYTICS_SCHEDULE
-pipeline_uuid: analytics_computation
+pipeline_uuid: enrichment_analytics_computation
 schedule_interval: null
 schedule_type: api
 status: active
@@ -194,13 +194,13 @@ settings:
   sla: 60
 ```
 
-### 3.6 Trigger pour `ranking_computation`
+### 3.6 Trigger pour `enrichment_ranking_computation`
 
-**Fichier :** `magic/default_repo/pipelines/ranking_computation/triggers/default.yaml`
+**Fichier :** `magic/default_repo/pipelines/enrichment_ranking_computation/triggers/default.yaml`
 
 ```yaml
 name: POLYMARKET_TRIGGER_RANKING_SCHEDULE
-pipeline_uuid: ranking_computation
+pipeline_uuid: enrichment_ranking_computation
 schedule_interval: null
 schedule_type: api
 status: active
@@ -248,26 +248,26 @@ def run_in_thread(fn, name, timeout):
 def run_all():
     t_start = time.time()
 
-    # Phase 1: market_discovery (seul)
+    # Phase 1: ingestion_market_discovery (seul)
     run_market_discovery()
     elapsed = time.time() - t_start
-    print(f"[{elapsed:.0f}s] Phase 1: market_discovery done")
+    print(f"[{elapsed:.0f}s] Phase 1: ingestion_market_discovery done")
 
-    # Phase 2: wallet_discovery (seul)
+    # Phase 2: ingestion_wallet_discovery (seul)
     run_wallet_discovery()
     elapsed = time.time() - t_start
-    print(f"[{elapsed:.0f}s] Phase 2: wallet_discovery done")
+    print(f"[{elapsed:.0f}s] Phase 2: ingestion_wallet_discovery done")
 
-    # Phase 3: position_sync + trade_history en parallèle
+    # Phase 3: ingestion_position_sync + ingestion_trade_history en parallèle
     with ThreadPoolExecutor(max_workers=2) as pool:
         fut_pos = pool.submit(run_position_sync)
         fut_trd = pool.submit(run_trade_history)
         for fut in as_completed([fut_pos, fut_trd]):
             fut.result()  # propagate exceptions
     elapsed = time.time() - t_start
-    print(f"[{elapsed:.0f}s] Phase 3: position_sync + trade_history done")
+    print(f"[{elapsed:.0f}s] Phase 3: ingestion_position_sync + ingestion_trade_history done")
 
-    # Phase 4: analytics_computation (dépend des deux précédents)
+    # Phase 4: enrichment_analytics_computation (dépend des deux précédents)
     run_analytics()
     elapsed = time.time() - t_start
     print(f"[{elapsed:.0f}s] Phase 4: analytics done")
@@ -296,23 +296,23 @@ schedule_type: api
 status: active
 
 triggers:
-  - pipeline_uuid: market_discovery
+  - pipeline_uuid: ingestion_market_discovery
     on_success:
-      - pipeline_uuid: wallet_discovery
-  - pipeline_uuid: wallet_discovery
+      - pipeline_uuid: ingestion_wallet_discovery
+  - pipeline_uuid: ingestion_wallet_discovery
     on_success:
-      - pipeline_uuid: position_sync
-      - pipeline_uuid: trade_history
-  - pipeline_uuid: position_sync
+      - pipeline_uuid: ingestion_position_sync
+      - pipeline_uuid: ingestion_trade_history
+  - pipeline_uuid: ingestion_position_sync
     on_success:
-      - pipeline_uuid: analytics_computation
-  - pipeline_uuid: trade_history
+      - pipeline_uuid: enrichment_analytics_computation
+  - pipeline_uuid: ingestion_trade_history
     on_success:
-      - pipeline_uuid: analytics_computation
-  - pipeline_uuid: analytics_computation
+      - pipeline_uuid: enrichment_analytics_computation
+  - pipeline_uuid: enrichment_analytics_computation
     on_success:
-      - pipeline_uuid: ranking_computation
-  - pipeline_uuid: ranking_computation
+      - pipeline_uuid: enrichment_ranking_computation
+  - pipeline_uuid: enrichment_ranking_computation
     on_success:
       - pipeline_uuid: verify_etl_output   # bloc ou pipeline de vérification
 ```
@@ -463,7 +463,7 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
 
 ### 5.2 Intégration dans la CI
 
-Ajouté comme un bloc `data_loader` dans la pipeline `ranking_computation` (dernière étape), ou comme pipeline indépendante déclenchée par le succès du ranking.
+Ajouté comme un bloc `data_loader` dans la pipeline `enrichment_ranking_computation` (dernière étape), ou comme pipeline indépendante déclenchée par le succès du ranking.
 
 ---
 
@@ -471,11 +471,11 @@ Ajouté comme un bloc `data_loader` dans la pipeline `ranking_computation` (dern
 
 | Phase | Pipelines | Mode | Est. temps |
 |---|---|---|---|
-| 1 | `market_discovery` | Séquentiel | ~45s |
-| 2 | `wallet_discovery` | Séquentiel | ~45s |
-| 3 | `position_sync` + `trade_history` | Parallèle (max 2 workers) | ~60s |
-| 4 | `analytics_computation` | Séquentiel | ~15s |
-| 5 | `ranking_computation` + vérification | Séquentiel | ~10s |
+| 1 | `ingestion_market_discovery` | Séquentiel | ~45s |
+| 2 | `ingestion_wallet_discovery` | Séquentiel | ~45s |
+| 3 | `ingestion_position_sync` + `ingestion_trade_history` | Parallèle (max 2 workers) | ~60s |
+| 4 | `enrichment_analytics_computation` | Séquentiel | ~15s |
+| 5 | `enrichment_ranking_computation` + vérification | Séquentiel | ~10s |
 | **Total** | | | **~175s (< 3 min)** |
 
 Marge SLA : 300s → confortable.

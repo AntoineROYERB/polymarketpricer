@@ -1,7 +1,7 @@
 # Phase 2 — ETL Pipeline: Category Analytics
 
 > **Goal**: New Mage AI pipeline to compute per-category metrics for every tracked wallet.
-> **Pattern**: Mirrors `analytics_computation` + `ranking_computation` but grouped by category.
+> **Pattern**: Mirrors `enrichment_analytics_computation` + `enrichment_ranking_computation` but grouped by category.
 > **Status**: Planning — ready for spec.
 
 ---
@@ -185,9 +185,9 @@ def run_category_analytics():
 
 ---
 
-## 7. Update to `market_discovery` Pipeline
+## 7. Update to `ingestion_market_discovery` Pipeline
 
-Add category inference to the `merge_markets` transformer in `market_discovery`:
+Add category inference to the `merge_markets` transformer in `ingestion_market_discovery`:
 
 1. After merging active + resolved markets, apply `infer_category()` to each market
 2. Set `mapped_category` column on the output DataFrame

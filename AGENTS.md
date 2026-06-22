@@ -24,18 +24,18 @@ docker compose exec app alembic upgrade head
 6 Mage AI pipelines under `magic/default_repo/pipelines/`:
 
 | Pipeline | Loads | Transforms | Exports |
-|---|---|---|---|
-| `market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
-| `wallet_discovery` | Data API `/trades` → proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
-| `position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
-| `trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
-| `analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
-| `ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
+|---|---|---|---|---|
+| `ingestion_market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
+| `ingestion_wallet_discovery` | Data API `/trades` → proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
+| `ingestion_position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
+| `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
+| `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
+| `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
 
 Run a single pipeline:
 
 ```bash
-docker compose exec mage python /home/src/scripts/run_all.py market_discovery
+docker compose exec mage python /home/src/scripts/run_all.py ingestion_market_discovery
 ```
 
 ## Database Seed Dump

@@ -33,7 +33,7 @@ blocks:
   upstream_blocks:
   - deduplicate_trades
   uuid: export_trades
-name: trade_history
+name: ingestion_trade_history
 type: python
-uuid: trade_history
+uuid: ingestion_trade_history
 widgets: []

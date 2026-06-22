@@ -48,13 +48,13 @@ Without events:
 
 ### Option A — Populate Events Now (recommended for Phase 2 readiness)
 
-Add an event discovery step to the `market_discovery` pipeline.
+Add an event discovery step to the `ingestion_market_discovery` pipeline.
 
 **Gamma API:** The `/markets/keyset` endpoint may return `event_id` or `event_slug` per market. Events could be extracted and upserted from the market data.
 
 **Implementation:**
 
-1. In `market_discovery`, after loading markets, extract unique events
+1. In `ingestion_market_discovery`, after loading markets, extract unique events
 2. Upsert into `events` table
 3. Update the integration test: remove `events` from `EMPTY_TABLES`
 
@@ -74,7 +74,7 @@ If events are not used in Phase 1, consider making `event_id` nullable or deferr
 
 ### Pipeline Changes
 
-**File:** `magic/default_repo/pipelines/market_discovery/`
+**File:** `magic/default_repo/pipelines/ingestion_market_discovery/`
 
 1. Add a transformer step to extract events from the market payload
 2. Upsert events before markets (to satisfy FK)

@@ -1,5 +1,5 @@
 name: POLYMARKET_TRIGGER_ORCHESTRATOR
-pipeline_uuid: market_discovery
+pipeline_uuid: ingestion_market_discovery
 schedule_interval: "@daily"
 schedule_type: time
 start_time: "2026-06-17T06:00:00"

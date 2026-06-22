@@ -36,7 +36,7 @@
 - [ ] Tier 2: Event category inheritance
 - [ ] Tier 3: Keyword classifier for 8 categories
 - [ ] `mapped_category` column added to `markets`
-- [ ] Classifier integrated into `market_discovery` pipeline
+- [ ] Classifier integrated into `ingestion_market_discovery` pipeline
 - [ ] ≥ 95% of markets classified
 - [ ] Classifier tested with known input/output examples
 

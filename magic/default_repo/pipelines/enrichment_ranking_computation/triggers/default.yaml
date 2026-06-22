@@ -1,5 +1,5 @@
-name: POLYMARKET_TRIGGER_ANALYTICS_SCHEDULE
-pipeline_uuid: analytics_computation
+name: POLYMARKET_TRIGGER_RANKING_SCHEDULE
+pipeline_uuid: enrichment_ranking_computation
 schedule_interval: null
 schedule_type: api
 status: active
@@ -8,4 +8,4 @@ variables:
   run_date: "{{ execution_date }}"
 
 settings:
-  sla: 60
+  sla: 30
