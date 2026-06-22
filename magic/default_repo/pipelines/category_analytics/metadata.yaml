@@ -12,12 +12,12 @@ blocks:
   language: python
   name: load_recent_wallets
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks: []
   uuid: load_recent_activity
-- all_upstream_blocks_executed: false
+- all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
@@ -28,13 +28,13 @@ blocks:
   language: python
   name: load_positions_data
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks:
-  - load_recent_wallets
+  - load_recent_activity
   uuid: load_positions_data
-- all_upstream_blocks_executed: false
+- all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
@@ -45,13 +45,13 @@ blocks:
   language: python
   name: load_trades_data
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks:
-  - load_recent_wallets
+  - load_recent_activity
   uuid: load_trades_data
-- all_upstream_blocks_executed: false
+- all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
@@ -62,13 +62,13 @@ blocks:
   language: python
   name: load_market_categories
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: data_loader
   upstream_blocks:
-  - load_recent_wallets
+  - load_recent_activity
   uuid: load_market_categories
-- all_upstream_blocks_executed: false
+- all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
@@ -79,7 +79,7 @@ blocks:
   language: python
   name: compute_category_metrics
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
   type: transformer
   upstream_blocks:
@@ -119,6 +119,9 @@ notification_config: {}
 remote_variables_dir: null
 retry_config: {}
 run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
 tags: []
 type: python
 uuid: category_analytics
