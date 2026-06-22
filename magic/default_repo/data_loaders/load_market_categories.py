@@ -10,7 +10,7 @@ DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 
 @data_loader
-def load_data_from_api(**kwargs) -> DataFrame:
+def load_data_from_api(active_wallets: DataFrame, *args, **kwargs) -> DataFrame:
     engine = create_engine(DATABASE_URL)
     df = read_sql(
         text("SELECT id AS market_id, mapped_category AS category FROM markets WHERE mapped_category IS NOT NULL"),

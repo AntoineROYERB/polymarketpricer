@@ -8,8 +8,7 @@ if 'transformer' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from transformers.compute_wallet_metrics import safe_div, MIN_RESOLVED_TRADES
-
+from default_repo.transformers.compute_wallet_metrics import safe_div, MIN_RESOLVED_TRADES
 MIN_CATEGORY_TRADES = 30
 
 
