@@ -10,6 +10,7 @@ from sqlalchemy import (
     Interval,
     Numeric,
     Text,
+    Uuid,
     func,
     text,
 )
@@ -293,3 +294,33 @@ class CategoryRanking(Base):
             "rank",
         ),
     )
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
+    wallet = Column(Text, ForeignKey("wallets.wallet"), nullable=False)
+    market_id = Column(Text, ForeignKey("markets.id"), nullable=False)
+    action = Column(Text, nullable=False)
+    price = Column(Numeric(28, 12), nullable=False)
+    position_size = Column(Numeric(28, 2), nullable=False)
+    wallet_score = Column(Numeric(8, 6), nullable=False)
+    category = Column(Text, nullable=False)
+    market_question = Column(Text, nullable=False)
+    detected_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+    delivery_attempts = Column(Integer, nullable=False, server_default=text("0"))
+
+
+class AlertRule(Base):
+    __tablename__ = "alert_rules"
+
+    id = Column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
+    wallet = Column(Text, nullable=True, unique=True)
+    min_score = Column(Numeric(8, 6), nullable=False, server_default=text("80.0"))
+    min_position_size = Column(Numeric(28, 2), nullable=False, server_default=text("500"))
+    min_liquidity = Column(Numeric(28, 2), nullable=False, server_default=text("1000"))
+    cooldown_minutes = Column(Integer, nullable=False, server_default=text("15"))
+    discord_webhook_url = Column(Text, nullable=True)
+    active = Column(Boolean, nullable=False, server_default=text("true"))

@@ -1,8 +1,38 @@
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
+
+
+class AlertAction(str, Enum):
+    NEW_POSITION = "NEW_POSITION"
+    POSITION_INCREASE = "POSITION_INCREASE"
+    POSITION_DECREASE = "POSITION_DECREASE"
+    FULL_EXIT = "FULL_EXIT"
+
+
+class AlertItem(BaseModel):
+    id: str
+    wallet: str
+    market_id: str
+    market_question: str
+    action: AlertAction
+    price: Decimal
+    position_size: Decimal
+    wallet_score: Decimal
+    category: str
+    detected_at: datetime
+    notified_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AlertListResponse(BaseModel):
+    data: list[AlertItem]
+    limit: int
+    offset: int
 
 
 class LeaderboardEntry(BaseModel):
