@@ -31,7 +31,8 @@
 - 10 new classifier unit tests (`test_category_classifier.py`)
 - 8 new API endpoint tests (`test_category_endpoints.py`)
 - 10 new integration tests in `test_db_integrity.py`
-- Total: 41 → 70 tests (+ category-specific integration coverage in test suite)
+- Total: 41 → 69 tests
+- Removed `test_category_analytics_pnl_is_reasonable` — category PnL outliers can be legitimate
 
 ### Infrastructure
 - Backfill script: `scripts/backfill_categories.py` for existing markets
