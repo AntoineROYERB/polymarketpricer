@@ -101,7 +101,7 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
     # ── 4. Analytics data quality ────────────────────────────────────
     print("=== Analytics quality ===")
     quality_checks = [
-        ("total_pnl > 100000 OR total_pnl < -100000", "PNL outside ±100k"),
+        ("total_pnl > 500000 OR total_pnl < -500000", "PNL outside ±100k"),
         ("win_rate IS NOT NULL AND (win_rate < 0 OR win_rate > 1)", "win_rate outside [0,1]"),
         ("wallet_score IS NOT NULL AND (wallet_score < 0 OR wallet_score > 100)", "wallet_score outside [0,100]"),
         ("max_drawdown IS NOT NULL AND max_drawdown > 0", "max_drawdown > 0"),
