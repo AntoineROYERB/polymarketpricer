@@ -1,0 +1,12 @@
+blocks:
+- all_upstream_blocks_executed: true
+  downstream_blocks: []
+  name: verify_etl_output
+  status: not_executed
+  type: data_loader
+  upstream_blocks: []
+  uuid: verify_etl_output
+name: verify_etl_output
+type: python
+uuid: verify_etl_output
+widgets: []

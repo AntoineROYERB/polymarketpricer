@@ -1,0 +1,12 @@
+name: POLYMARKET_TRIGGER_VERIFY_SCHEDULE
+pipeline_uuid: verify_etl_output
+schedule_interval: "@daily"
+schedule_type: time
+start_time: "2026-06-22T00:00:00"
+status: active
+
+variables: {}
+
+settings:
+  sla: 30
+  allow_parallel_runs: false

@@ -14,6 +14,9 @@ docker compose exec app alembic upgrade head
 # Run all ETL pipelines
 ./scripts/run-all-pipelines.sh
 
+# Run full ETL cycle via orchestration pipeline
+docker compose exec mage mage run /home/src/default_repo orchestration
+
 # Restore from seed (avoids pipelines)
 docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql
 docker compose exec app alembic upgrade head
@@ -21,7 +24,7 @@ docker compose exec app alembic upgrade head
 
 ## ETL Pipelines
 
-6 Mage AI pipelines under `magic/default_repo/pipelines/`:
+8 Mage AI pipelines under `magic/default_repo/pipelines/`:
 
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|---|
@@ -31,11 +34,16 @@ docker compose exec app alembic upgrade head
 | `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
 | `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
 | `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
+| `category_analytics` | PG queries + categories | Category-level metrics | `category_analytics` |
+| `verify_etl_output` | PG integrity checks | — | — |
 
 Run a single pipeline:
 
 ```bash
-docker compose exec mage python /home/src/scripts/run_all.py ingestion_market_discovery
+docker compose exec mage mage run /home/src/default_repo ingestion_market_discovery
+
+# Run full ETL cycle via orchestration pipeline
+docker compose exec mage mage run /home/src/default_repo orchestration
 ```
 
 ## Database Seed Dump
@@ -172,18 +180,15 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 ├── magic/                      # Mage AI
 │   ├── Dockerfile
 │   └── default_repo/
-│       ├── pipelines/         # 6 pipeline dirs
+│       ├── pipelines/         # 8 pipeline dirs
 │       ├── data_loaders/      # 13 loaders
 │       ├── transformers/      # 6 transformers
-│       └── data_exporters/    # 7 exporters
+│       └── data_exporters/    # 8 exporters
 │
 ├── scripts/
-│   ├── run_all.py             # Sequential pipeline runner
-│   ├── run-all-pipelines.sh   # Bash wrapper
+│   ├── run-all-pipelines.sh   # Bash wrapper → orchestration pipeline
+│   ├── backfill_categories.py
 │   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql
-│
-├── magic/scripts/
-│   └── run_all.py             # Mage-inside pipeline runner
 │
 └── plans/
     ├── db-seed-dump.md

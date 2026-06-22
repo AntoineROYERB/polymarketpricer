@@ -22,25 +22,18 @@ echo ""
 
 check_docker
 
-PIPELINES=("$@")
-if [ ${#PIPELINES[@]} -eq 0 ]; then
-  PIPELINES=(
-    "ingestion_market_discovery"
-    "ingestion_wallet_discovery"
-    "ingestion_position_sync"
-    "ingestion_trade_history"
-    "enrichment_analytics_computation"
-    "enrichment_ranking_computation"
-  )
+REPO="/home/src/default_repo"
+
+if [ $# -eq 0 ]; then
+  info "Running full ETL orchestration..."
+  docker compose exec -T mage mage run "$REPO" orchestration
+else
+  for p in "$@"; do
+    info "Running pipeline: $p"
+    docker compose exec -T mage mage run "$REPO" "$p"
+    echo ""
+  done
 fi
-
-SCRIPT="/home/src/scripts/run_all.py"
-
-for p in "${PIPELINES[@]}"; do
-  info "Running pipeline: $p"
-  docker compose exec -T mage python "$SCRIPT" "$p"
-  echo ""
-done
 
 echo ""
 echo "============================================"
