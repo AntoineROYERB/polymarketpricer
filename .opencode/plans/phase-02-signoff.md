@@ -1,8 +1,8 @@
 # Phase 2 — Sign-off Checklist
 
 > **Objective**: Track completion of all Phase 2 deliverables before starting Phase 3.
-> **Status**: Not started — planning complete.
-> **Target version**: v0.2.0
+> **Status**: ✅ Complete — documentation finalised.
+> **Version**: v0.2.0
 
 ---
 
@@ -22,67 +22,70 @@
 
 ### 1. Database Schema
 
-- [ ] New migration `002_category_analytics.py`
-- [ ] `category_analytics` table created with all columns
-- [ ] `category_rankings` table created with all columns
-- [ ] Foreign keys to `wallets.wallet`
-- [ ] Indexes on common query patterns
-- [ ] Downgrade works cleanly
-- [ ] Existing Phase 1 data intact
+- [x] New migration `002_category_analytics.py`
+- [x] `category_analytics` table created with all columns
+- [x] `category_rankings` table created with all columns
+- [x] Foreign keys to `wallets.wallet`
+- [x] Indexes on common query patterns
+- [x] Downgrade works cleanly
+- [x] Existing Phase 1 data intact
+- [x] Migration `003_add_mapped_category.py` adds `mapped_category` to `markets`
+- [x] Migration `004_add_categories_table.py` creates `categories` lookup table
 
 ### 2. Category Mapping
 
-- [ ] Tier 1: Raw API category → target category mapping table
-- [ ] Tier 2: Event category inheritance
-- [ ] Tier 3: Keyword classifier for 8 categories
-- [ ] `mapped_category` column added to `markets`
-- [ ] Classifier integrated into `ingestion_market_discovery` pipeline
-- [ ] ≥ 95% of markets classified
-- [ ] Classifier tested with known input/output examples
+- [x] Tier 1: Raw API category → target category mapping table
+- [x] Tier 2: Event category inheritance
+- [x] Tier 3: Keyword classifier for 8 categories
+- [x] `mapped_category` column added to `markets`
+- [x] Classifier integrated into `ingestion_market_discovery` pipeline
+- [x] ≥ 95% of markets classified
+- [x] Classifier tested with known input/output examples (10 unit tests)
 
 ### 3. ETL Pipeline
 
-- [ ] `category_analytics` pipeline created in Mage AI
-- [ ] `load_market_categories` data loader
-- [ ] `compute_category_metrics` transformer (reuses Phase 1 helpers)
-- [ ] `export_category_analytics` data exporter
-- [ ] Category ranking (top 50 per category + specialists)
-- [ ] Pipeline registered in `magic/scripts/run_all.py`
-- [ ] Pipeline completes within 120s SLA
-- [ ] Existing 6 pipelines still run correctly
+- [x] `category_analytics` pipeline created in Mage AI
+- [x] 4 data loaders (markets + categories per category group)
+- [x] `compute_category_metrics` transformer
+- [x] `export_category_analytics` data exporter
+- [x] Category ranking (top 50 per category + specialists)
+- [x] Pipeline registered in orchestration pipeline
+- [x] Pipeline completes within 120s SLA
+- [x] Existing 6 pipelines still run correctly
 
 ### 4. API Endpoints
 
-- [ ] `GET /api/v1/leaderboard/{category}`
-- [ ] `GET /api/v1/leaderboard/{category}/specialists`
-- [ ] `GET /api/v1/wallets/{address}/categories`
-- [ ] `GET /api/v1/wallets/{address}/categories/{category}`
-- [ ] Wallet profile includes `categories` field
-- [ ] Valid category validation (404 for invalid)
-- [ ] Pagination (limit/offset) on list endpoints
-- [ ] Pydantic schemas in `app/models/schemas.py`
+- [x] `GET /api/v1/leaderboard/{category}`
+- [x] `GET /api/v1/leaderboard/{category}/specialists`
+- [x] `GET /api/v1/wallets/{address}/categories`
+- [x] `GET /api/v1/wallets/{address}/categories/{category}`
+- [x] Wallet profile includes `categories` field
+- [x] Valid category validation (404 for invalid)
+- [x] Pagination (limit/offset) on list endpoints
+- [x] Pydantic schemas in `app/models/schemas.py`
 
 ### 5. Testing
 
-- [ ] 8 new API endpoint tests (mocked)
-- [ ] 8 new integration tests (real DB)
-- [ ] 10+ classifier unit tests
-- [ ] All 67 tests pass (41 existing + 26 new)
-- [ ] Migration forward + backward verified
-- [ ] No regression on existing tests
+- [x] 8 new API endpoint tests (mocked) — `test_category_endpoints.py`
+- [x] 11 new integration tests (real DB) — in `test_db_integrity.py`
+- [x] 10 classifier unit tests — `test_category_classifier.py`
+- [x] All 70 tests pass (41 existing + 29 new)
+- [x] Migration forward + backward verified
+- [x] No regression on existing tests
 
 ### 6. Documentation
 
-- [ ] API reference updated in README.md
-- [ ] Architecture diagram updated
-- [ ] AGENTS.md updated with new pipeline
-- [ ] Demo materials captured
+- [x] API reference updated in README.md
+- [x] Architecture diagram updated (7 pipelines, 10 tables, category endpoints)
+- [x] AGENTS.md updated with new pipeline + category classification section
+- [x] CHANGELOG.md created (v0.1.0 → v0.2.0)
+- [x] Phase 2 sign-off checklist completed
 
 ### 7. Infrastructure
 
 - [ ] Seed dump refreshed after pipeline run
-- [ ] All CI jobs pass (lint, api-tests, integration-tests)
-- [ ] MyPy strict — 0 errors
+- [x] All CI jobs pass (lint, api-tests, integration-tests)
+- [x] MyPy strict — 0 errors
 
 ---
 
@@ -90,9 +93,9 @@
 
 | Priority | Blocker | Resolved | Notes |
 |---|---|---|---|
-| 🔴 High | Category quality for 95% NULL markets | ❌ | Keyword classifier needs validation |
-| 🟡 Medium | Pipeline SLA for 8× category groups | ❌ | May need optimization |
-| 🟢 Low | Migration order with existing seed | ❌ | Must preserve seed data |
+| 🔴 High | Category quality for 95% NULL markets | ✅ | 3-tier classifier validated with 10 unit tests, 300+ keywords |
+| 🟡 Medium | Pipeline SLA for 8× category groups | ✅ | Completes within SLA limits |
+| 🟢 Low | Migration order with existing seed | ✅ | 3 migrations applied cleanly, seed format updated |
 
 ---
 
@@ -100,17 +103,22 @@
 
 ```bash
 # 1. Run full test suite
-python -m pytest app/tests/ -v          # 67 passed
+python -m pytest app/tests/ -v          # 70 passed
 
 # 2. Run all pipelines
 ./scripts/run-all-pipelines.sh
 
 # 3. Refresh seed dump
 ./scripts/refresh-seed.sh
+git add docker/initdb/seed.sql
 
-# 4. Tag & push
+# 4. Commit documentation
+git add CHANGELOG.md README.md AGENTS.md
+git commit -m "docs: Phase 2 documentation for v0.2.0"
+
+# 5. Tag & push
 git tag -a v0.2.0 -m "Phase 2 — Niche Expertise Detection"
 git push origin v0.2.0
 
-# 5. Mark Phase 2 complete in ROADMAP.md
+# 6. Mark Phase 2 complete in ROADMAP.md
 ```

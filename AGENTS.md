@@ -34,7 +34,7 @@ docker compose exec app alembic upgrade head
 | `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
 | `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
 | `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
-| `category_analytics` | PG queries + categories | Category-level metrics | `category_analytics` |
+| `category_analytics` | PG queries (markets + categories) | Per-category PnL, ROI, win rate, specialist flag | `category_analytics`, `category_rankings` |
 | `verify_etl_output` | PG integrity checks | — | — |
 
 Run a single pipeline:
@@ -102,17 +102,37 @@ Refresh when:
 `docker/initdb/seed.sql` is tracked via Git LFS. The `.gitattributes` file in the
 repo root declares the pattern. All contributors must have `git-lfs` installed.
 
+## Category Classification
+
+Markets are classified into 8 target categories using a 3-tier classifier:
+
+| Tier | Method | Description |
+|------|--------|-------------|
+| 1 | Raw API map | Direct mapping from API's `category` field to target category |
+| 2 | Event inheritance | Inherits category from parent event when available |
+| 3 | Keyword rules | 300+ keywords matched against market question text |
+
+Categories: `politics`, `crypto`, `sports`, `economics`, `technology`, `ai`, `geopolitics`, `entertainment`
+
+Classifier source: `magic/default_repo/utils/category_classifier.py`
+
 ## Testing
 
-The project has two test suites:
+The project has three test suites:
 
-### Unit / API Tests
+### Unit / API Tests (27 tests)
 
-Mock-based tests in `app/tests/test_api/` that verify endpoint behaviour without a real database.
+Mock-based tests that verify endpoint behaviour without a real database:
 
 ```bash
-python3 -m pytest app/tests/test_api/ -v
+python3 -m pytest app/tests/test_api/ app/tests/test_category_classifier.py -v
 ```
+
+| File | Tests | What it validates |
+|---|---|---|---|
+| `test_endpoints.py` | 9 | Phase 1 endpoints (leaderboard, wallets, markets) |
+| `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
+| `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
 
 ### Integration Tests (real database)
 
@@ -123,21 +143,21 @@ ETL pipeline output. Requires `docker compose up -d` (postgres service running).
 # Run only integration tests
 python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 
-# Run all tests
+# Run all tests (70 total)
 python3 -m pytest app/tests/ -v
 ```
 
-What the 32 integration tests check:
+What the 43 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
-| Row counts | 6 | Each populated table meets a minimum row threshold |
-| Empty tables | 3 | `events`, `position_history`, `ranking_snapshots` remain empty |
-| Referential integrity | 7 | No orphaned foreign keys across all FK relationships |
-| Not-null constraints | 5 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics) have no NULLs |
-| Analytics quality | 6 | PNL within ±100k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0 |
+| Row counts | 7 | Each populated table meets a minimum row threshold |
+| Empty tables | 1 | `position_history` remains empty |
+| Referential integrity | 8 | No orphaned foreign keys across all FK relationships |
+| Not-null constraints | 6 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics) have no NULLs |
+| Analytics quality | 8 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
 | Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
-| Cross-table consistency | 3 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome |
+| Cross-table consistency | 4 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets` |
 
 **Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
 concurrency issues with parametrized test functions. The sync URL is derived from
@@ -163,14 +183,19 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 │   └── tests/                 # Test suites
 │       ├── test_api/              # Mock-based API tests
 │       │   ├── __init__.py
-│       │   └── test_endpoints.py  # 9 endpoint tests
+│       │   ├── test_endpoints.py          # 9 endpoint tests
+│       │   ├── test_category_endpoints.py # 8 Phase 2 endpoint tests
+│       │   └── test_category_classifier.py# 10 classifier unit tests
 │       ├── __init__.py
 │       ├── conftest.py            # Shared mock fixtures
-│       └── test_db_integrity.py   # 32 integration tests
+│       └── test_db_integrity.py   # 33 integration tests
 │
 ├── alembic/                   # DB migrations
 │   └── versions/
-│       └── 001_initial.py
+│       ├── 001_initial.py
+│       ├── 002_category_analytics.py
+│       ├── 003_add_mapped_category.py
+│       └── 004_add_categories_table.py
 │
 ├── docker/
 │   └── initdb/

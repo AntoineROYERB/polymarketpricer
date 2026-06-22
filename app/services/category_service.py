@@ -5,6 +5,13 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+"""Category analytics service layer.
+
+Provides queries for category leaderboards, wallet category breakdowns,
+and category detail views against the category_analytics and
+category_rankings tables.
+"""
+
 from app.db.models import Category, CategoryAnalytic, CategoryRanking, Wallet
 
 
