@@ -217,11 +217,21 @@ class RankingSnapshot(Base):
     )
 
 
+class Category(Base):
+    __tablename__ = "categories"
+
+    category = Column(Text, primary_key=True)
+    label = Column(Text, nullable=False)
+
+    category_analytics = relationship("CategoryAnalytic", back_populates="category_rel")
+    category_rankings = relationship("CategoryRanking", back_populates="category_rel")
+
+
 class CategoryAnalytic(Base):
     __tablename__ = "category_analytics"
 
     wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
-    category = Column(Text, primary_key=True)
+    category = Column(Text, ForeignKey("categories.category"), primary_key=True)
     snapshot_date = Column(Date, primary_key=True)
     num_trades = Column(Integer, nullable=True)
     total_volume = Column(Numeric(28, 2), nullable=True)
@@ -239,6 +249,7 @@ class CategoryAnalytic(Base):
     category_rank = Column(Integer, nullable=True)
 
     wallet_rel = relationship("Wallet", backref="category_analytics")
+    category_rel = relationship("Category", back_populates="category_analytics")
 
     __table_args__ = (
         Index(
@@ -259,7 +270,7 @@ class CategoryRanking(Base):
     __tablename__ = "category_rankings"
 
     wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
-    category = Column(Text, primary_key=True)
+    category = Column(Text, ForeignKey("categories.category"), primary_key=True)
     snapshot_date = Column(Date, primary_key=True)
     list_type = Column(Text, primary_key=True)
     rank = Column(Integer, nullable=False)
@@ -271,6 +282,7 @@ class CategoryRanking(Base):
     total_volume = Column(Numeric(28, 2), nullable=True)
 
     wallet_rel = relationship("Wallet", backref="category_rankings")
+    category_rel = relationship("Category", back_populates="category_rankings")
 
     __table_args__ = (
         Index(

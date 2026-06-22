@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
-from app.models.schemas import WalletAnalyticsData, WalletProfile
+from app.models.schemas import WalletAnalyticsData, WalletCategorySummary, WalletProfile
+from app.services.category_service import (
+    analytic_to_category_summary,
+    get_wallet_categories as get_wallet_categories_data,
+)
 from app.services.wallet_service import (
     get_wallet_analytics,
     get_wallet_positions,
@@ -23,6 +27,7 @@ async def wallet_profile(
 
     analytics = await get_wallet_analytics(db, address)
     positions = await get_wallet_positions(db, address)
+    categories = await get_wallet_categories_data(db, address)
 
     profile = WalletProfile.model_validate(wallet)
 
@@ -33,5 +38,8 @@ async def wallet_profile(
         profile.analytics = analytics_data
 
     profile.current_positions = positions
+    profile.categories = [
+        WalletCategorySummary(**analytic_to_category_summary(r)) for r in categories
+    ]
 
     return profile
