@@ -214,7 +214,7 @@ class PositionHistory(Base):  # OPTIONAL
     recorded_at    = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 ```
 
-Append-only log from the position_sync pipeline. Every time a position changes, this table logs the delta. Enables time-travel analysis ("how did this wallet's position evolve over time?") and debugging.
+Append-only log from the ingestion_position_sync pipeline. Every time a position changes, this table logs the delta. Enables time-travel analysis ("how did this wallet's position evolve over time?") and debugging.
 
 Useful for Phase 2 (Niche Expertise Detection) — can analyze entry timing skill.
 

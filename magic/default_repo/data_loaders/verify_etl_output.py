@@ -1,7 +1,7 @@
 """Post-run verification: checks every table for row counts, NOT NULL,
 referential integrity, analytics quality, and timestamp sanity.
 
-This block is meant to run as the final step after ranking_computation.
+This block is meant to run as the final step after enrichment_ranking_computation.
 It raises on failure so the pipeline run is marked as failed.
 """
 

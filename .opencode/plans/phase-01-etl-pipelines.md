@@ -22,7 +22,7 @@ Session = sessionmaker(bind=engine)
 
 ---
 
-## Pipeline 1: `market_discovery` (daily `0 6 * * *`)
+## Pipeline 1: `ingestion_market_discovery` (daily `0 6 * * *`)
 
 Fetch active + resolved markets from Gamma API.
 
@@ -51,7 +51,7 @@ INSERT INTO outcomes (...) VALUES (...) ON CONFLICT (id) DO UPDATE SET ...;
 
 ---
 
-## Pipeline 2: `wallet_discovery` (daily `0 7 * * *`)
+## Pipeline 2: `ingestion_wallet_discovery` (daily `0 7 * * *`)
 
 Discover wallets from active markets.
 
@@ -75,7 +75,7 @@ Discover wallets from active markets.
 
 ---
 
-## Pipeline 3: `position_sync` (every 60s `*/1 * * * *`)
+## Pipeline 3: `ingestion_position_sync` (every 60s `*/1 * * * *`)
 
 Near-real-time positions for all tracked wallets.
 
@@ -104,7 +104,7 @@ Near-real-time positions for all tracked wallets.
 
 ---
 
-## Pipeline 4: `trade_history` (daily `0 8 * * *`)
+## Pipeline 4: `ingestion_trade_history` (daily `0 8 * * *`)
 
 Fetch trade history with cursor pagination.
 
@@ -127,7 +127,7 @@ Run manually once with `backfill=True`. Fetch all historical trades (no cursor s
 
 ---
 
-## Pipeline 5: `analytics_computation` (daily `30 8 * * *`)
+## Pipeline 5: `enrichment_analytics_computation` (daily `30 8 * * *`)
 
 Compute wallet metrics from trades and positions.
 
@@ -167,7 +167,7 @@ Compute wallet metrics from trades and positions.
 
 ---
 
-## Pipeline 6: `ranking_computation` (every 6h `0 */6 * * *`)
+## Pipeline 6: `enrichment_ranking_computation` (every 6h `0 */6 * * *`)
 
 Score wallets and materialize leaderboard.
 
@@ -215,8 +215,8 @@ Normalization: `(x - min) / (max - min)` across eligible set. If max == min, sco
 ## Pipeline Dependencies
 
 ```
-market_discovery ──> wallet_discovery ──> position_sync (continuous)
-                                         └──> trade_history ──> analytics_computation ──> ranking_computation
+ingestion_market_discovery ──> ingestion_wallet_discovery ──> ingestion_position_sync (continuous)
+                                         └──> ingestion_trade_history ──> enrichment_analytics_computation ──> enrichment_ranking_computation
 ```
 
 ---

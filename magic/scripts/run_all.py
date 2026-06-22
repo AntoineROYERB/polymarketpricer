@@ -1,15 +1,15 @@
 """Orchestrateur ETL avec parallélisation et timeouts SLA.
 
 Usage:
-    python /home/src/scripts/run_all.py                     # Run all phases
-    python /home/src/scripts/run_all.py analytics_computation  # Single pipeline
+    python /home/src/scripts/run_all.py                                # Run all phases
+    python /home/src/scripts/run_all.py enrichment_analytics_computation  # Single pipeline
 
 Phases (automatique si aucun argument):
-    Phase 1 — market_discovery           (séquentiel, 120s SLA)
-    Phase 2 — wallet_discovery            (séquentiel, 120s SLA)
-    Phase 3 — position_sync + trade_history (parallèle, 120s SLA)
-    Phase 4 — analytics_computation       (séquentiel, 60s SLA)
-    Phase 5 — ranking_computation         (séquentiel, 30s SLA)
+    Phase 1 — ingestion_market_discovery              (séquentiel, 120s SLA)
+    Phase 2 — ingestion_wallet_discovery               (séquentiel, 120s SLA)
+    Phase 3 — ingestion_position_sync + ingestion_trade_history (parallèle, 120s SLA)
+    Phase 4 — enrichment_analytics_computation         (séquentiel, 60s SLA)
+    Phase 5 — enrichment_ranking_computation           (séquentiel, 30s SLA)
     Phase 6 — verify_etl_output           (séquentiel, 30s SLA)
 
 Objectif SLA total: < 300s (5 minutes)
@@ -24,12 +24,12 @@ sys.path.insert(0, "/home/src/default_repo")
 
 # ── Timeouts (seconds) ───────────────────────────────────────────────
 SLA = {
-    "market_discovery": 120,
-    "wallet_discovery": 120,
-    "position_sync": 120,
-    "trade_history": 120,
-    "analytics_computation": 60,
-    "ranking_computation": 30,
+    "ingestion_market_discovery": 120,
+    "ingestion_wallet_discovery": 120,
+    "ingestion_position_sync": 120,
+    "ingestion_trade_history": 120,
+    "enrichment_analytics_computation": 60,
+    "enrichment_ranking_computation": 30,
     "category_analytics": 120,
     "verify_etl_output": 30,
 }
@@ -60,12 +60,12 @@ def run_pipeline(name: str, fn):
 def get_runner(phase: str):
     """Retourne la fonction runner correspondant au nom de pipeline."""
     runners = {
-        "market_discovery": run_market_discovery,
-        "wallet_discovery": run_wallet_discovery,
-        "position_sync": run_position_sync,
-        "trade_history": run_trade_history,
-        "analytics_computation": run_analytics,
-        "ranking_computation": run_ranking,
+        "ingestion_market_discovery": run_ingestion_market_discovery,
+        "ingestion_wallet_discovery": run_ingestion_wallet_discovery,
+        "ingestion_position_sync": run_ingestion_position_sync,
+        "ingestion_trade_history": run_ingestion_trade_history,
+        "enrichment_analytics_computation": run_analytics,
+        "enrichment_ranking_computation": run_ranking,
         "category_analytics": run_category_analytics,
         "verify_etl_output": run_verification,
     }
@@ -74,7 +74,7 @@ def get_runner(phase: str):
 
 # ── Pipeline runners ─────────────────────────────────────────────────
 
-def run_market_discovery():
+def run_ingestion_market_discovery():
     from data_loaders.load_active_markets import load_data_from_api as load_active
     from data_loaders.load_resolved_markets import load_data_from_api as load_resolved
     from transformers.merge_markets import transform_df
@@ -86,7 +86,7 @@ def run_market_discovery():
     export_data(merged)
 
 
-def run_wallet_discovery():
+def run_ingestion_wallet_discovery():
     from data_loaders.load_holders_for_active_markets import load_data_from_api as load_holders
     from data_loaders.resolve_proxy_wallets import load_data_from_api as resolve_proxies
     from transformers.build_wallet_records import transform_df
@@ -98,7 +98,7 @@ def run_wallet_discovery():
     export_data(records)
 
 
-def run_position_sync():
+def run_ingestion_position_sync():
     from data_loaders.load_tracked_wallets import load_data_from_api as load_wallets
     from data_loaders.load_positions import load_data_from_api as load_positions
     from transformers.merge_positions import transform_df
@@ -110,7 +110,7 @@ def run_position_sync():
     export_data(merged)
 
 
-def run_trade_history():
+def run_ingestion_trade_history():
     from data_loaders.load_tracked_wallets_for_trades import load_data_from_api as load_wallets
     from data_loaders.load_trades_for_wallet import load_data_from_api as load_trades
     from transformers.deduplicate_trades import transform_df
@@ -189,27 +189,27 @@ if __name__ == "__main__":
     print(f"=== Polymarket ETL Orchestrator ===")
     print(f"SLA global: {SLA_TOTAL}s")
 
-    # Phase 1: market_discovery
-    run_pipeline("market_discovery", run_market_discovery)
+    # Phase 1: ingestion_market_discovery
+    run_pipeline("ingestion_market_discovery", run_ingestion_market_discovery)
 
-    # Phase 2: wallet_discovery
-    run_pipeline("wallet_discovery", run_wallet_discovery)
+    # Phase 2: ingestion_wallet_discovery
+    run_pipeline("ingestion_wallet_discovery", run_ingestion_wallet_discovery)
 
-    # Phase 3: position_sync + trade_history en parallèle
-    print(f"\n  {elapsed()} Phase 3: position_sync + trade_history (parallèle)")
+    # Phase 3: ingestion_position_sync + ingestion_trade_history en parallèle
+    print(f"\n  {elapsed()} Phase 3: ingestion_position_sync + ingestion_trade_history (parallèle)")
     with ThreadPoolExecutor(max_workers=2) as pool:
         fut_map = {
-            pool.submit(run_pipeline, "position_sync", run_position_sync): "position_sync",
-            pool.submit(run_pipeline, "trade_history", run_trade_history): "trade_history",
+            pool.submit(run_pipeline, "ingestion_position_sync", run_ingestion_position_sync): "ingestion_position_sync",
+            pool.submit(run_pipeline, "ingestion_trade_history", run_ingestion_trade_history): "ingestion_trade_history",
         }
         for fut in as_completed(fut_map):
             fut.result()
 
-    # Phase 4: analytics_computation
-    run_pipeline("analytics_computation", run_analytics)
+    # Phase 4: enrichment_analytics_computation
+    run_pipeline("enrichment_analytics_computation", run_analytics)
 
-    # Phase 5: ranking_computation
-    run_pipeline("ranking_computation", run_ranking)
+    # Phase 5: enrichment_ranking_computation
+    run_pipeline("enrichment_ranking_computation", run_ranking)
 
     # Phase 6: category_analytics
     run_pipeline("category_analytics", run_category_analytics)

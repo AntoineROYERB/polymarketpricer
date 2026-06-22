@@ -1,5 +1,5 @@
-name: POLYMARKET_TRIGGER_POSITION_SYNC_SCHEDULE
-pipeline_uuid: position_sync
+name: POLYMARKET_TRIGGER_WALLET_DISCOVERY_SCHEDULE
+pipeline_uuid: ingestion_wallet_discovery
 schedule_interval: null
 schedule_type: api
 status: active
@@ -9,3 +9,4 @@ variables:
 
 settings:
   sla: 120
+  allow_parallel_runs: false

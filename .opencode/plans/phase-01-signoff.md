@@ -14,12 +14,12 @@ Track completion of all Phase 1 deliverables and record the formal sign-off befo
 
 | Item | Status | Notes |
 |---|---|---|
-| Markets | ✅ | `market_discovery` pipeline — 90k+ markets |
+| Markets | ✅ | `ingestion_market_discovery` pipeline — 90k+ markets |
 | Events | ✅ | Extracted from Gamma API `events[]` — 27k+ events |
 | Outcomes | ✅ | Parsed from market data — 180k+ outcomes |
-| Wallet addresses | ✅ | `wallet_discovery` pipeline — 7k+ wallets |
-| Trades | ✅ | `trade_history` pipeline — 290k+ trades |
-| Position sizes | ✅ | `position_sync` pipeline — 43k+ positions |
+| Wallet addresses | ✅ | `ingestion_wallet_discovery` pipeline — 7k+ wallets |
+| Trades | ✅ | `ingestion_trade_history` pipeline — 290k+ trades |
+| Position sizes | ✅ | `ingestion_position_sync` pipeline — 43k+ positions |
 | Prices | ✅ | Captured in trades |
 | Timestamps | ✅ | Captured in trades |
 | Resolution outcomes | ✅ | Via outcomes table |
@@ -149,10 +149,10 @@ Track completion of all Phase 1 deliverables and record the formal sign-off befo
 
 #### Pipeline Execution Logs (sequential run)
 ```
-market_discovery  → 308s  — 39,898 active + 50,000 resolved markets → 27,100 events, 89,898 markets, 179,895 outcomes
-wallet_discovery  → ~7min — 1,843 wallets resolved via Gamma API
-trade_history     → ~8min — 263,727+ trades fetched
-position_sync     → ~6min — 37,754+ positions loaded
+ingestion_market_discovery  → 308s  — 39,898 active + 50,000 resolved markets → 27,100 events, 89,898 markets, 179,895 outcomes
+ingestion_wallet_discovery  → ~7min — 1,843 wallets resolved via Gamma API
+ingestion_trade_history     → ~8min — 263,727+ trades fetched
+ingestion_position_sync     → ~6min — 37,754+ positions loaded
 analytics         → ~2min — 4,658 wallets evaluated → 160 passed filters
 ranking           → ~1s   — 110 ranking rows (100 top-100, 10 consistent)
 ```
@@ -172,12 +172,12 @@ mypy --strict       — 0 errors in 24 source files
 
 | Pipeline | Duration | Note |
 |---|---|---|
-| market_discovery | ~308s | 90k markets, 2 API pagination loops |
-| wallet_discovery | ~7 min | Per-wallet Gamma API proxy resolution (50ms spacing) |
-| trade_history | ~8.5 min | Per-wallet Data API calls |
-| position_sync | ~3–6 min | Per-wallet Data API calls |
-| analytics_computation | ~2 min | 4,658 wallets evaluated, 160 passed filters |
-| ranking_computation | ~1s | Pure DB computation |
+| ingestion_market_discovery | ~308s | 90k markets, 2 API pagination loops |
+| ingestion_wallet_discovery | ~7 min | Per-wallet Gamma API proxy resolution (50ms spacing) |
+| ingestion_trade_history | ~8.5 min | Per-wallet Data API calls |
+| ingestion_position_sync | ~3–6 min | Per-wallet Data API calls |
+| enrichment_analytics_computation | ~2 min | 4,658 wallets evaluated, 160 passed filters |
+| enrichment_ranking_computation | ~1s | Pure DB computation |
 
 ---
 

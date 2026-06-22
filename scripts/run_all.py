@@ -21,7 +21,7 @@ def run_pipeline(name: str, fn):
         raise
 
 
-def run_market_discovery():
+def run_ingestion_market_discovery():
     from data_loaders.load_active_markets import load_data_from_api as load_active
     from data_loaders.load_resolved_markets import load_data_from_api as load_resolved
     from transformers.merge_markets import transform_df
@@ -40,7 +40,7 @@ def run_market_discovery():
     export_data(merged)
 
 
-def run_wallet_discovery():
+def run_ingestion_wallet_discovery():
     from data_loaders.load_holders_for_active_markets import load_data_from_api as load_holders
     from data_loaders.resolve_proxy_wallets import load_data_from_api as resolve_proxies
     from transformers.build_wallet_records import transform_df
@@ -59,7 +59,7 @@ def run_wallet_discovery():
     export_data(records)
 
 
-def run_position_sync():
+def run_ingestion_position_sync():
     from data_loaders.load_tracked_wallets import load_data_from_api as load_wallets
     from data_loaders.load_positions import load_data_from_api as load_positions
     from transformers.merge_positions import transform_df
@@ -73,7 +73,7 @@ def run_position_sync():
     export_data(merged)
 
 
-def run_trade_history():
+def run_ingestion_trade_history():
     from data_loaders.load_tracked_wallets_for_trades import load_data_from_api as load_wallets
     from data_loaders.load_trades_for_wallet import load_data_from_api as load_trades
     from transformers.deduplicate_trades import transform_df
@@ -123,12 +123,12 @@ def run_ranking():
 
 if __name__ == "__main__":
     pipelines = {
-        "market_discovery": run_market_discovery,
-        "wallet_discovery": run_wallet_discovery,
-        "position_sync": run_position_sync,
-        "trade_history": run_trade_history,
-        "analytics_computation": run_analytics,
-        "ranking_computation": run_ranking,
+        "ingestion_market_discovery": run_ingestion_market_discovery,
+        "ingestion_wallet_discovery": run_ingestion_wallet_discovery,
+        "ingestion_position_sync": run_ingestion_position_sync,
+        "ingestion_trade_history": run_ingestion_trade_history,
+        "enrichment_analytics_computation": run_analytics,
+        "enrichment_ranking_computation": run_ranking,
     }
 
     selected = sys.argv[1:] if len(sys.argv) > 1 else list(pipelines.keys())

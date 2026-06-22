@@ -1,4 +1,4 @@
-# Fix trade_history Pipeline
+# Fix ingestion_trade_history Pipeline
 
 ## Result
 
@@ -52,7 +52,7 @@ Expected: market discovery only captures active + recently resolved markets. Tra
 ## Verification
 
 ```bash
-docker compose exec mage python /home/src/scripts/run_all.py trade_history
+docker compose exec mage python /home/src/scripts/run_all.py ingestion_trade_history
 docker compose exec postgres psql -U app -d polymarket -c "SELECT COUNT(*) FROM trades"
 ```
 
@@ -60,5 +60,5 @@ docker compose exec postgres psql -U app -d polymarket -c "SELECT COUNT(*) FROM 
 
 ## Next
 
-- Run `analytics_computation` and `ranking_computation` pipelines
+- Run `enrichment_analytics_computation` and `enrichment_ranking_computation` pipelines
 - Refresh seed dump

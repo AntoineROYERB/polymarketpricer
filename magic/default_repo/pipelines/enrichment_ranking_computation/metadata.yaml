@@ -42,7 +42,7 @@ blocks:
   upstream_blocks:
   - compute_wallet_scores
   uuid: materialize_rankings
-name: ranking_computation
+name: enrichment_ranking_computation
 type: python
-uuid: ranking_computation
+uuid: enrichment_ranking_computation
 widgets: []

@@ -33,7 +33,7 @@ blocks:
   upstream_blocks:
   - merge_positions
   uuid: export_positions
-name: position_sync
+name: ingestion_position_sync
 type: python
-uuid: position_sync
+uuid: ingestion_position_sync
 widgets: []

@@ -1,5 +1,5 @@
-name: POLYMARKET_TRIGGER_TRADE_HISTORY_SCHEDULE
-pipeline_uuid: trade_history
+name: POLYMARKET_TRIGGER_ANALYTICS_SCHEDULE
+pipeline_uuid: enrichment_analytics_computation
 schedule_interval: null
 schedule_type: api
 status: active
@@ -8,4 +8,4 @@ variables:
   run_date: "{{ execution_date }}"
 
 settings:
-  sla: 120
+  sla: 60

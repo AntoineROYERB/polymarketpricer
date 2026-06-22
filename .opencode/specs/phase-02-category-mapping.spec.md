@@ -1727,7 +1727,7 @@ def test_mapped_category_index_exists(conn: Connection) -> None:
 - [ ] **Tier 2**: Event category used when raw_category is NULL and event_category is not
 - [ ] **Tier 3**: Keyword classification covers ≥ 95% of previously unclassified questions
 - [ ] **Overall coverage**: `mapped_category IS NOT NULL` for ≥ 95% of markets after backfill
-- [ ] **No regression**: Existing `market_discovery` pipeline runs without errors
+- [ ] **No regression**: Existing `ingestion_market_discovery` pipeline runs without errors
 - [ ] **`export_markets`** writes `mapped_category` to the database correctly
 - [ ] **Integration tests** all pass
 - [ ] **Backfill script** updates existing rows without errors
