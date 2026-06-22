@@ -2,7 +2,7 @@
 
 > **Spec Status**: Final  
 > **Target Release**: v0.2.0  
-> **Plan Reference**: `.opencode/plans/phase-02-database-schema.md`  
+> **Plan Reference**: `.opencode/plans/phase-02/01-database-schema.md`  
 > **Author**: Platform Team  
 > **Last Updated**: 2026-06-17
 

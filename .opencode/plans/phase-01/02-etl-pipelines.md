@@ -1,7 +1,7 @@
 # Phase 1 — ETL Pipelines
 
 > **Goal**: Implement 6 Mage AI pipelines to feed the database.
-> **Schema ref**: `.opencode/plans/phase-01-database-redesign.md`
+> **Schema ref**: `./01-database-redesign.md`
 > **Status**: Planning — ready for implementation.
 
 ---

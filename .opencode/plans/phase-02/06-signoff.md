@@ -1,7 +1,7 @@
-# Phase 2 — Sign-off Checklist
+# Phase 2 — Niche Expertise Detection — Sign-off Checklist
 
 > **Objective**: Track completion of all Phase 2 deliverables before starting Phase 3.
-> **Status**: ✅ Complete — documentation finalised.
+> **Status**: ✅ Complete
 > **Version**: v0.2.0
 
 ---
@@ -10,11 +10,11 @@
 
 | # | Feature | Plan File | Est. Complexity |
 |---|---|---|---|
-| 1 | Database schema | `phase-02-database-schema.md` | Medium |
-| 2 | Category mapping | `phase-02-category-mapping.md` | High |
-| 3 | ETL pipeline | `phase-02-etl-pipeline.md` | High |
-| 4 | API endpoints | `phase-02-api-endpoints.md` | Medium |
-| 5 | Testing | `phase-02-testing.md` | Medium |
+| 1 | Database schema | `./01-database-schema.md` | Medium |
+| 2 | Category mapping | `./02-category-mapping.md` | High |
+| 3 | ETL pipeline | `./03-etl-pipeline.md` | High |
+| 4 | API endpoints | `./04-api-endpoints.md` | Medium |
+| 5 | Testing | `./05-testing.md` | Medium |
 
 ---
 
@@ -32,15 +32,12 @@
 - [x] Migration `003_add_mapped_category.py` adds `mapped_category` to `markets`
 - [x] Migration `004_add_categories_table.py` creates `categories` lookup table
 
-### 2. Category Mapping
+### 2. Features / Business Logic
 
-- [x] Tier 1: Raw API category → target category mapping table
-- [x] Tier 2: Event category inheritance
-- [x] Tier 3: Keyword classifier for 8 categories
-- [x] `mapped_category` column added to `markets`
-- [x] Classifier integrated into `ingestion_market_discovery` pipeline
+- [x] 3-tier classifier: Raw API mapping + event inheritance + 300+ keyword rules
+- [x] 8 target categories: politics, crypto, sports, economics, technology, ai, geopolitics, entertainment
+- [x] Category specialist detection: >30 trades + above-median ROI
 - [x] ≥ 95% of markets classified
-- [x] Classifier tested with known input/output examples (10 unit tests)
 
 ### 3. ETL Pipeline
 
@@ -55,11 +52,11 @@
 
 ### 4. API Endpoints
 
+- [x] `GET /api/v1/categories`
 - [x] `GET /api/v1/leaderboard/{category}`
 - [x] `GET /api/v1/leaderboard/{category}/specialists`
 - [x] `GET /api/v1/wallets/{address}/categories`
 - [x] `GET /api/v1/wallets/{address}/categories/{category}`
-- [x] Wallet profile includes `categories` field
 - [x] Valid category validation (404 for invalid)
 - [x] Pagination (limit/offset) on list endpoints
 - [x] Pydantic schemas in `app/models/schemas.py`
@@ -69,7 +66,7 @@
 - [x] 8 new API endpoint tests (mocked) — `test_category_endpoints.py`
 - [x] 11 new integration tests (real DB) — in `test_db_integrity.py`
 - [x] 10 classifier unit tests — `test_category_classifier.py`
-- [x] All 70 tests pass (41 existing + 29 new)
+- [x] All 69 tests pass (41 existing + 28 new)
 - [x] Migration forward + backward verified
 - [x] No regression on existing tests
 
@@ -103,7 +100,7 @@
 
 ```bash
 # 1. Run full test suite
-python -m pytest app/tests/ -v          # 70 passed
+python -m pytest app/tests/ -v          # 69 passed
 
 # 2. Run all pipelines
 ./scripts/run-all-pipelines.sh

@@ -3,7 +3,7 @@
 > **Version**: 1.0  
 > **Status**: Draft  
 > **Target Release**: v0.2.0  
-> **Plan Reference**: `.opencode/plans/phase-02-category-mapping.md`
+> **Plan Reference**: `.opencode/plans/phase-02/02-category-mapping.md`
 
 ---
 
