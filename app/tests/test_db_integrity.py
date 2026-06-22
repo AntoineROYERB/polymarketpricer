@@ -269,6 +269,24 @@ def test_category_analytics_wallets_subset_of_wallets(conn: Connection) -> None:
     assert count == 0, f"{count} analytics wallets not in wallets table"
 
 
+def test_category_analytics_not_null(conn: Connection) -> None:
+    for col in ("wallet", "category", "snapshot_date"):
+        count: int = conn.execute(
+            text(f"SELECT count(*) FROM category_analytics WHERE {col} IS NULL")
+        ).scalar() or 0
+        assert count == 0, f"category_analytics.{col} has {count} NULL values"
+
+
+def test_category_analytics_roi_range(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT count(*) FROM category_analytics "
+            "WHERE roi IS NOT NULL AND (roi < -10000.0 OR roi > 100000.0)"
+        )
+    ).scalar() or 0
+    assert count == 0, f"{count} rows have roi outside [-10000.0, 100000.0]"
+
+
 # ── Timestamp sanity ─────────────────────────────────────────────────
 def test_no_future_timestamps_in_trades(conn: Connection) -> None:
     now = datetime.now(timezone.utc)
