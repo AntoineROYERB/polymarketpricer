@@ -328,7 +328,7 @@ def downgrade():
 | `app/api/v1/wallets.py` | May need minor column name adjustments |
 | `app/tests/test_api/test_endpoints.py` | Update mock data to match new schema |
 | `app/tests/conftest.py` | Update mock fixtures |
-| `.opencode/plans/phase-01-etl-pipelines.md` | Update column references in all pipeline blocks |
+| `./02-etl-pipelines.md` | Update column references in all pipeline blocks |
 
 ---
 

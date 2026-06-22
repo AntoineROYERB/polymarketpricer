@@ -217,5 +217,21 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 │
 └── plans/
     ├── db-seed-dump.md
-    └── trade-history-fix.md
+    ├── phase-01/
+    │   ├── 01-database-redesign.md
+    │   ├── 02-etl-pipelines.md
+    │   ├── 03-events-population.md
+    │   ├── 04-wallet-filtering.md
+    │   ├── 05-mvp-leaderboard.md
+    │   ├── 06-ci-cd-setup.md
+    │   ├── 07-trade-history-fix.md
+    │   ├── 08-pipeline-orchestration-and-verification.md
+    │   └── 09-signoff.md
+    └── phase-02/
+        ├── 01-database-schema.md
+        ├── 02-category-mapping.md
+        ├── 03-etl-pipeline.md
+        ├── 04-api-endpoints.md
+        ├── 05-testing.md
+        └── 06-signoff.md
 ```

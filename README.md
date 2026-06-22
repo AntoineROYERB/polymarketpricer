@@ -231,7 +231,24 @@ pre-commit run --all-files
     ├── agents/                  # OpenCode agents
     ├── commands/                # Custom commands
     └── plans/                   # Phase specifications (for coding agents)
-        └── phase-01-mvp-leaderboard.md
+        ├── db-seed-dump.md
+        ├── phase-01/
+        │   ├── 01-database-redesign.md
+        │   ├── 02-etl-pipelines.md
+        │   ├── 03-events-population.md
+        │   ├── 04-wallet-filtering.md
+        │   ├── 05-mvp-leaderboard.md
+        │   ├── 06-ci-cd-setup.md
+        │   ├── 07-trade-history-fix.md
+        │   ├── 08-pipeline-orchestration-and-verification.md
+        │   └── 09-signoff.md
+        └── phase-02/
+            ├── 01-database-schema.md
+            ├── 02-category-mapping.md
+            ├── 03-etl-pipeline.md
+            ├── 04-api-endpoints.md
+            ├── 05-testing.md
+            └── 06-signoff.md
 ```
 
 ---
