@@ -6,7 +6,7 @@ if 'transformer' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from utils.category_classifier import infer_category
+from default_repo.utils.category_classifier import infer_category
 
 
 @transformer

@@ -20,6 +20,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
+sys.path.insert(0, "/home/src")
 sys.path.insert(0, "/home/src/default_repo")
 
 # ── Timeouts (seconds) ───────────────────────────────────────────────
