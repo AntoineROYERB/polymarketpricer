@@ -1,12 +1,15 @@
 ---
-description: Generate a conventional commit message
+description: Generate Conventional Commit proposals from staged changes
 ---
 
-Review the staged changes and create a single Conventional Commit message.
+Review the staged changes and propose the best Conventional Commit strategy.
 
 Requirements:
 
-- Use the format: `<type>(optional-scope): description`
+- Analyze all staged changes.
+- If changes are unrelated, propose splitting them into multiple commits.
+- Generate 1-5 commit proposals using the format:
+  `<type>(optional-scope): description`
 - Choose the most appropriate type:
   - feat
   - fix
@@ -17,14 +20,30 @@ Requirements:
   - build
   - ci
   - chore
-- Keep the title under 72 characters.
+- Keep commit titles under 72 characters.
 - Use imperative mood.
 - Focus on why the change matters.
-- If multiple unrelated changes exist, suggest splitting into separate commits.
-- Output only:
-  - Commit type
-  - Commit message
-  - 3-5 bullet points summarizing the changes
-- Do not push.
-- Do not add unnecessary explanations.
-- All test have to pass 
+- Suggest logical commit boundaries when applicable.
+
+For each proposal, provide:
+- Commit message
+- 0-5 bullet points summarizing the changes included in that commit
+
+After the proposals, provide:
+
+### Recommended action
+- Create a single commit
+- Split into multiple commits
+
+### Execution options
+1. Create the recommended commit(s)
+2. Let me choose a proposal
+3. Let me edit the commit message(s)
+4. Cancel
+
+Do not push.
+Do not create commits automatically.
+Only propose them and wait for confirmation.
+
+All tests must pass before any commit is created.
+---
