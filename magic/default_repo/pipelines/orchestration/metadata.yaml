@@ -3,90 +3,120 @@ blocks:
   color: null
   configuration: {}
   downstream_blocks:
-  - load_positions_data
-  - load_trades_data
-  - load_market_categories
+  - trigger_wallet_discovery
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_recent_wallets
+  name: trigger_market_discovery
   retry_config: null
-  status: not_executed
+  status: executed
   timeout: null
-  type: data_loader
+  type: data_exporter
   upstream_blocks: []
-  uuid: load_recent_activity
+  uuid: trigger_market_discovery
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - compute_category_metrics
+  - trigger_position_sync
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_positions_data
+  name: trigger_wallet_discovery
   retry_config: null
   status: not_executed
   timeout: null
-  type: data_loader
+  type: data_exporter
   upstream_blocks:
-  - load_recent_wallets
-  uuid: load_positions_data
+  - trigger_market_discovery
+  uuid: trigger_wallet_discovery
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - compute_category_metrics
+  - trigger_trade_history
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_trades_data
+  name: trigger_position_sync
   retry_config: null
   status: not_executed
   timeout: null
-  type: data_loader
+  type: data_exporter
   upstream_blocks:
-  - load_recent_wallets
-  uuid: load_trades_data
+  - trigger_wallet_discovery
+  uuid: trigger_position_sync
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - compute_category_metrics
+  - trigger_analytics
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_market_categories
+  name: trigger_trade_history
   retry_config: null
   status: not_executed
   timeout: null
-  type: data_loader
+  type: data_exporter
   upstream_blocks:
-  - load_recent_wallets
-  uuid: load_market_categories
+  - trigger_position_sync
+  uuid: trigger_trade_history
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - export_category_analytics
+  - trigger_ranking
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: compute_category_metrics
+  name: trigger_analytics
   retry_config: null
   status: not_executed
   timeout: null
-  type: transformer
+  type: data_exporter
   upstream_blocks:
-  - load_positions_data
-  - load_trades_data
-  - load_market_categories
-  uuid: compute_category_metrics
+  - trigger_trade_history
+  uuid: trigger_analytics
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - trigger_category_analytics
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: trigger_ranking
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - trigger_analytics
+  uuid: trigger_ranking
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - trigger_verify
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: trigger_category_analytics
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - trigger_ranking
+  uuid: trigger_category_analytics
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
@@ -95,14 +125,14 @@ blocks:
   executor_type: local_python
   has_callback: null
   language: python
-  name: export_category_analytics
+  name: trigger_verify
   retry_config: null
   status: not_executed
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - compute_category_metrics
-  uuid: export_category_analytics
+  - trigger_category_analytics
+  uuid: trigger_verify
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}
@@ -114,13 +144,16 @@ executor_config: {}
 executor_count: 1
 executor_type: null
 extensions: {}
-name: category_analytics
+name: orchestration
 notification_config: {}
 remote_variables_dir: null
 retry_config: {}
 run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
 tags: []
 type: python
-uuid: category_analytics
+uuid: orchestration
 variables_dir: /home/src/mage_data/default_repo
 widgets: []
