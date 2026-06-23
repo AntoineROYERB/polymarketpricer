@@ -8,16 +8,10 @@ if 'test' not in globals():
 
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
-
-def _get_expected_columns(engine) -> list[str]:
-    """Get column names from alert_rules table schema."""
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'alert_rules'
-            ORDER BY ordinal_position
-        """)).all()
-        return [row[0] for row in result]
+EXPECTED_COLUMNS = [
+    "id", "wallet", "min_score", "min_position_size", "min_liquidity",
+    "cooldown_minutes", "discord_webhook_url", "active",
+]
 
 
 def _convert_uuids(df: DataFrame) -> DataFrame:
@@ -33,7 +27,6 @@ def _convert_uuids(df: DataFrame) -> DataFrame:
 def load_data(*args, **kwargs) -> DataFrame:
     """Load active alert rules from alert_rules."""
     engine = create_engine(DATABASE_URL)
-    expected_columns = _get_expected_columns(engine)
 
     with engine.connect() as conn:
         rows = conn.execute(text("""
@@ -44,7 +37,7 @@ def load_data(*args, **kwargs) -> DataFrame:
     engine.dispose()
 
     if not rows:
-        return DataFrame(columns=expected_columns)
+        return DataFrame(columns=EXPECTED_COLUMNS)
 
     df = DataFrame([dict(r) for r in rows])
     df = _convert_uuids(df)

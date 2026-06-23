@@ -4,8 +4,6 @@ from sqlalchemy import create_engine, text
 
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
-if 'test' not in globals():
-    from mage_ai.data_preparation.decorators import test
 
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
@@ -32,7 +30,7 @@ def export_data(alerts: DataFrame, **kwargs) -> None:
                           (
                               SELECT (cooldown_minutes || ' minutes')::interval
                               FROM alert_rules
-                              WHERE (wallet = :wallet2 OR wallet IS NULL)
+                              WHERE (wallet = :wallet OR wallet IS NULL)
                               ORDER BY wallet NULLS LAST
                               LIMIT 1
                           ),
@@ -44,7 +42,6 @@ def export_data(alerts: DataFrame, **kwargs) -> None:
                 "wallet": row["wallet"],
                 "market_id": row["market_id"],
                 "action": row["action"],
-                "wallet2": row["wallet"],
             }).scalar()
 
             if existing:
@@ -73,8 +70,3 @@ def export_data(alerts: DataFrame, **kwargs) -> None:
 
     engine.dispose()
     print(f"Alerts exported: {inserted} inserted, {skipped} skipped (cooldown)")
-
-
-@test
-def test_output(*args) -> None:
-    pass

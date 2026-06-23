@@ -52,6 +52,7 @@ class Market(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     winning_outcome = Column(Text, nullable=True)
     mapped_category = Column(Text, nullable=True)
+    condition_id = Column(Text, nullable=True)
 
     event = relationship("Event", back_populates="markets")
     outcomes = relationship("Outcome", back_populates="market")
@@ -125,7 +126,7 @@ class Position(Base):
 
     wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
     market_id = Column(Text, ForeignKey("markets.id"), primary_key=True)
-    outcome_id = Column(Text, ForeignKey("outcomes.id"), nullable=True)
+    outcome_id = Column(Text, nullable=True)
     side = Column(Enum(TradeSide), nullable=True)  # type: ignore[var-annotated]
     status = Column(  # type: ignore[var-annotated]
         Enum(PositionStatus), nullable=False, default=PositionStatus.OPEN
@@ -150,7 +151,7 @@ class PositionHistory(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     wallet = Column(Text, ForeignKey("wallets.wallet"), nullable=False)
     market_id = Column(Text, ForeignKey("markets.id"), nullable=False)
-    outcome_id = Column(Text, ForeignKey("outcomes.id"), nullable=True)
+    outcome_id = Column(Text, nullable=True)
     side = Column(Enum(TradeSide), nullable=True)  # type: ignore[var-annotated]
     shares_before = Column(Numeric(28, 12), nullable=True)
     shares_after = Column(Numeric(28, 12), nullable=True)
@@ -311,6 +312,9 @@ class Alert(Base):
     detected_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     notified_at = Column(DateTime(timezone=True), nullable=True)
     delivery_attempts = Column(Integer, nullable=False, server_default=text("0"))
+
+    wallet_rel = relationship("Wallet", backref="alerts")
+    market_rel = relationship("Market", backref="alerts")
 
 
 class AlertRule(Base):

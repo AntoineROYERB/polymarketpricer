@@ -8,31 +8,13 @@ blocks:
   upstream_blocks: []
   uuid: load_tracked_wallets_for_trades
 - all_upstream_blocks_executed: true
-  downstream_blocks:
-  - deduplicate_trades
+  downstream_blocks: []
   name: load_trades_for_wallet
   status: not_executed
   type: data_loader
   upstream_blocks:
   - load_tracked_wallets_for_trades
   uuid: load_trades_for_wallet
-- all_upstream_blocks_executed: true
-  downstream_blocks:
-  - export_trades
-  name: deduplicate_trades
-  status: not_executed
-  type: transformer
-  upstream_blocks:
-  - load_trades_for_wallet
-  uuid: deduplicate_trades
-- all_upstream_blocks_executed: true
-  downstream_blocks: []
-  name: export_trades
-  status: not_executed
-  type: data_exporter
-  upstream_blocks:
-  - deduplicate_trades
-  uuid: export_trades
 name: ingestion_trade_history
 type: python
 uuid: ingestion_trade_history

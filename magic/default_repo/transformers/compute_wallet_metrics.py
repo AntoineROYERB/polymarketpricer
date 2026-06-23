@@ -1,6 +1,6 @@
 import math
 from datetime import date, timedelta
-from pandas import DataFrame, to_numeric, NaT, Timestamp
+from pandas import DataFrame, to_numeric, to_datetime, NaT, Timestamp
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
@@ -163,7 +163,7 @@ def compute_metrics_for_wallet(
     avg_holding_duration = None
     if holding_count > 0:
         avg_seconds = total_holding_seconds / holding_count
-        avg_holding_duration = avg_seconds
+        avg_holding_duration = timedelta(seconds=avg_seconds)
 
     consistency_score = None
     if num_trades >= 10 and len(trade_pnls) > 1:
@@ -219,7 +219,7 @@ def _compute_first_seen(trades: DataFrame, positions: DataFrame) -> dict[str, da
 
     if not trades.empty and "wallet" in trades.columns and "timestamp" in trades.columns:
         ts = trades[["wallet", "timestamp"]].copy()
-        ts["timestamp"] = to_numeric(ts["timestamp"], errors="coerce")
+        ts["timestamp"] = to_datetime(ts["timestamp"], errors="coerce")
         ts = ts.dropna(subset=["timestamp"])
         if not ts.empty:
             earliest = ts.groupby("wallet")["timestamp"].min()
@@ -231,7 +231,7 @@ def _compute_first_seen(trades: DataFrame, positions: DataFrame) -> dict[str, da
 
     if not positions.empty and "wallet" in positions.columns and "entry_time" in positions.columns:
         ps = positions[["wallet", "entry_time"]].copy()
-        ps["entry_time"] = to_numeric(ps["entry_time"], errors="coerce")
+        ps["entry_time"] = to_datetime(ps["entry_time"], errors="coerce")
         ps = ps.dropna(subset=["entry_time"])
         if not ps.empty:
             earliest = ps.groupby("wallet")["entry_time"].min()
