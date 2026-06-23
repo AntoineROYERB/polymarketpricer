@@ -8,13 +8,6 @@ if 'test' not in globals():
 
 @transformer
 def transform_df(df: DataFrame, *args, **kwargs) -> DataFrame:
-    if df.empty:
-        return df
-
-    before = len(df)
-    df = df.drop_duplicates(subset=["id"], keep="first")
-    after = len(df)
-    print(f"De-duplicated trades: {before} → {after} ({before - after} duplicates removed)")
     return df
 
 

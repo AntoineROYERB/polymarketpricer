@@ -20,10 +20,15 @@ def load_condition_map() -> dict:
     return mapping
 
 
+NAT_LIKE = frozenset({"NaT", "nat", "NaN", "nan", "inf", "-inf"})
+
+
 def safe_value(v):
-    """Convert numpy NaN / inf to SQL NULL."""
+    """Convert numpy NaN / inf / NaT to SQL NULL."""
     if v is None or (not isinstance(v, str) and isna(v)):
         return None
     if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    if isinstance(v, str) and v in NAT_LIKE:
         return None
     return v
