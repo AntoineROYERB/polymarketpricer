@@ -49,7 +49,7 @@ ROW_THRESHOLDS = {
     "category_rankings": 100,
 }
 
-EMPTY_TABLES = {"position_history"}
+EMPTY_TABLES: set[str] = set()
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))

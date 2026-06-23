@@ -17,7 +17,12 @@ def load_data_from_api(active_wallets: DataFrame, *args, **kwargs) -> DataFrame:
     wallets_list = active_wallets["wallet"].tolist()
     engine = create_engine(DATABASE_URL)
     df = read_sql(
-        text("SELECT * FROM trades WHERE wallet = ANY(:wallets)"),
+        text("""
+            SELECT wallet, amount_usd, price, shares, fee_usd, side, timestamp
+            FROM trades
+            WHERE wallet = ANY(:wallets)
+              AND timestamp >= CURRENT_DATE - INTERVAL '90 days'
+        """),
         engine,
         params={"wallets": wallets_list},
     )

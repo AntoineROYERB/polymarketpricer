@@ -12,7 +12,7 @@ DETECTION_WINDOW_MINUTES = 10
 
 EXPECTED_COLUMNS = [
     "wallet", "market_id", "shares_before", "shares_after",
-    "pnl_change", "recorded_at", "market_question", "liquidity_usd", "category",
+    "market_question", "liquidity_usd", "category",
 ]
 
 
@@ -29,8 +29,6 @@ def load_data(*args, **kwargs) -> DataFrame:
                 ph.market_id,
                 ph.shares_before,
                 ph.shares_after,
-                ph.pnl_change,
-                ph.recorded_at,
                 m.question AS market_question,
                 m.liquidity_usd,
                 COALESCE(m.mapped_category, m.category, 'unknown') AS category

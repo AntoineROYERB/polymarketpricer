@@ -10,7 +10,7 @@ blocks:
   language: python
   name: load_position_changes
   retry_config: null
-  status: executed
+  status: not_executed
   timeout: null
   type: data_loader
   upstream_blocks: []

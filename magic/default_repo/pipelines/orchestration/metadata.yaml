@@ -10,7 +10,7 @@ blocks:
   language: python
   name: trigger_market_discovery
   retry_config: null
-  status: executed
+  status: not_executed
   timeout: null
   type: data_exporter
   upstream_blocks: []
