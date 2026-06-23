@@ -1,0 +1,11 @@
+name: POLYMARKET_TRIGGER_SMART_MONEY
+pipeline_uuid: smart_money_detection
+schedule_interval: null
+schedule_type: api
+status: active
+
+variables:
+  run_date: "{{ execution_date }}"
+
+settings:
+  sla: 60

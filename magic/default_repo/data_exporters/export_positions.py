@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
 
+from default_repo.utils.db_helpers import safe_value
+
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
@@ -36,16 +38,16 @@ def upsert_positions(engine, df: DataFrame):
                 {
                     "wallet": row["wallet"],
                     "market_id": row["market_id"],
-                    "outcome_id": row.get("outcome_id"),
-                    "side": row.get("side"),
-                    "status": row.get("status", "OPEN"),
-                    "avg_entry_price": row.get("avg_entry_price"),
-                    "shares": row.get("shares"),
-                    "entry_time": row.get("entry_time"),
-                    "exit_time": row.get("exit_time"),
-                    "realized_pnl": row.get("realized_pnl"),
-                    "unrealized_pnl": row.get("unrealized_pnl"),
-                    "total_pnl": row.get("total_pnl"),
+                    "outcome_id": safe_value(row.get("outcome_id")),
+                    "side": safe_value(row.get("side")),
+                    "status": safe_value(row.get("status", "OPEN")),
+                    "avg_entry_price": safe_value(row.get("avg_entry_price")),
+                    "shares": safe_value(row.get("shares")),
+                    "entry_time": safe_value(row.get("entry_time")),
+                    "exit_time": safe_value(row.get("exit_time")),
+                    "realized_pnl": safe_value(row.get("realized_pnl")),
+                    "unrealized_pnl": safe_value(row.get("unrealized_pnl")),
+                    "total_pnl": safe_value(row.get("total_pnl")),
                 },
             )
 
@@ -65,12 +67,12 @@ def insert_position_history(engine, df: DataFrame):
                 {
                     "wallet": row["wallet"],
                     "market_id": row["market_id"],
-                    "outcome_id": row.get("outcome_id"),
-                    "side": row.get("side"),
-                    "shares_before": row.get("shares_before"),
-                    "shares_after": row.get("shares_after"),
-                    "pnl_change": row.get("pnl_change"),
-                    "recorded_at": row.get("recorded_at", datetime.now(timezone.utc)),
+                    "outcome_id": safe_value(row.get("outcome_id")),
+                    "side": safe_value(row.get("side")),
+                    "shares_before": safe_value(row.get("shares_before")),
+                    "shares_after": safe_value(row.get("shares_after")),
+                    "pnl_change": safe_value(row.get("pnl_change")),
+                    "recorded_at": safe_value(row.get("recorded_at", datetime.now(timezone.utc))),
                 },
             )
 

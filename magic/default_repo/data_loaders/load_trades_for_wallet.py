@@ -3,6 +3,7 @@ import requests
 import time
 from datetime import datetime, timezone
 from pandas import DataFrame
+from sqlalchemy import create_engine, text
 
 if 'data_loader' not in globals():
     from mage_ai.data_preparation.decorators import data_loader
@@ -13,9 +14,18 @@ from default_repo.utils.db_helpers import load_condition_map
 
 DATA_API = "https://data-api.polymarket.com"
 PAGE_SIZE = 500
-TRADE_COLS = ["id", "wallet", "market_id", "outcome_id", "side",
-              "type", "price", "shares", "amount_usd", "fee_usd",
-              "timestamp", "tx_hash"]
+BATCH_WALLETS = 200
+INSERT_BATCH = 1000
+
+DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+
+INSERT_SQL = text("""
+    INSERT INTO trades (id, wallet, market_id, outcome_id, side, type,
+                        price, shares, amount_usd, fee_usd, timestamp, tx_hash)
+    VALUES (:id, :wallet, :market_id, :outcome_id, :side, :type,
+            :price, :shares, :amount_usd, :fee_usd, :timestamp, :tx_hash)
+    ON CONFLICT (id) DO NOTHING
+""")
 
 
 def fetch_trades_for_wallet(proxy: str) -> list[dict]:
@@ -70,10 +80,15 @@ def map_fields(trades: list[dict], wallet: str, cond_map: dict) -> list[dict]:
     return rows
 
 
+def export_rows(conn, rows: list[dict]):
+    for i in range(0, len(rows), INSERT_BATCH):
+        conn.execute(INSERT_SQL, rows[i:i + INSERT_BATCH])
+
+
 @data_loader
 def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
     if tracked.empty:
-        return DataFrame(columns=TRADE_COLS)
+        return DataFrame()
 
     print("Loading condition_id -> market_id mapping...")
     cond_map = load_condition_map()
@@ -83,26 +98,38 @@ def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
     n_wallets = len(proxy_wallets)
     print(f"Fetching trades for {n_wallets} wallets")
 
-    all_rows = []
+    engine = create_engine(DATABASE_URL)
+    total_trades = 0
     done = 0
     t0 = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        fut_map = {
-            executor.submit(fetch_trades_for_wallet, pw): pw
-            for pw in proxy_wallets
-        }
-        for fut in concurrent.futures.as_completed(fut_map):
-            done += 1
-            trades = fut.result()
-            pw = fut_map[fut]
-            rows = map_fields(trades, pw, cond_map)
-            all_rows.extend(rows)
-            if done % 200 == 0 or done == n_wallets:
-                elapsed = time.time() - t0
-                print(f"  {done}/{n_wallets} wallets, {len(all_rows)} trades, {elapsed:.0f}s")
 
-    print(f"Total trades fetched: {len(all_rows)} in {time.time()-t0:.0f}s")
-    return DataFrame(all_rows)
+    for chunk_start in range(0, n_wallets, BATCH_WALLETS):
+        chunk = proxy_wallets[chunk_start:chunk_start + BATCH_WALLETS]
+        chunk_rows = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            fut_map = {
+                executor.submit(fetch_trades_for_wallet, pw): pw
+                for pw in chunk
+            }
+            for fut in concurrent.futures.as_completed(fut_map):
+                done += 1
+                trades = fut.result()
+                pw = fut_map[fut]
+                rows = map_fields(trades, pw, cond_map)
+                chunk_rows.extend(rows)
+
+        if chunk_rows:
+            with engine.begin() as conn:
+                export_rows(conn, chunk_rows)
+            total_trades += len(chunk_rows)
+
+        elapsed = time.time() - t0
+        print(f"  {done}/{n_wallets} wallets, {total_trades} trades, {elapsed:.0f}s")
+
+    engine.dispose()
+    print(f"Total trades exported: {total_trades} in {time.time()-t0:.0f}s")
+    return DataFrame()
 
 
 @test

@@ -3,53 +3,70 @@ blocks:
   color: null
   configuration: {}
   downstream_blocks:
-  - load_positions
+  - detect_smart_money_alerts
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_tracked_wallets
+  name: load_position_changes
   retry_config: null
   status: executed
   timeout: null
   type: data_loader
   upstream_blocks: []
-  uuid: load_tracked_wallets
+  uuid: load_position_changes
 - all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
-  - merge_positions
+  - detect_smart_money_alerts
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: load_positions
+  name: load_wallet_scores
   retry_config: null
-  status: executed
+  status: not_executed
   timeout: null
   type: data_loader
-  upstream_blocks:
-  - load_tracked_wallets
-  uuid: load_positions
+  upstream_blocks: []
+  uuid: load_wallet_scores
 - all_upstream_blocks_executed: true
   color: null
   configuration: {}
   downstream_blocks:
-  - export_positions
+  - detect_smart_money_alerts
   executor_config: null
   executor_type: local_python
   has_callback: null
   language: python
-  name: merge_positions
+  name: load_alert_rules
   retry_config: null
-  status: executed
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_alert_rules
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_alerts
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: detect_smart_money_alerts
+  retry_config: null
+  status: not_executed
   timeout: null
   type: transformer
   upstream_blocks:
-  - load_positions
-  uuid: merge_positions
-- all_upstream_blocks_executed: true
+  - load_position_changes
+  - load_wallet_scores
+  - load_alert_rules
+  uuid: detect_smart_money_alerts
+- all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks: []
@@ -57,26 +74,26 @@ blocks:
   executor_type: local_python
   has_callback: null
   language: python
-  name: export_positions
+  name: export_alerts
   retry_config: null
-  status: executed
+  status: not_executed
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - merge_positions
-  uuid: export_positions
+  - detect_smart_money_alerts
+  uuid: export_alerts
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}
 conditionals: []
 created_at: null
 data_integration: null
-description: null
+description: Detect smart money position changes and generate alerts
 executor_config: {}
 executor_count: 1
 executor_type: null
 extensions: {}
-name: ingestion_position_sync
+name: smart_money_detection
 notification_config: {}
 remote_variables_dir: null
 retry_config: {}
@@ -86,6 +103,6 @@ settings:
 spark_config: {}
 tags: []
 type: python
-uuid: ingestion_position_sync
+uuid: smart_money_detection
 variables_dir: /home/src/mage_data/default_repo
 widgets: []

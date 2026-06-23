@@ -24,7 +24,7 @@ docker compose exec app alembic upgrade head
 
 ## ETL Pipelines
 
-8 Mage AI pipelines under `magic/default_repo/pipelines/`:
+9 Mage AI pipelines under `magic/default_repo/pipelines/`:
 
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|---|
@@ -35,6 +35,7 @@ docker compose exec app alembic upgrade head
 | `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
 | `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
 | `category_analytics` | PG queries (markets + categories) | Per-category PnL, ROI, win rate, specialist flag | `category_analytics`, `category_rankings` |
+| `smart_money_detection` | PG queries (position changes, scores, rules) | Classify actions, apply score/size/liquidity thresholds | `alerts` |
 | `verify_etl_output` | PG integrity checks | — | — |
 
 Run a single pipeline:
