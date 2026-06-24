@@ -27,6 +27,8 @@ services:
     depends_on: [postgres]
     environment:
       DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}"
+      ALERT_POLL_INTERVAL_SECONDS: "10"
     ports:
       - "8000:8000"
 
