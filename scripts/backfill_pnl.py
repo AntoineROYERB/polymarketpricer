@@ -7,12 +7,14 @@ Usage:
 
 import argparse
 import sys
+
 sys.path.insert(0, ".")
 
 from datetime import date, datetime, timedelta, timezone
+
+import requests
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
-import requests
 
 from magic.default_repo.data_loaders.load_activity import (
     classify_activity_type,

@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from pandas import DataFrame, to_numeric, NaT
+from pandas import DataFrame, NaT, to_numeric
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
@@ -8,6 +8,7 @@ if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
 from default_repo.transformers.compute_wallet_metrics import safe_div
+
 MIN_CATEGORY_TRADES = 30
 
 

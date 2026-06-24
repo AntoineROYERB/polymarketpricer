@@ -1,7 +1,4 @@
-from typing import Optional
-
 from app.models.enums import MarketCategory
-
 
 _CATEGORY_MAP: dict[str, str] = {
     member.value.lower(): member.value
@@ -9,7 +6,7 @@ _CATEGORY_MAP: dict[str, str] = {
 }
 
 
-def validate_category(category: str) -> Optional[str]:
+def validate_category(category: str) -> str | None:
     return _CATEGORY_MAP.get(category.lower())
 
 

@@ -1,6 +1,7 @@
 import concurrent.futures
-import requests
 import time
+
+import requests
 from pandas import DataFrame
 
 if 'data_loader' not in globals():

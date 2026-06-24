@@ -1,6 +1,7 @@
 import math
 from datetime import date, timedelta
-from pandas import DataFrame, to_numeric, to_datetime, NaT, Timestamp
+
+from pandas import DataFrame, NaT, Timestamp, to_datetime, to_numeric
 
 
 def _first_non_null(series) -> float | None:

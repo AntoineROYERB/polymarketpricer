@@ -8,9 +8,9 @@ from app.api.router import api_router
 from app.config import settings
 from app.db.engine import async_session
 from app.services.alert_service import (
+    mark_notified,
     poll_unnotified_alerts,
     send_discord_alert,
-    mark_notified,
 )
 from app.services.ws_manager import manager
 
