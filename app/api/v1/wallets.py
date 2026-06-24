@@ -5,6 +5,8 @@ from app.api.dependencies import get_db
 from app.models.schemas import WalletAnalyticsData, WalletCategorySummary, WalletProfile
 from app.services.category_service import (
     analytic_to_category_summary,
+)
+from app.services.category_service import (
     get_wallet_categories as get_wallet_categories_data,
 )
 from app.services.wallet_service import (

@@ -5,7 +5,7 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from default_repo.utils.market_fetcher import fetch_markets, build_market_rows
+from default_repo.utils.market_fetcher import build_market_rows, fetch_markets
 
 
 @data_loader

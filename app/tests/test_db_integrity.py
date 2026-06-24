@@ -8,8 +8,8 @@ These tests connect to the real database and validate:
 - Date / timestamp sanity
 """
 
+from collections.abc import Generator
 from datetime import date, datetime, timezone
-from typing import Generator
 
 import pytest
 from sqlalchemy import create_engine, text

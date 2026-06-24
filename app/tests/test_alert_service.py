@@ -51,18 +51,12 @@ def make_mock_db(alert: Alert | None = None) -> AsyncMock:
     """Create an AsyncSession mock that returns the given alert on scalar queries."""
     session = AsyncMock(spec=AsyncSession)
 
-    mock_scalar = MagicMock()
-    mock_scalar.scalar_one_or_none.return_value = alert
-    mock_scalar.scalars.return_value.all.return_value = [alert] if alert else []
-
     mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalar
-    mock_result.scalar_one_or_none.return_value = alert
     mock_result.scalars.return_value.all.return_value = [alert] if alert else []
+    mock_result.scalar_one_or_none.return_value = alert
 
     session.execute = AsyncMock(return_value=mock_result)
     session.commit = AsyncMock()
-    session.close = AsyncMock()
 
     return session
 

@@ -1,8 +1,9 @@
 import concurrent.futures
 import queue
-import requests
 import time
 from datetime import datetime, timedelta, timezone
+
+import requests
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
 

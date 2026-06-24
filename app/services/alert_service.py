@@ -1,10 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 import httpx
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Alert
 
@@ -28,17 +26,17 @@ async def poll_unnotified_alerts(db: AsyncSession) -> list[Alert]:
     return list(result.scalars().all())
 
 
-def classify_action(shares_before: Optional[float], shares_after: Optional[float]) -> Optional[str]:
+def classify_action(shares_before: float | None, shares_after: float | None) -> str | None:
     before = float(shares_before or 0)
     after = float(shares_after or 0)
 
     if before == 0 and after > 0:
         return "NEW_POSITION"
-    elif after > before:
+    if after > before:
         return "POSITION_INCREASE"
-    elif after < before and after > 0:
+    if after < before and after > 0:
         return "POSITION_DECREASE"
-    elif after == 0 and before > 0:
+    if after == 0 and before > 0:
         return "FULL_EXIT"
     return None
 
