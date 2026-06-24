@@ -1,3 +1,5 @@
+from datetime import date
+
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
 
@@ -5,6 +7,7 @@ if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
 from default_repo.utils.db_helpers import safe_value
+from default_repo.utils.tier_assignment import assign_tier
 
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
@@ -64,5 +67,29 @@ def export_data(df: DataFrame, **kwargs) -> None:
                 """),
                 params,
             )
+    today = date.today()
+    first_seen_map = dict(engine.execute(
+        text("SELECT wallet, first_seen FROM wallets WHERE wallet = ANY(:wallets)"),
+        {"wallets": df["wallet"].tolist()},
+    ).fetchall())
+
+    with engine.begin() as conn:
+        for _, row in df.iterrows():
+            fs = first_seen_map.get(row["wallet"])
+            age = (today - fs.date()).days if fs else 0
+            conn.execute(
+                text("UPDATE wallets SET tier = :tier WHERE wallet = :wallet"),
+                {
+                    "tier": assign_tier(
+                        wallet_score=row.get("wallet_score"),
+                        num_trades=row.get("num_trades"),
+                        total_volume=row.get("total_volume"),
+                        days_since_first_seen=age,
+                    ),
+                    "wallet": row["wallet"],
+                },
+            )
+    print(f"Updated tiers for {len(df)} wallets")
+
     engine.dispose()
     print("Analytics export complete")
