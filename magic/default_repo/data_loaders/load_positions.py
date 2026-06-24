@@ -57,6 +57,8 @@ def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
                 market_id = cond_map.get(cond_id) if cond_id else None
                 if not market_id:
                     continue
+                realized = p.get("realizedPnl") or 0
+                cash_pnl = p.get("cashPnl") or 0
                 rows.append({
                     "wallet": pw,
                     "market_id": market_id,
@@ -67,9 +69,9 @@ def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
                     "shares": p.get("size"),
                     "entry_time": None,
                     "exit_time": None,
-                    "realized_pnl": p.get("realizedPnl"),
-                    "unrealized_pnl": p.get("cashPnl"),
-                    "total_pnl": p.get("cashPnl"),
+                    "realized_pnl": round(realized, 12),
+                    "unrealized_pnl": round(cash_pnl - realized, 12),
+                    "total_pnl": round(cash_pnl, 12),
                 })
             if done % 200 == 0 or done == n_wallets:
                 elapsed = time.time() - t0
