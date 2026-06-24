@@ -10,7 +10,7 @@ DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 # Max wallets to process per pipeline run. Prevents the pipeline from timing out
 # when there are many tracked wallets. Increase if your SLA supports more.
-_DEFAULT_LIMIT = 50
+_DEFAULT_LIMIT = 20000
 
 
 @data_loader
