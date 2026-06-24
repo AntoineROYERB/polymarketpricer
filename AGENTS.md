@@ -24,13 +24,14 @@ docker compose exec app alembic upgrade head
 
 ## ETL Pipelines
 
-9 Mage AI pipelines under `magic/default_repo/pipelines/`:
+10 Mage AI pipelines under `magic/default_repo/pipelines/`:
 
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|---|
 | `ingestion_market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
 | `ingestion_wallet_discovery` | Data API `/trades` → proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
 | `ingestion_position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
+| `ingestion_pnl` | Data API `/activity` (cursor pagination) | Cash-flow PnL formula, category breakdown | `wallet_pnl_snapshots` |
 | `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
 | `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
 | `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
@@ -144,21 +145,22 @@ ETL pipeline output. Requires `docker compose up -d` (postgres service running).
 # Run only integration tests
 python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 
-# Run all tests (70 total)
+# Run all tests (72 total)
 python3 -m pytest app/tests/ -v
 ```
 
-What the 42 integration tests check:
+What the 45 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
-| Row counts | 7 | Each populated table meets a minimum row threshold |
-| Empty tables | 1 | `position_history` remains empty |
-| Referential integrity | 8 | No orphaned foreign keys across all FK relationships |
-| Not-null constraints | 6 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics) have no NULLs |
+| Row counts | 8 | Each populated table meets a minimum row threshold |
+| Referential integrity | 9 | No orphaned foreign keys across all FK relationships (incl. `wallet_pnl_snapshots`) |
+| Not-null constraints | 8 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics, pnl_snapshot keys) have no NULLs |
 | Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
+| PnL snapshot quality | 2 | `total_pnl = realized + unrealized`, PnL ≤ 100× cost basis |
 | Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
-| Cross-table consistency | 4 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets` |
+| Cross-table consistency | 5 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets`, pnl_snapshot FK valid |
+| ROI range (relaxed) | 1 | Category analytics ROI within [-100000, 500000] |
 
 **Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
 concurrency issues with parametrized test functions. The sync URL is derived from
@@ -189,14 +191,17 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 │       │   └── test_category_classifier.py# 10 classifier unit tests
 │       ├── __init__.py
 │       ├── conftest.py            # Shared mock fixtures
-│       └── test_db_integrity.py   # 33 integration tests
+│       └── test_db_integrity.py   # 45 integration tests
 │
 ├── alembic/                   # DB migrations
 │   └── versions/
 │       ├── 001_initial.py
 │       ├── 002_category_analytics.py
 │       ├── 003_add_mapped_category.py
-│       └── 004_add_categories_table.py
+│       ├── 004_add_categories_table.py
+│       ├── 005_smart_money_alerts.py
+│       ├── 006_drop_outcome_id_fks.py
+│       └── 007_add_wallet_pnl_snapshots.py
 │
 ├── docker/
 │   └── initdb/
@@ -206,14 +211,15 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 ├── magic/                      # Mage AI
 │   ├── Dockerfile
 │   └── default_repo/
-│       ├── pipelines/         # 8 pipeline dirs
-│       ├── data_loaders/      # 13 loaders
-│       ├── transformers/      # 6 transformers
-│       └── data_exporters/    # 8 exporters
+│       ├── pipelines/         # 10 pipeline dirs
+│       ├── data_loaders/      # 15 loaders
+│       ├── transformers/      # 7 transformers
+│       └── data_exporters/    # 10 exporters
 │
 ├── scripts/
 │   ├── run-all-pipelines.sh   # Bash wrapper → orchestration pipeline
 │   ├── backfill_categories.py
+│   ├── backfill_pnl.py        # One-shot PnL computation from /activity
 │   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql
 │
 └── plans/

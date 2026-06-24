@@ -4,7 +4,6 @@ import json
 import time
 
 import requests
-from pandas import DataFrame
 
 GAMMA_API = "https://gamma-api.polymarket.com"
 PAGE_SIZE = 100

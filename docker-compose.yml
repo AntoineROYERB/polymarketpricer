@@ -10,28 +10,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
   mage:
     build:
       context: ./magic
       dockerfile: Dockerfile
-    depends_on: [postgres, redis]
+    depends_on: [postgres]
     environment:
       DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
-      REDIS_URL: redis://redis:6379/0
+    mem_limit: ${MAGE_MEM_LIMIT:-}
     ports:
       - "6789:6789"
     volumes:
       - ./magic:/home/src
   app:
     build: .
-    depends_on: [postgres, redis]
+    depends_on: [postgres]
     environment:
       DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
-      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
 
