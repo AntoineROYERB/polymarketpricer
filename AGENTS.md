@@ -18,7 +18,7 @@ docker compose exec app alembic upgrade head
 docker compose exec mage mage run /home/src/default_repo orchestration
 
 # Restore from seed (avoids pipelines)
-docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql
+docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.gz
 docker compose exec app alembic upgrade head
 ```
 
@@ -51,7 +51,7 @@ docker compose exec mage mage run /home/src/default_repo orchestration
 ## Database Seed Dump
 
 To avoid re-running pipelines after a fresh `docker compose up`, the repo includes a
-pre-computed seed at `docker/initdb/seed.sql` tracked via **Git LFS**.
+pre-computed seed at `docker/initdb/seed.sql.gz` tracked via **Git LFS**.
 
 ### Requirements
 
@@ -66,11 +66,11 @@ pre-computed seed at `docker/initdb/seed.sql` tracked via **Git LFS**.
 ```bash
 # Fresh start (destroys named volume)
 docker compose down -v
-docker compose up -d          # Postgres auto-loads seed.sql on init
+docker compose up -d          # Postgres auto-loads seed.sql.gz on init
 docker compose exec app alembic upgrade head
 
 # OR into an existing volume
-docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql
+docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.gz
 docker compose exec app alembic upgrade head
 ```
 
@@ -79,8 +79,8 @@ docker compose exec app alembic upgrade head
 Run after pipeline executions to capture fresh data:
 
 ```bash
-./scripts/refresh-seed.sh     # dumps → docker/initdb/seed.sql
-git add docker/initdb/seed.sql
+./scripts/refresh-seed.sh     # dumps → docker/initdb/seed.sql.gz
+git add docker/initdb/seed.sql.gz
 git commit -m "chore: refresh seed dump"
 ```
 
@@ -94,14 +94,14 @@ Refresh when:
 
 | Symptom | Fix |
 |---|---|
-| `seed.sql` is a tiny text file | `git lfs pull` |
+| `seed.sql.gz` is a tiny text file | `git lfs pull` |
 | `relation does not exist` | Run `alembic upgrade head` first |
 | FK violation on restore | Seed is stale — refresh it |
 | `column does not exist` | Schema mismatch — run migrations first |
 
 ## Git LFS
 
-`docker/initdb/seed.sql` is tracked via Git LFS. The `.gitattributes` file in the
+`docker/initdb/seed.sql.gz` is tracked via Git LFS. The `.gitattributes` file in the
 repo root declares the pattern. All contributors must have `git-lfs` installed.
 
 ## Category Classification
@@ -174,7 +174,7 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 ├── Dockerfile                 # FastAPI app image
 ├── requirements.txt
 ├── pyproject.toml
-├── .gitattributes             # LFS: seed.sql
+├── .gitattributes             # LFS: seed.sql.gz
 ├── .pre-commit-config.yaml
 │
 ├── app/                       # FastAPI backend
@@ -206,7 +206,7 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 ├── docker/
 │   └── initdb/
 │       ├── .gitkeep
-│       └── seed.sql           # LFS-tracked dump
+│       └── seed.sql.gz           # LFS-tracked dump
 │
 ├── magic/                      # Mage AI
 │   ├── Dockerfile
@@ -220,7 +220,7 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 │   ├── run-all-pipelines.sh   # Bash wrapper → orchestration pipeline
 │   ├── backfill_categories.py
 │   ├── backfill_pnl.py        # One-shot PnL computation from /activity
-│   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql
+│   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql.gz
 │
 └── plans/
     ├── db-seed-dump.md
