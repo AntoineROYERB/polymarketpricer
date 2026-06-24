@@ -1,21 +1,10 @@
-from decimal import Decimal
 from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Category, CategoryAnalytic, CategoryRanking, Wallet
-
-
-async def get_categories(
-    db: AsyncSession,
-) -> list[str]:
-    stmt = (
-        select(Category.category)
-        .order_by(Category.label)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+from app.utils.decimal_helpers import to_optional_decimal
 
 
 async def get_category_labels(
@@ -107,41 +96,18 @@ async def wallet_exists(
     return result.scalar_one_or_none() is not None
 
 
-def _to_decimal(val: Any) -> Optional[Decimal]:
-    if val is None:
-        return None
-    return Decimal(str(val))
-
-
-def ranking_to_leaderboard_entry(
-    row: CategoryRanking,
-    is_specialist: bool = False,
-) -> dict[str, Any]:
-    return {
-        "rank": row.rank,
-        "wallet": row.wallet,
-        "wallet_score": _to_decimal(row.wallet_score),
-        "roi": _to_decimal(row.roi),
-        "win_rate": _to_decimal(row.win_rate),
-        "total_pnl": _to_decimal(row.total_pnl),
-        "num_trades": row.num_trades or 0,
-        "total_volume": _to_decimal(row.total_volume),
-        "is_specialist": is_specialist,
-    }
-
-
 def analytic_to_category_summary(
     row: CategoryAnalytic,
 ) -> dict[str, Any]:
     return {
         "category": row.category,
         "num_trades": row.num_trades or 0,
-        "total_volume": _to_decimal(row.total_volume),
-        "total_pnl": _to_decimal(row.total_pnl),
-        "roi": _to_decimal(row.roi),
-        "win_rate": _to_decimal(row.win_rate),
-        "profit_factor": _to_decimal(row.profit_factor),
-        "avg_position_size": _to_decimal(row.avg_position_size),
+        "total_volume": to_optional_decimal(row.total_volume),
+        "total_pnl": to_optional_decimal(row.total_pnl),
+        "roi": to_optional_decimal(row.roi),
+        "win_rate": to_optional_decimal(row.win_rate),
+        "profit_factor": to_optional_decimal(row.profit_factor),
+        "avg_position_size": to_optional_decimal(row.avg_position_size),
         "is_specialist": row.is_specialist if hasattr(row, "is_specialist") else False,
         "category_rank": row.category_rank if hasattr(row, "category_rank") else None,
     }
@@ -157,16 +123,16 @@ def analytic_to_category_detail(
         "wallet": row.wallet,
         "category": row.category,
         "num_trades": row.num_trades or 0,
-        "total_volume": _to_decimal(row.total_volume),
-        "total_cost_basis": _to_decimal(row.total_cost_basis),
-        "total_pnl": _to_decimal(row.total_pnl),
-        "total_realized_pnl": _to_decimal(row.total_realized_pnl),
-        "total_unrealized_pnl": _to_decimal(row.total_unrealized_pnl),
-        "roi": _to_decimal(row.roi),
-        "win_rate": _to_decimal(row.win_rate),
+        "total_volume": to_optional_decimal(row.total_volume),
+        "total_cost_basis": to_optional_decimal(row.total_cost_basis),
+        "total_pnl": to_optional_decimal(row.total_pnl),
+        "total_realized_pnl": to_optional_decimal(row.total_realized_pnl),
+        "total_unrealized_pnl": to_optional_decimal(row.total_unrealized_pnl),
+        "roi": to_optional_decimal(row.roi),
+        "win_rate": to_optional_decimal(row.win_rate),
         "num_resolved_positions": row.num_resolved_positions or 0,
-        "profit_factor": _to_decimal(row.profit_factor),
-        "avg_position_size": _to_decimal(row.avg_position_size),
+        "profit_factor": to_optional_decimal(row.profit_factor),
+        "avg_position_size": to_optional_decimal(row.avg_position_size),
         "avg_holding_duration": avg_duration_str,
         "is_specialist": row.is_specialist if hasattr(row, "is_specialist") else False,
         "category_rank": row.category_rank if hasattr(row, "category_rank") else None,

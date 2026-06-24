@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,28 +23,36 @@ from app.services.category_service import (
     wallet_exists,
 )
 from app.utils.category import validate_category
+from app.utils.decimal_helpers import to_decimal
 
 router = APIRouter()
+
+
+def _validate_category_or_404(category: str) -> str:
+    """Validate a category string, raising 404 if invalid."""
+    norm = validate_category(category)
+    if norm is None:
+        valid = sorted(m.value for m in MarketCategory)
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid category '{category}'. Valid categories: {', '.join(valid)}",
+        )
+    return norm
 
 
 def _build_leaderboard_entry(
     row: Any,
     is_specialist: bool = False,
 ) -> CategoryLeaderboardEntry:
-    def _d(val: Any) -> Decimal:
-        if val is None:
-            return Decimal(0)
-        return Decimal(str(val))
-
     return CategoryLeaderboardEntry(
         rank=row.rank,
         wallet=row.wallet,
-        wallet_score=_d(getattr(row, "wallet_score", None)),
-        roi=_d(getattr(row, "roi", None)),
-        win_rate=_d(getattr(row, "win_rate", None)),
-        total_pnl=_d(getattr(row, "total_pnl", None)),
+        wallet_score=to_decimal(getattr(row, "wallet_score", None)),
+        roi=to_decimal(getattr(row, "roi", None)),
+        win_rate=to_decimal(getattr(row, "win_rate", None)),
+        total_pnl=to_decimal(getattr(row, "total_pnl", None)),
         num_trades=row.num_trades or 0,
-        total_volume=_d(getattr(row, "total_volume", None)),
+        total_volume=to_decimal(getattr(row, "total_volume", None)),
         is_specialist=is_specialist,
     )
 
@@ -75,14 +82,7 @@ async def category_leaderboard(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> CategoryLeaderboardResponse:
-    norm_category = validate_category(category)
-    if norm_category is None:
-        valid = sorted(m.value for m in MarketCategory)
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid category '{category}'. Valid categories: {', '.join(valid)}",
-        )
-
+    norm_category = _validate_category_or_404(category)
     entries = await get_category_leaderboard_data(db, norm_category, limit=limit, offset=offset)
 
     return CategoryLeaderboardResponse(
@@ -104,14 +104,7 @@ async def category_specialists(
     limit: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ) -> CategoryLeaderboardResponse:
-    norm_category = validate_category(category)
-    if norm_category is None:
-        valid = sorted(m.value for m in MarketCategory)
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid category '{category}'. Valid categories: {', '.join(valid)}",
-        )
-
+    norm_category = _validate_category_or_404(category)
     entries = await get_category_leaderboard_data(db, norm_category, list_type="specialists", limit=limit)
 
     return CategoryLeaderboardResponse(
@@ -154,14 +147,7 @@ async def wallet_category_detail(
     category: str,
     db: AsyncSession = Depends(get_db),
 ) -> CategoryDetailResponse:
-    norm_category = validate_category(category)
-    if norm_category is None:
-        valid = sorted(m.value for m in MarketCategory)
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid category '{category}'. Valid categories: {', '.join(valid)}",
-        )
-
+    norm_category = _validate_category_or_404(category)
     if not await wallet_exists(db, address):
         raise HTTPException(status_code=404, detail="Wallet not found")
 

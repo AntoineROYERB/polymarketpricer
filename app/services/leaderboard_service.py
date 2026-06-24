@@ -3,46 +3,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import RankingSnapshot
 
+LIST_TYPE_ALLOWED = {"top_100", "emerging", "consistent"}
 
-async def get_leaderboard(
+
+async def get_ranking_list(
     db: AsyncSession,
+    list_type: str = "top_100",
     limit: int = 100,
     offset: int = 0,
 ) -> list[RankingSnapshot]:
+    if list_type not in LIST_TYPE_ALLOWED:
+        raise ValueError(f"Invalid list_type '{list_type}'. Must be one of: {', '.join(sorted(LIST_TYPE_ALLOWED))}")
+
     stmt = (
         select(RankingSnapshot)
-        .where(RankingSnapshot.list_type == "top_100")
+        .where(RankingSnapshot.list_type == list_type)
         .order_by(RankingSnapshot.rank)
         .limit(limit)
         .offset(offset)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def get_top_emerging(
-    db: AsyncSession,
-    limit: int = 10,
-) -> list[RankingSnapshot]:
-    stmt = (
-        select(RankingSnapshot)
-        .where(RankingSnapshot.list_type == "emerging")
-        .order_by(RankingSnapshot.rank)
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def get_top_consistent(
-    db: AsyncSession,
-    limit: int = 10,
-) -> list[RankingSnapshot]:
-    stmt = (
-        select(RankingSnapshot)
-        .where(RankingSnapshot.list_type == "consistent")
-        .order_by(RankingSnapshot.rank)
-        .limit(limit)
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
