@@ -59,11 +59,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Restore seed data
-        run: psql -U app -d polymarket -h localhost < docker/initdb/seed.sql
+        run: gunzip -c docker/initdb/seed.sql.gz | psql -U app -d polymarket -h localhost
         env:
           PGPASSWORD: app
-      - name: Stamp alembic version head
-        run: alembic stamp head
       - name: Run pending migrations
         run: alembic upgrade head
       - name: Run integration tests
