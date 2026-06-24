@@ -14,6 +14,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 from app.models.enums import PositionStatus, TradeSide, TradeType
@@ -104,7 +105,7 @@ class Trade(Base):
     id = Column(Text, primary_key=True)
     wallet = Column(Text, ForeignKey("wallets.wallet"), nullable=False)
     market_id = Column(Text, ForeignKey("markets.id"), nullable=False)
-    outcome_id = Column(Text, ForeignKey("outcomes.id"), nullable=True)
+    outcome_id = Column(Text, nullable=True)
     side = Column(Enum(TradeSide), nullable=False)  # type: ignore[var-annotated]
     type = Column(Enum(TradeType), nullable=True)  # type: ignore[var-annotated]
     price = Column(Numeric(28, 12), nullable=False)
@@ -328,3 +329,28 @@ class AlertRule(Base):
     cooldown_minutes = Column(Integer, nullable=False, server_default=text("15"))
     discord_webhook_url = Column(Text, nullable=True)
     active = Column(Boolean, nullable=False, server_default=text("true"))
+
+
+class WalletPnlSnapshot(Base):
+    __tablename__ = "wallet_pnl_snapshots"
+
+    wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
+    snapshot_date = Column(Date, primary_key=True)
+
+    total_pnl = Column(Numeric(28, 2), nullable=True)
+    total_realized_pnl = Column(Numeric(28, 2), nullable=True)
+    total_unrealized_pnl = Column(Numeric(28, 2), nullable=True)
+
+    total_bought = Column(Numeric(28, 2), nullable=True)
+    total_sold = Column(Numeric(28, 2), nullable=True)
+    total_redeemed = Column(Numeric(28, 2), nullable=True)
+    total_merged = Column(Numeric(28, 2), nullable=True)
+    total_split = Column(Numeric(28, 2), nullable=True)
+    total_rebates = Column(Numeric(28, 2), nullable=True)
+
+    category_breakdown = Column(JSONB, nullable=True)
+
+    num_activity_events = Column(Integer, nullable=True)
+    open_position_value = Column(Numeric(28, 2), nullable=True)
+    computed_at = Column(DateTime(timezone=True), nullable=False,
+                         server_default=func.now())

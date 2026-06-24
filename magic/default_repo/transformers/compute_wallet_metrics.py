@@ -2,6 +2,11 @@ import math
 from datetime import date, timedelta
 from pandas import DataFrame, to_numeric, to_datetime, NaT, Timestamp
 
+
+def _first_non_null(series) -> float | None:
+    vals = series.dropna()
+    return float(vals.iloc[0]) if not vals.empty else None
+
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
 if 'test' not in globals():
@@ -103,12 +108,17 @@ def compute_metrics_for_wallet(
 
     if not positions.empty:
         wp = positions[positions["wallet"] == wallet].copy()
-        wp["realized_pnl"] = to_numeric(wp["realized_pnl"], errors="coerce").fillna(0)
-        wp["unrealized_pnl"] = to_numeric(wp["unrealized_pnl"], errors="coerce").fillna(0)
-        wp["total_pnl"] = to_numeric(wp["total_pnl"], errors="coerce").fillna(0)
 
-        total_realized_pnl = float(wp["realized_pnl"].sum())
-        total_unrealized_pnl = float(wp["unrealized_pnl"].sum())
+        if "pnl_accurate" in wp.columns and wp["pnl_accurate"].notna().any():
+            total_realized_pnl = _first_non_null(wp["realized_accurate"]) or 0
+            total_unrealized_pnl = _first_non_null(wp["unrealized_accurate"]) or 0
+        else:
+            wp["realized_pnl"] = to_numeric(wp["realized_pnl"], errors="coerce").fillna(0)
+            wp["unrealized_pnl"] = to_numeric(wp["unrealized_pnl"], errors="coerce").fillna(0)
+            wp["total_pnl"] = to_numeric(wp["total_pnl"], errors="coerce").fillna(0)
+
+            total_realized_pnl = float(wp["realized_pnl"].sum())
+            total_unrealized_pnl = float(wp["unrealized_pnl"].sum())
 
         resolved = wp[wp["status"].isin(["RESOLVED", "CLOSED"])]
         resolved_total = len(resolved)
