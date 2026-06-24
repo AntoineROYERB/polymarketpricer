@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.3.0 (2026-06-24)
+
+### Features
+- **PnL Cash-Flow Reconstruction**: New `ingestion_pnl` pipeline reconstructs wallet PnL from `/activity`
+  cash flows, fixing extreme ROI outliers caused by auto-redeemed markets vanishing from `/positions`
+- **PnL Quick Fix**: `load_positions.py` — corrected cashPnl mapping (`unrealized_pnl = cashPnl - realizedPnl`,
+  `total_pnl = cashPnl`). Eliminates double-count of realized PnL in analytics transformers
+- **Smart Money Detection (Data Layer)**: New `smart_money_detection` pipeline with action classification
+  (NEW_POSITION, POSITION_INCREASE, POSITION_DECREASE, FULL_EXIT), configurable thresholds, cooldown dedup
+- **Accurate Downstream Analytics**: `compute_wallet_metrics.py` and `compute_category_metrics.py` read
+  accurate PnL from `wallet_pnl_snapshots` via LEFT JOIN (graceful fallback to old position-based PnL)
+
+### Database
+- 3 new migrations (`005_smart_money_alerts`, `006_drop_outcome_id_fks`, `007_add_wallet_pnl_snapshots`)
+- New tables: `alerts`, `alert_rules`, `wallet_pnl_snapshots`
+- Foreign keys: alerts → wallets/markets, pnl_snapshots → wallets
+- Global default alert rule seeded (min_score=80, min_position_size=500, min_liquidity=1000, cooldown=15min)
+
+### ETL
+- New `ingestion_pnl` pipeline: `/activity` cursor pagination (10 parallel workers) → cash-flow PnL formula → UPSERT `wallet_pnl_snapshots`
+- New `smart_money_detection` pipeline: position_history diff → action classification → rule engine → alerts
+- Orchestration updated: `trigger_pnl` between position_sync and trade_history; `trigger_smart_money` after verify
+- Backfill script: `scripts/backfill_pnl.py` for one-shot PnL computation across all wallets
+
+### Infrastructure
+- Config file changed from `.env` to `.env.app` for app settings (added to `.gitignore`)
+- `MAGE_MEM_LIMIT` configurable via env var (default 8g) for Docker resource control
+
+### Tests
+- 4 new integration tests: PnL snapshot consistency, PnL bounds, row thresholds + FK for `wallet_pnl_snapshots`
+- ROI bound widened from [-10000, 100000] to [-100000, 500000] for category analytics
+- Total: 69 → **72 tests** (27 API/unit + 45 integration)
+
+### Notes
+- **Partial Phase 3 delivery**: Alert REST API (`GET /api/v1/alerts`), WebSocket (`WS /api/v1/alerts/ws`),
+  Discord delivery service, and 22 planned tests are deferred to a follow-up Phase 3.2
+
+---
+
 ## v0.2.0 (2026-06-22)
 
 ### Features

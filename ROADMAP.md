@@ -228,7 +228,20 @@ A trader becomes a specialist if:
 
 ---
 
-# Phase 3 — Smart Money Detection
+# Phase 3 — Smart Money Detection (Data Pipeline ✅ Complete)
+
+## Status
+
+| Component | Status |
+|-----------|--------|
+| Database schema (migrations 005, 007) | ✅ Complete |
+| `ingestion_pnl` pipeline (PnL reconstruction) | ✅ Complete |
+| `smart_money_detection` pipeline (alert classification) | ✅ Complete |
+| Backfill script `scripts/backfill_pnl.py` | ✅ Complete |
+| FastAPI endpoints (`GET /api/v1/alerts`) | ⏳ Deferred to Phase 3.2 |
+| WebSocket (`WS /api/v1/alerts/ws`) | ⏳ Deferred to Phase 3.2 |
+| Discord delivery (`alert_service.py`) | ⏳ Deferred to Phase 3.2 |
+| Alert unit/API/integration tests | ⏳ Deferred to Phase 3.2 |
 
 ## Objective
 

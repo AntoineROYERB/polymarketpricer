@@ -4,7 +4,7 @@
 
 Identify the most skilled Polymarket traders, measure their performance by niche, detect when they open new positions, and generate actionable alerts.
 
-> **Status:** Phase 2 — Niche Expertise Detection ✅ Complete (FastAPI backend + Mage AI pipelines)
+> **Status:** Phase 3 — Smart Money Detection 🚧 In Progress (Data Pipeline Complete; API/Alerts deferred to Phase 3.2)
 
 ---
 
@@ -14,17 +14,20 @@ Identify the most skilled Polymarket traders, measure their performance by niche
 flowchart LR
     subgraph APIs["External APIs"]
         GAMMA["Gamma API<br/>(markets, events, wallets)"]
-        DATA["Data API<br/>(trades, positions)"]
+        DATA["Data API<br/>(trades, positions, activity)"]
     end
 
-    subgraph ETL["Mage AI ETL — 7 Pipelines"]
+    subgraph ETL["Mage AI ETL — 10 Pipelines"]
         MD["ingestion_market_discovery<br/>markets + events + outcomes"]
         WD["ingestion_wallet_discovery<br/>proxy → main wallet"]
-        TH["ingestion_trade_history<br/>per-wallet trades"]
         PS["ingestion_position_sync<br/>current positions"]
+        PN["ingestion_pnl<br/>cashflow PnL from /activity"]
+        TH["ingestion_trade_history<br/>per-wallet trades"]
         AC["enrichment_analytics_computation<br/>PnL, ROI, Sharpe, filtering"]
         RC["enrichment_ranking_computation<br/>top-100 / emerging / consistent"]
         CA["category_analytics<br/>per-category metrics + specialists"]
+        SM["smart_money_detection<br/>action classification + rules"]
+        VF["verify_etl_output<br/>integrity checks"]
     end
 
     subgraph DB["PostgreSQL"]
@@ -34,11 +37,14 @@ flowchart LR
         WAL[(wallets)]
         TRD[(trades)]
         POS[(positions)]
+        WPS[(wallet_pnl_snapshots)]
         WA[(wallet_analytics)]
         RS[(ranking_snapshots)]
         CAT[(categories)]
         CAnalytics[(category_analytics)]
         CRankings[(category_rankings)]
+        ALR[(alert_rules)]
+        ALTS[(alerts)]
     end
 
     subgraph API["FastAPI — Port 8000"]
@@ -53,17 +59,21 @@ flowchart LR
     GAMMA --> WD
     DATA --> TH
     DATA --> PS
+    DATA --> PN
     MD --> MKT & EVT & OUTC
     WD --> WAL
     TH --> TRD
     PS --> POS
-    MKT & EVT & OUTC & WAL & TRD & POS --> AC
+    PN --> WPS
+    MKT & EVT & OUTC & WAL & TRD & POS & WPS --> AC
     AC --> WA
     WA --> RC
     RC --> RS
     MKT --> CAT
     MKT & WAL & CAT --> CA
     CA --> CAnalytics & CRankings
+    POS & WAL & ALR --> SM
+    SM --> ALTS
     MKT & WAL & WA & RS --> LB
     WAL & WA & POS --> WP
     MKT --> MK
@@ -155,7 +165,7 @@ python -m pytest app/tests/ -v
 python -m pytest app/tests/ --cov=app -v
 ```
 
-The **69 tests** (27 API + 42 integration) validate row counts, referential integrity,
+The **72 tests** (27 API + 45 integration) validate row counts, referential integrity,
 not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
 and data filtering — with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
 
@@ -221,7 +231,10 @@ pre-commit run --all-files
 │       ├── 001_initial.py
 │       ├── 002_category_analytics.py
 │       ├── 003_add_mapped_category.py
-│       └── 004_add_categories_table.py
+│       ├── 004_add_categories_table.py
+│       ├── 005_smart_money_alerts.py
+│       ├── 006_drop_outcome_id_fks.py
+│       └── 007_add_wallet_pnl_snapshots.py
 │
 ├── mage/                        # Mage AI (bootstrapped on startup)
 │   ├── Dockerfile
@@ -395,10 +408,13 @@ Detailed analytics for a specific wallet+category combination.
 | `trades` | Individual trade records (wallet, market, side, price, shares) |
 | `wallets` | Wallet identity with proxy wallet mapping |
 | `positions` | Current open positions (avg entry, shares, PnL) |
+| `wallet_pnl_snapshots` | Cashflow-reconstructed PnL from `/activity` endpoint |
 | `wallet_analytics` | Daily snapshots of computed metrics and ranking scores |
 | `category_analytics` | Per-wallet, per-category PnL, ROI, win rate, specialist flags |
 | `category_rankings` | Top-50 rankings per category (+ specialist lists) |
 | `categories` | Lookup table for the 8 target categories |
+| `alerts` | Detected high-signal trading events (smart money) |
+| `alert_rules` | Configurable threshold configuration for alert generation |
 
 ---
 
@@ -409,7 +425,7 @@ Detailed analytics for a specific wallet+category combination.
 | 0 — Feasibility Study | ✅ Complete | Data source validation, rate limits, architecture |
 | 1 — MVP Leaderboard | ✅ Complete | FastAPI backend + Mage ETL pipelines |
 | 2 — Niche Expertise | ✅ Complete | Category-specific rankings and specialist detection |
-| 3 — Smart Money Detection | 📋 Planned | Real-time alerts via Telegram/Discord |
+| 3 — Smart Money Detection | 🚧 In Progress | Real-time alerts via Telegram/Discord (Data Pipeline Complete; API/Alerts deferred) |
 | 4 — Edge Scoring | 📋 Planned | Predictive accuracy metrics |
 | 5 — Recommendation Engine | 📋 Planned | Follow recommendations |
 | 6 — Dashboard | 📋 Planned | Next.js frontend |

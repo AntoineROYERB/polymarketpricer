@@ -1,11 +1,11 @@
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
+from mage_ai.orchestration.triggers.api import trigger_pipeline
+
 
 @data_exporter
 def export_data(data, **kwargs) -> None:
-    from mage_ai.orchestration.triggers.api import trigger_pipeline
-
     trigger_pipeline(
         "ingestion_wallet_discovery",
         check_status=True,
