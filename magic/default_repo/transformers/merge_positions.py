@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
+
 from pandas import DataFrame, isna
 from psycopg2.extras import execute_values
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
@@ -156,6 +157,19 @@ def transform_df(positions: DataFrame, *args, **kwargs) -> dict:
             print(f"Closed positions (no API data): {closed_count}")
 
         raw.commit()
+
+        processed_wallets = positions["wallet"].dropna().unique().tolist() if not positions.empty else []
+        if processed_wallets:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                        UPDATE wallets
+                        SET last_position_sync = :now
+                        WHERE wallet = ANY(:wallets)
+                    """),
+                    {"now": now, "wallets": processed_wallets},
+                )
+            print(f"Updated last_position_sync for {len(processed_wallets)} wallets")
     finally:
         raw.close()
         engine.dispose()

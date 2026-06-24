@@ -6,22 +6,50 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
+from default_repo.utils.sync_mode import get_sync_cutoff, is_full_sync
+
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
-# Max wallets to process per pipeline run. Prevents the pipeline from timing out
-# when there are many tracked wallets. Increase if your SLA supports more.
-_DEFAULT_LIMIT = 20000
+BATCH_SIZE = 5000
 
 
 @data_loader
 def load_data_from_api(**kwargs) -> DataFrame:
+    tier = kwargs.get("TIER", 1)
+    batch = kwargs.get("BATCH", 0)
+    cutoff = get_sync_cutoff(tier) if not is_full_sync() else None
+
     engine = create_engine(DATABASE_URL)
-    df = read_sql(
-        text(f"SELECT wallet, main_wallet FROM wallets WHERE is_tracked = true LIMIT {_DEFAULT_LIMIT}"),
-        engine,
-    )
+    offset = batch * BATCH_SIZE
+
+    if cutoff is None:
+        df = read_sql(
+            text("""
+                SELECT wallet, main_wallet
+                FROM wallets
+                WHERE is_tracked = true
+                ORDER BY wallet
+                LIMIT :limit OFFSET :offset
+            """),
+            engine,
+            params={"limit": BATCH_SIZE, "offset": offset},
+        )
+    else:
+        df = read_sql(
+            text("""
+                SELECT wallet, main_wallet
+                FROM wallets
+                WHERE is_tracked = true
+                  AND (last_position_sync IS NULL OR last_position_sync < :cutoff)
+                ORDER BY last_position_sync NULLS FIRST
+                LIMIT :limit OFFSET :offset
+            """),
+            engine,
+            params={"cutoff": cutoff, "limit": BATCH_SIZE, "offset": offset},
+        )
+
     engine.dispose()
-    print(f"Loaded {len(df)} tracked wallets")
+    print(f"Batch {batch}: {len(df)} tracked wallets (tier {tier})")
     return df
 
 

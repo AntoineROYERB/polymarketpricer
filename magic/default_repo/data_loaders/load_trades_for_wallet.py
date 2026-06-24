@@ -1,7 +1,8 @@
 import concurrent.futures
-import requests
 import time
 from datetime import datetime, timezone
+
+import requests
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
 
@@ -126,6 +127,21 @@ def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
 
         elapsed = time.time() - t0
         print(f"  {done}/{n_wallets} wallets, {total_trades} trades, {elapsed:.0f}s")
+
+    if proxy_wallets:
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("""
+                        UPDATE wallets
+                        SET last_trade_sync = :now
+                        WHERE main_wallet = ANY(:wallets)
+                    """),
+                    {"now": datetime.now(timezone.utc), "wallets": proxy_wallets},
+                )
+            print(f"Updated last_trade_sync for {len(proxy_wallets)} wallets")
+        except Exception as e:
+            print(f"WARNING: Failed to update last_trade_sync: {e}")
 
     engine.dispose()
     print(f"Total trades exported: {total_trades} in {time.time()-t0:.0f}s")

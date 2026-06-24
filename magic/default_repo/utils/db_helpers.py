@@ -1,5 +1,6 @@
 """Shared database helpers for ETL pipeline blocks."""
 
+import functools
 import math
 
 from pandas import isna
@@ -8,8 +9,14 @@ from sqlalchemy import create_engine, text
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 
+@functools.lru_cache(maxsize=1)
 def load_condition_map() -> dict:
-    """Build condition_id → market_id mapping from the markets table."""
+    """Build condition_id → market_id mapping from the markets table.
+
+    Cached per process (single pipeline run) via lru_cache.
+    Three callers (positions, trades, activity) all run within the same
+    pipeline sequentially - caching eliminates 2 of 3 DB queries.
+    """
     engine = create_engine(DATABASE_URL)
     with engine.begin() as conn:
         rows = conn.execute(
