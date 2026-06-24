@@ -18,7 +18,8 @@ def _should_use_position_pnl(
     """Return True if position-based PnL should be used (no category_breakdown available)."""
     if not category_breakdown or not isinstance(category_breakdown, dict):
         return True
-    return category not in category_breakdown
+    v = category_breakdown.get(category)
+    return v is None
 
 
 def compute_category_metrics_for_wallet(
@@ -51,7 +52,8 @@ def compute_category_metrics_for_wallet(
 
     if category_breakdown and isinstance(category_breakdown, dict) and category in category_breakdown:
         cat_data = category_breakdown[category]
-        total_realized_pnl = float(cat_data.get("total_realized_pnl", 0))
+        if cat_data is not None:
+            total_realized_pnl = float(cat_data.get("total_realized_pnl", 0))
 
     if not trades.empty:
         wt = trades.copy()
