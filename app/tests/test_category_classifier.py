@@ -1,4 +1,4 @@
-from app.services.category_classifier import infer_category
+from magic.default_repo.utils.category_classifier import infer_category
 
 
 def test_classify_politics() -> None:

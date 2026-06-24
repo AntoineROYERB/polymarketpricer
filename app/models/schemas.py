@@ -1,38 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
-
-
-class AlertAction(str, Enum):
-    NEW_POSITION = "NEW_POSITION"
-    POSITION_INCREASE = "POSITION_INCREASE"
-    POSITION_DECREASE = "POSITION_DECREASE"
-    FULL_EXIT = "FULL_EXIT"
-
-
-class AlertItem(BaseModel):
-    id: str
-    wallet: str
-    market_id: str
-    market_question: str
-    action: AlertAction
-    price: Decimal
-    position_size: Decimal
-    wallet_score: Decimal
-    category: str
-    detected_at: datetime
-    notified_at: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-
-class AlertListResponse(BaseModel):
-    data: list[AlertItem]
-    limit: int
-    offset: int
 
 
 class LeaderboardEntry(BaseModel):
@@ -192,25 +162,6 @@ class MarketListResponse(BaseModel):
     limit: int
     offset: int
 
-
-class CategoryAnalyticsData(BaseModel):
-    category: str
-    num_trades: Optional[int] = None
-    total_volume: Optional[Decimal] = None
-    total_cost_basis: Optional[Decimal] = None
-    total_pnl: Optional[Decimal] = None
-    total_realized_pnl: Optional[Decimal] = None
-    total_unrealized_pnl: Optional[Decimal] = None
-    roi: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
-    num_resolved_positions: Optional[int] = None
-    profit_factor: Optional[Decimal] = None
-    avg_position_size: Optional[Decimal] = None
-    avg_holding_duration: Optional[str] = None
-    is_specialist: bool = False
-    category_rank: Optional[int] = None
-
-    model_config = {"from_attributes": True}
 
 
 

@@ -17,12 +17,6 @@ class PositionStatus(StrEnum):
     RESOLVED = "RESOLVED"
 
 
-class RankingListType(StrEnum):
-    TOP_100 = "top_100"
-    EMERGING = "emerging"
-    CONSISTENT = "consistent"
-
-
 class MarketCategory(StrEnum):
     POLITICS = "Politics"
     CRYPTO = "Crypto"

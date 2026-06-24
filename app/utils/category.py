@@ -13,9 +13,5 @@ def validate_category(category: str) -> Optional[str]:
     return _CATEGORY_MAP.get(category.lower())
 
 
-def normalize_category(category: str) -> Optional[str]:
-    return validate_category(category)
-
-
 def get_valid_categories() -> list[str]:
     return sorted(_CATEGORY_MAP.keys())
