@@ -20,6 +20,8 @@ blocks:
   configuration: {}
   downstream_blocks:
   - detect_smart_money_alerts
+  - detect_trade_alerts
+  - detect_first_movers
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -47,11 +49,45 @@ blocks:
   type: data_loader
   upstream_blocks: []
   uuid: load_alert_rules
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - detect_trade_alerts
+  - detect_first_movers
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_recent_trades
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_recent_trades
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - detect_trade_alerts
+  - detect_first_movers
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_market_info
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_market_info
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - export_alerts
+  - merge_alerts
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -69,6 +105,63 @@ blocks:
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
+  downstream_blocks:
+  - merge_alerts
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: detect_trade_alerts
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_recent_trades
+  - load_wallet_scores
+  - load_market_info
+  uuid: detect_trade_alerts
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - merge_alerts
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: detect_first_movers
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_recent_trades
+  - load_wallet_scores
+  - load_market_info
+  uuid: detect_first_movers
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_alerts
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: merge_alerts
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - detect_smart_money_alerts
+  - detect_trade_alerts
+  - detect_first_movers
+  uuid: merge_alerts
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
   downstream_blocks: []
   executor_config: null
   executor_type: local_python
@@ -80,7 +173,7 @@ blocks:
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - detect_smart_money_alerts
+  - merge_alerts
   uuid: export_alerts
 cache_block_output_in_memory: false
 callbacks: []
