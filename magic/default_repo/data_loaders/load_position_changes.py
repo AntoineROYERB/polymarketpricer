@@ -8,7 +8,7 @@ if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
 DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
-DETECTION_WINDOW_MINUTES = 10
+DETECTION_WINDOW_MINUTES = 24 * 60  # 1440 minutes = full daily window for @daily orchestration
 
 EXPECTED_COLUMNS = [
     "wallet", "market_id", "shares_before", "shares_after",
