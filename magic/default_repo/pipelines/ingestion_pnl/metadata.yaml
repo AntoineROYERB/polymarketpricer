@@ -1,0 +1,109 @@
+blocks:
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - load_activity
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_tracked_wallets
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_tracked_wallets
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - compute_pnl_from_activity
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_activity
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_loader
+  upstream_blocks:
+  - load_tracked_wallets
+  uuid: load_activity
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - compute_pnl_from_activity
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_open_positions
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_loader
+  upstream_blocks:
+  - load_tracked_wallets
+  uuid: load_open_positions
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_pnl_snapshots
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: compute_pnl_from_activity
+  retry_config: null
+  status: executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_activity
+  - load_open_positions
+  uuid: compute_pnl_from_activity
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks: []
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: export_pnl_snapshots
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - compute_pnl_from_activity
+  uuid: export_pnl_snapshots
+cache_block_output_in_memory: false
+callbacks: []
+concurrency_config: {}
+conditionals: []
+created_at: null
+data_integration: null
+description: Reconstruct wallet PnL from /activity cash flows
+executor_config: {}
+executor_count: 1
+executor_type: null
+extensions: {}
+name: ingestion_pnl
+notification_config: {}
+remote_variables_dir: null
+retry_config: {}
+run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
+tags: []
+type: python
+uuid: ingestion_pnl
+variables_dir: /home/src/mage_data/default_repo
+widgets: []

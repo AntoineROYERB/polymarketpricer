@@ -1,15 +1,24 @@
-import math
 from datetime import date, timedelta
 
-from pandas import DataFrame, to_numeric, NaT, concat
+from pandas import DataFrame, to_numeric, NaT
 
 if 'transformer' not in globals():
     from mage_ai.data_preparation.decorators import transformer
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from default_repo.transformers.compute_wallet_metrics import safe_div, MIN_RESOLVED_TRADES
+from default_repo.transformers.compute_wallet_metrics import safe_div
 MIN_CATEGORY_TRADES = 30
+
+
+def _should_use_position_pnl(
+    category_breakdown: dict | None,
+    category: str,
+) -> bool:
+    """Return True if position-based PnL should be used (no category_breakdown available)."""
+    if not category_breakdown or not isinstance(category_breakdown, dict):
+        return True
+    return category not in category_breakdown
 
 
 def compute_category_metrics_for_wallet(
@@ -32,6 +41,18 @@ def compute_category_metrics_for_wallet(
     total_holding_seconds = 0.0
     holding_count = 0
 
+    # Check for category_breakdown from wallet_pnl_snapshots
+    # category_breakdown has category names as keys, e.g. {"politics": {...}, "crypto": {...}}
+    category_breakdown = None
+    if not positions.empty and "category_breakdown" in positions.columns:
+        cb = positions["category_breakdown"].dropna()
+        if not cb.empty:
+            category_breakdown = cb.iloc[0]
+
+    if category_breakdown and isinstance(category_breakdown, dict) and category in category_breakdown:
+        cat_data = category_breakdown[category]
+        total_realized_pnl = float(cat_data.get("total_realized_pnl", 0))
+
     if not trades.empty:
         wt = trades.copy()
         wt["amount_usd"] = to_numeric(wt["amount_usd"], errors="coerce").fillna(0)
@@ -49,7 +70,7 @@ def compute_category_metrics_for_wallet(
             + (sells["price"] * sells["shares"]).abs().sum()
         )
 
-    if not positions.empty:
+    if not positions.empty and _should_use_position_pnl(category_breakdown, category):
         wp = positions.copy()
         wp["realized_pnl"] = to_numeric(wp["realized_pnl"], errors="coerce").fillna(0)
         wp["unrealized_pnl"] = to_numeric(wp["unrealized_pnl"], errors="coerce").fillna(0)

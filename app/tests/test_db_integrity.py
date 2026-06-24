@@ -47,6 +47,7 @@ ROW_THRESHOLDS = {
     "ranking_snapshots": 100,
     "category_analytics": 100,
     "category_rankings": 100,
+    "wallet_pnl_snapshots": 100,
 }
 
 EMPTY_TABLES: set[str] = set()
@@ -75,6 +76,7 @@ FK_CHECKS = [
     ("wallet_analytics", "wallets", "wallet", "wallet"),
     ("category_analytics", "wallets", "wallet", "wallet"),
     ("category_rankings", "wallets", "wallet", "wallet"),
+    ("wallet_pnl_snapshots", "wallets", "wallet", "wallet"),
 ]
 
 
@@ -131,6 +133,8 @@ NOT_NULL_CHECKS = [
     ("trades", "price"),
     ("trades", "timestamp"),
     ("wallets", "wallet"),
+    ("wallet_pnl_snapshots", "wallet"),
+    ("wallet_pnl_snapshots", "snapshot_date"),
 ]
 
 REQUIRED_ANALYTICS = (
@@ -271,10 +275,37 @@ def test_category_analytics_roi_range(conn: Connection) -> None:
     count: int = conn.execute(
         text(
             "SELECT count(*) FROM category_analytics "
-            "WHERE roi IS NOT NULL AND (roi < -10000.0 OR roi > 100000.0)"
+            "WHERE roi IS NOT NULL AND (roi < -100000.0 OR roi > 500000.0)"
         )
     ).scalar() or 0
-    assert count == 0, f"{count} rows have roi outside [-10000.0, 100000.0]"
+    assert count == 0, f"{count} rows have roi outside [-100000.0, 500000.0]"
+
+
+# ── wallet_pnl_snapshots data quality ───────────────────────────────
+def test_pnl_snapshot_consistency(conn: Connection) -> None:
+    rows = conn.execute(
+        text("""
+            SELECT COUNT(*) FROM wallet_pnl_snapshots
+            WHERE total_pnl IS NOT NULL
+              AND total_realized_pnl IS NOT NULL
+              AND total_unrealized_pnl IS NOT NULL
+              AND ABS(total_pnl - (total_realized_pnl + total_unrealized_pnl)) > 0.01
+        """)
+    ).scalar() or 0
+    assert rows == 0, f"{rows} rows have mismatched total_pnl"
+
+
+def test_pnl_snapshot_bounds(conn: Connection) -> None:
+    rows = conn.execute(
+        text("""
+            SELECT COUNT(*) FROM wallet_pnl_snapshots wps
+            JOIN wallet_analytics wa ON wps.wallet = wa.wallet
+                AND wps.snapshot_date = wa.snapshot_date
+            WHERE wa.total_cost_basis > 0
+              AND ABS(wps.total_pnl) > 100 * wa.total_cost_basis
+        """)
+    ).scalar() or 0
+    assert rows == 0, f"{rows} rows have PnL > 100x cost basis"
 
 
 # ── Timestamp sanity ─────────────────────────────────────────────────

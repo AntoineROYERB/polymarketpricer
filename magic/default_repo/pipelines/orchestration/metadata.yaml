@@ -36,7 +36,7 @@ blocks:
   color: null
   configuration: {}
   downstream_blocks:
-  - trigger_trade_history
+  - trigger_pnl
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -53,6 +53,23 @@ blocks:
   color: null
   configuration: {}
   downstream_blocks:
+  - trigger_trade_history
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: trigger_pnl
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - trigger_position_sync
+  uuid: trigger_pnl
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
   - trigger_analytics
   executor_config: null
   executor_type: local_python
@@ -64,7 +81,7 @@ blocks:
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - trigger_position_sync
+  - trigger_pnl
   uuid: trigger_trade_history
 - all_upstream_blocks_executed: false
   color: null
