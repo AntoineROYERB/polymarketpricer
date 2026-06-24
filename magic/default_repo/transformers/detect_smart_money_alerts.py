@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+
 from pandas import DataFrame, to_numeric
 
 if 'transformer' not in globals():
@@ -18,28 +19,28 @@ def classify_action(shares_before, shares_after):
 
     if before == 0 and after > 0:
         return "NEW_POSITION"
-    elif after > before:
+    if after > before:
         return "POSITION_INCREASE"
-    elif after < before and after > 0:
+    if after < before and after > 0:
         return "POSITION_DECREASE"
-    elif after == 0 and before > 0:
+    if after == 0 and before > 0:
         return "FULL_EXIT"
     return None
 
 
-def get_applicable_rule(wallet: str, rules_df: DataFrame) -> dict:
+def get_applicable_rule(wallet: str, rules_df: DataFrame, market_volume: float = 0) -> dict:
     wallet_rule = rules_df[rules_df["wallet"] == wallet]
     if not wallet_rule.empty:
         return wallet_rule.iloc[0].to_dict()
     global_rule = rules_df[rules_df["wallet"].isna()]
     if not global_rule.empty:
         return global_rule.iloc[0].to_dict()
-    return {
-        "min_score": 80.0,
-        "min_position_size": 500.0,
-        "min_liquidity": 1000.0,
-        "cooldown_minutes": 15,
-    }
+
+    if market_volume < 100_000:
+        return {"min_score": 60, "min_position_size": 200, "min_liquidity": 500, "cooldown_minutes": 15}
+    if market_volume < 1_000_000:
+        return {"min_score": 80, "min_position_size": 500, "min_liquidity": 1000, "cooldown_minutes": 15}
+    return {"min_score": 85, "min_position_size": 1000, "min_liquidity": 2000, "cooldown_minutes": 15}
 
 
 @transformer
