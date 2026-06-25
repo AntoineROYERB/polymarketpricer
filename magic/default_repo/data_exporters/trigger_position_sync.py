@@ -5,6 +5,7 @@ from mage_ai.orchestration.triggers.api import trigger_pipeline
 from sqlalchemy import create_engine, text
 
 from default_repo.utils.db_helpers import DATABASE_URL
+from default_repo.utils.pipeline_status import record_status
 from default_repo.utils.sync_mode import get_sync_cutoff, is_full_sync
 BATCH_SIZE = 5000
 
@@ -28,18 +29,23 @@ def export_data(data, **kwargs) -> None:
 
             batch = 0
             while batch * BATCH_SIZE < total:
-                trigger_pipeline(
-                    "ingestion_position_sync",
-                    variables={
-                        "TIER": tier,
-                        "BATCH": batch,
-                        "FULL_SYNC": kwargs.get("FULL_SYNC", "false"),
-                    },
-                    check_status=True,
-                    error_on_failure=True,
-                    poll_interval=30,
-                    verbose=True,
-                )
+                try:
+                    trigger_pipeline(
+                        "ingestion_position_sync",
+                        variables={
+                            "TIER": tier,
+                            "BATCH": batch,
+                            "FULL_SYNC": kwargs.get("FULL_SYNC", "false"),
+                        },
+                        check_status=True,
+                        error_on_failure=True,
+                        poll_interval=30,
+                        verbose=True,
+                    )
+                    record_status(f'ingestion_position_sync_tier{tier}_batch{batch}', 'success')
+                except Exception as e:
+                    record_status(f'ingestion_position_sync_tier{tier}_batch{batch}', f'failed: {e}')
+                    raise
                 batch += 1
     finally:
         engine.dispose()
