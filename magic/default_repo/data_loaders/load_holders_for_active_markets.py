@@ -1,3 +1,4 @@
+import os
 import time
 
 import requests
@@ -10,18 +11,15 @@ if 'test' not in globals():
 
 DATA_API = "https://data-api.polymarket.com"
 PAGE_SIZE = 500
-MAX_TRADES = 10000
-MIN_TRADE_AMOUNT_USD = 10.0
-MIN_WALLET_VOLUME_USD = 100.0
+TARGET_WALLET_COUNT = int(os.environ.get("TARGET_WALLET_COUNT", 1000))
 
 
 @data_loader
 def load_data_from_api(**kwargs) -> DataFrame:
     addrs: set[str] = set()
-    wallet_volume: dict[str, float] = {}
     offset = 0
     page = 0
-    while offset < MAX_TRADES:
+    while len(addrs) < TARGET_WALLET_COUNT and offset < 10000:
         try:
             resp = requests.get(
                 f"{DATA_API}/trades",
@@ -42,23 +40,16 @@ def load_data_from_api(**kwargs) -> DataFrame:
             pw = t.get("proxyWallet")
             if not pw:
                 continue
-            size = float(t.get("size", 0) or 0)
-            price = float(t.get("price", 0) or 0)
-            amount_usd = size * price
-            if amount_usd < MIN_TRADE_AMOUNT_USD:
-                continue
             addr = pw.lower()
             addrs.add(addr)
-            wallet_volume[addr] = wallet_volume.get(addr, 0) + amount_usd
         offset += PAGE_SIZE
         page += 1
-        print(f"  page {page}: {len(batch)} trades, {len(addrs)} wallets with trades >= ${MIN_TRADE_AMOUNT_USD}")
+        print(f"  page {page}: {len(batch)} trades, {len(addrs)} unique wallets (target: {TARGET_WALLET_COUNT})")
         if len(batch) < PAGE_SIZE:
             break
         time.sleep(0.1)
-    filtered = {w for w in addrs if wallet_volume.get(w, 0) >= MIN_WALLET_VOLUME_USD}
-    print(f"Total unique wallets found: {len(addrs)}, after ${MIN_WALLET_VOLUME_USD} volume filter: {len(filtered)}")
-    return DataFrame({"wallet": sorted(filtered)})
+    print(f"Total unique wallets collected: {len(addrs)}")
+    return DataFrame({"wallet": sorted(addrs)})
 
 
 @test
