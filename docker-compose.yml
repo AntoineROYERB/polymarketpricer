@@ -4,9 +4,9 @@ services:
     environment:
       POSTGRES_DB: polymarket
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: devpassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d
@@ -16,24 +16,24 @@ services:
       dockerfile: Dockerfile
     depends_on: [postgres]
     environment:
-      DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
+      DATABASE_URL: postgresql+asyncpg://app:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/polymarket
       TARGET_WALLET_COUNT: "${TARGET_WALLET_COUNT:-1000}"
       VERIFY_MIN_WALLETS: "${VERIFY_MIN_WALLETS:-500}"
       VERIFY_MIN_TRADES: "${VERIFY_MIN_TRADES:-25000}"
       VERIFY_MIN_WALLET_ANALYTICS: "${VERIFY_MIN_WALLET_ANALYTICS:-2}"
       VERIFY_MIN_RANKING_SNAPSHOTS: "${VERIFY_MIN_RANKING_SNAPSHOTS:-5}"
-    mem_limit: ${MAGE_MEM_LIMIT:-}
+    mem_limit: ${MAGE_MEM_LIMIT:-8g}
     ports:
-      - "6789:6789"
+      - "127.0.0.1:6789:6789"
     volumes:
       - ./magic:/home/src
   app:
     build: .
     depends_on: [postgres]
     environment:
-      DATABASE_URL: postgresql+asyncpg://app:devpassword@postgres:5432/polymarket
+      DATABASE_URL: postgresql+asyncpg://app:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/polymarket
       DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}"
-      ALERT_POLL_INTERVAL_SECONDS: "10"
+      ALERT_POLL_INTERVAL_SECONDS: ${ALERT_POLL_INTERVAL_SECONDS:-10}
     ports:
       - "8000:8000"
 

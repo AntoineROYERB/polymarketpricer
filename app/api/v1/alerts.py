@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.config import settings
 from app.db.models import Alert, Wallet
 from app.models.schemas import AlertItem, AlertListResponse
 from app.services.ws_manager import manager
@@ -86,6 +87,11 @@ async def alert_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
 
 @router.websocket("/ws")
 async def alert_websocket(websocket: WebSocket) -> None:
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = getattr(settings, "cors_origins", ["*"])
+    if origin and allowed_origins != ["*"] and origin not in allowed_origins:
+        await websocket.close(code=4001)
+        return
     await manager.connect(websocket)
     try:
         while True:

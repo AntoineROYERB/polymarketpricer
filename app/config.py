@@ -7,8 +7,9 @@ class Settings(BaseSettings):
     debug: bool = False
     discord_webhook_url: str = ""
     alert_poll_interval_seconds: int = 10
+    cors_origins: list[str] = ["*"]
 
-    model_config = {"env_file": ".env.app", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
