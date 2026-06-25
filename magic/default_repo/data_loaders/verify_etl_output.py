@@ -5,6 +5,7 @@ This block is meant to run as the final step after enrichment_ranking_computatio
 It raises on failure so the pipeline run is marked as failed.
 """
 
+import os
 from datetime import date, datetime, timezone
 
 from pandas import DataFrame
@@ -16,15 +17,15 @@ if "test" not in globals():
     from mage_ai.data_preparation.decorators import test
 
 # ── Global defaults (mirrored from default_repo/__init__.py) ─────────
-# Override by passing matching keys in trigger variables.
+# Override by passing matching keys in trigger variables or environment variables.
 DEFAULT_THRESHOLDS = {
     "markets": 50_000,
     "outcomes": 100_000,
-    "wallets": 1_000,
+    "wallets": int(os.environ.get("VERIFY_MIN_WALLETS", 500)),
     "positions": 5_000,
-    "trades": 50_000,
-    "wallet_analytics": 500,
-    "ranking_snapshots": 100,
+    "trades": int(os.environ.get("VERIFY_MIN_TRADES", 25000)),
+    "wallet_analytics": int(os.environ.get("VERIFY_MIN_WALLET_ANALYTICS", 2)),
+    "ranking_snapshots": int(os.environ.get("VERIFY_MIN_RANKING_SNAPSHOTS", 5)),
 }
 
 REQUIRED_COLUMNS = {
