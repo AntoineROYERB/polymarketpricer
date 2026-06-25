@@ -361,3 +361,94 @@ def test_markets_have_at_least_one_outcome(conn: Connection) -> None:
         )
     ).scalar() or 0
     assert count == 0, f"{count} markets have no outcomes"
+
+
+# ── Phase 3: Smart Money Detection ──────────────────────────────────
+
+
+def test_alerts_table_queryable(conn: Connection) -> None:
+    """Alerts table exists and is queryable."""
+    count: int = conn.execute(text("SELECT COUNT(*) FROM alerts")).scalar() or 0
+    assert count >= 0, "Alerts table query failed"
+
+
+def test_alert_rules_global_default(conn: Connection) -> None:
+    """Global default alert rule exists (wallet IS NULL)."""
+    count: int = conn.execute(
+        text("SELECT COUNT(*) FROM alert_rules WHERE wallet IS NULL")
+    ).scalar() or 0
+    assert count >= 1, "Global default alert rule must exist in alert_rules"
+
+
+def test_alerts_fk_wallet(conn: Connection) -> None:
+    """No orphaned wallet foreign keys in alerts."""
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts a "
+            "LEFT JOIN wallets w ON w.wallet = a.wallet "
+            "WHERE w.wallet IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts referencing non-existent wallets"
+
+
+def test_alerts_fk_market(conn: Connection) -> None:
+    """No orphaned market foreign keys in alerts."""
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts a "
+            "LEFT JOIN markets m ON m.id = a.market_id "
+            "WHERE m.id IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts referencing non-existent markets"
+
+
+def test_alerts_not_null_critical_columns(conn: Connection) -> None:
+    """Critical columns (wallet, market_id, market_question, action, price,
+    position_size, wallet_score, category) have no NULLs."""
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts "
+            "WHERE wallet IS NULL "
+            "   OR market_id IS NULL "
+            "   OR market_question IS NULL "
+            "   OR action IS NULL "
+            "   OR price IS NULL "
+            "   OR position_size IS NULL "
+            "   OR wallet_score IS NULL "
+            "   OR category IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with NULL in critical columns"
+
+
+def test_alerts_score_range(conn: Connection) -> None:
+    """wallet_score must be in [0, 100]."""
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts "
+            "WHERE wallet_score < 0 OR wallet_score > 100"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with wallet_score outside [0, 100]"
+
+
+def test_alerts_position_size_positive(conn: Connection) -> None:
+    """position_size must be strictly positive."""
+    count: int = conn.execute(
+        text("SELECT COUNT(*) FROM alerts WHERE position_size <= 0")
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with non-positive position_size"
+
+
+def test_alerts_valid_actions(conn: Connection) -> None:
+    """All action values must be valid enum members."""
+    rows = conn.execute(
+        text(
+            "SELECT DISTINCT action FROM alerts "
+            "WHERE action NOT IN "
+            "('NEW_POSITION', 'POSITION_INCREASE', 'POSITION_DECREASE', 'FULL_EXIT')"
+        )
+    ).fetchall()
+    assert len(rows) == 0, f"Found invalid alert actions: {rows}"

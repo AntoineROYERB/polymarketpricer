@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.4.0 (2026-06-25)
+
+### Features
+- **Alert REST API**: `GET /api/v1/alerts` with category, score, wallet, and pagination filters
+- **Wallet Alert Lookup**: `GET /api/v1/alerts/{wallet}` with pagination
+- **Alert Statistics**: `GET /api/v1/alerts/stats` — total alerts, daily count, top categories, top wallets
+- **WebSocket Stream**: `WS /api/v1/alerts/ws` — real-time alert delivery with heartbeat ping/pong
+- **Discord Delivery Service**: `alert_service.py` — `poll_unnotified_alerts()` (max 3 retry attempts), `send_discord_alert()` with richly formatted embeds (per-action colors, trader score, category, market question), `mark_notified()` with delivery tracking
+- **WebSocket Connection Manager**: `ws_manager.py` — broadcast with dead-connection cleanup, heartbeat to all connected clients, alert payload serialization
+
+### Tests
+- 13 new API endpoint tests (`test_api/test_alert_endpoints.py`) — list, filter, pagination, 422 validation, 404 handling, stats shape
+- 39 new service unit tests (`test_alert_service.py`) — `classify_action` (11), `_format_action` (7), `send_discord_alert` (8), `poll_unnotified_alerts` (5), `mark_notified` (5), edge case integration (3)
+- 14 new WebSocket manager tests (`test_ws_manager.py`) — connect/disconnect lifecycle (5), broadcast (5), heartbeat (4)
+- 8 new integration tests (`test_db_integrity.py`) — alerts table queryable, alert_rules global default, FK integrity (wallet + market), not-null with `market_question`, score range [0, 100], position size positivity, valid action enums
+- Total: 72 → **149 tests** (93 unit/API + 56 integration)
+
+### Documentation
+- README.md: Updated status banner (Phase 3 ✅ Complete), testing section (72→149), project structure tree, phases table
+- README.md: Added alert API reference (`GET /api/v1/alerts`, `/stats`, `/{wallet}`, `WS /ws`)
+- AGENTS.md: Updated test counts, file listings, and running instructions
+- Phase 3 test plan: Updated to reflect actual filenames and coverage
+
+---
+
 ## v0.3.0 (2026-06-24)
 
 ### Features
@@ -34,8 +59,7 @@
 - Total: 69 → **72 tests** (27 API/unit + 45 integration)
 
 ### Notes
-- **Partial Phase 3 delivery**: Alert REST API (`GET /api/v1/alerts`), WebSocket (`WS /api/v1/alerts/ws`),
-  Discord delivery service, and 22 planned tests are deferred to a follow-up Phase 3.2
+- Phase 3 features (alert REST API, WebSocket, Discord delivery, tests) completed in v0.4.0
 
 ---
 

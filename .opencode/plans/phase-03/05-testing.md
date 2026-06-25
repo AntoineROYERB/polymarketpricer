@@ -1,301 +1,205 @@
 # Phase 3 — Smart Money Detection — Testing
 
 > **Goal**: Verify alert detection, Discord delivery, WebSocket streaming, database integrity, and regression.
-> **AI Agent Instructions**: Add tests to `app/tests/test_api/test_alerts.py` (mocked), add integration tests to `app/tests/test_db_integrity.py`, and add pure unit tests for the action classifier.
+> **AI Agent Instructions**: Integration tests have been appended to `app/tests/test_db_integrity.py`.
+> API and service-layer unit tests already exist at:
+> - `app/tests/test_api/test_alert_endpoints.py` (13 tests)
+> - `app/tests/test_alert_service.py` (39 tests)
+> - `app/tests/test_ws_manager.py` (14 tests)
 
 ---
 
-## 1. Unit / API Tests — `app/tests/test_api/test_alerts.py`
+## 1. Unit / API Tests — Already Implemented
 
-Mock-based tests (no real DB). Uses the existing `conftest.py` pattern with `make_mock_session()`.
+Mock-based tests (no real DB) exist in three files:
 
-```python
-from httpx import AsyncClient, ASGITransport
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+### `app/tests/test_api/test_alert_endpoints.py` — 13 tests
 
-from app.api.dependencies import get_db
-from app.main import app
-from app.tests.conftest import make_mock_session
+| Test | What it validates |
+|------|-------------------|
+| `test_alerts_empty` | 200 with empty data list |
+| `test_alerts_with_limit` | Pagination limit reflected in response |
+| `test_alerts_invalid_limit` | 422 for limit=999 |
+| `test_alerts_negative_offset` | 422 for offset=-1 |
+| `test_alerts_invalid_offset_type` | 422 for offset=abc |
+| `test_alerts_category_filter` | Category filter returns 200 |
+| `test_alerts_min_score_filter` | min_score filter returns 200 |
+| `test_alerts_wallet_filter` | Wallet filter returns 200 |
+| `test_alerts_filters_combined` | Combined filters return 200 |
+| `test_alerts_wallet_not_found` | 404 for non-existent wallet |
+| `test_alerts_wallet_zero_alerts` | 200 with empty data for known wallet with no alerts |
+| `test_alerts_stats_empty` | Stats endpoint returns zeros and empty lists |
+| `test_alerts_stats_shape` | Stats response has all required keys |
 
+### `app/tests/test_alert_service.py` — 39 tests
 
-@pytest.mark.asyncio
-async def test_alerts_list_empty(client: AsyncClient) -> None:
-    """GET /api/v1/alerts returns 200 with empty data list."""
-    response = await client.get("/api/v1/alerts")
-    assert response.status_code == 200
-    data = response.json()
-    assert "data" in data
-    assert data["limit"] == 50
-    assert data["offset"] == 0
+| Test class | Tests | Coverage |
+|---|---|---|
+| `TestClassifyAction` | 11 | `classify_action()` — new, increase, decrease, full exit, no change, edge cases, negative values |
+| `TestFormatAction` | 7 | `_format_action()` — all 4 action types, unknown fallback, precision, large price |
+| `TestSendDiscordAlert` | 8 | `send_discord_alert()` — 200/204 success, 400/500 errors, network timeout, payload shape, color by action, unknown action color |
+| `TestPollUnnotifiedAlerts` | 5 | Query logic, empty results, SQL filters (notified_at IS NULL, delivery_attempts < 3), ordering + limit |
+| `TestMarkNotified` | 5 | Success sets notified_at, failure increments delivery_attempts, no-op when alert not found, UUID filter |
+| `TestEdgeCases` | 3 | Happy path (send + mark), retry after failure |
 
+### `app/tests/test_ws_manager.py` — 14 tests
 
-@pytest.mark.asyncio
-async def test_alerts_with_params(client: AsyncClient) -> None:
-    """Pagination params are reflected in the response."""
-    response = await client.get("/api/v1/alerts?limit=10&offset=5")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["limit"] == 10
-    assert data["offset"] == 5
-
-
-@pytest.mark.asyncio
-async def test_alerts_wallet_not_found(client: AsyncClient) -> None:
-    """GET /api/v1/alerts/{nonexistent} returns 404."""
-    response = await client.get("/api/v1/alerts/0xnonexistent")
-    assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_alerts_ws_connect() -> None:
-    """WebSocket /api/v1/alerts/ws connects successfully and receives ping."""
-    from fastapi.testclient import TestClient
-    ws_client = TestClient(app)
-    with ws_client.websocket_connect("/api/v1/alerts/ws") as ws:
-        data = ws.receive_json(timeout=5)
-        assert data["type"] == "ping"
-
-
-@pytest.mark.asyncio
-async def test_alerts_filter_category(client: AsyncClient) -> None:
-    """Category filter returns 200."""
-    response = await client.get("/api/v1/alerts?category=Politics")
-    assert response.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_alerts_filter_min_score(client: AsyncClient) -> None:
-    """min_score filter returns 200."""
-    response = await client.get("/api/v1/alerts?min_score=80")
-    assert response.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_alerts_stats(client: AsyncClient) -> None:
-    """GET /api/v1/alerts/stats returns aggregated data."""
-    response = await client.get("/api/v1/alerts/stats")
-    assert response.status_code == 200
-    data = response.json()
-    assert "total_alerts" in data
-    assert "alerts_today" in data
-
-
-@pytest.mark.asyncio
-async def test_alert_item_shape(client: AsyncClient) -> None:
-    """Alert item contains all required fields when data is present."""
-    response = await client.get("/api/v1/alerts?limit=1")
-    assert response.status_code == 200
-    data = response.json()
-    if data["data"]:
-        item = data["data"][0]
-        assert "id" in item
-        assert "wallet" in item
-        assert "action" in item
-        assert "wallet_score" in item
-        assert "market_question" in item
-        assert "position_size" in item
-```
+| Test class | Tests | Coverage |
+|---|---|---|
+| `TestConnectionLifecycle` | 5 | Connect adds + accepts, disconnect removes, unknown disconnect safe, multiple connections |
+| `TestBroadcastAlert` | 5 | Sends to all, payload structure, dead connection removal, no connections, partial failure |
+| `TestHeartbeat` | 4 | Sends ping to one, sends to all, removes dead connections, no connections safe |
 
 ---
 
 ## 2. Integration Tests — Add to `test_db_integrity.py`
 
-Real database tests. Append these to the existing file using the same `pg_conn` fixture pattern.
+Real database tests. Appended to the existing file using the same `conn` fixture pattern.
 
 ```python
 # ── Phase 3: Smart Money Detection ──────────────────────────────────
 
-@pytest.mark.integration
-def test_alerts_table_queryable(pg_conn):
+
+def test_alerts_table_queryable(conn: Connection) -> None:
     """Alerts table exists and is queryable."""
-    cur = pg_conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM alerts")
-    count = cur.fetchone()[0]
+    count: int = conn.execute(text("SELECT COUNT(*) FROM alerts")).scalar() or 0
     assert count >= 0, "Alerts table query failed"
 
 
-@pytest.mark.integration
-def test_alert_rules_global_default(pg_conn):
+def test_alert_rules_global_default(conn: Connection) -> None:
     """Global default alert rule exists (wallet IS NULL)."""
-    cur = pg_conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM alert_rules WHERE wallet IS NULL")
-    count = cur.fetchone()[0]
+    count: int = conn.execute(
+        text("SELECT COUNT(*) FROM alert_rules WHERE wallet IS NULL")
+    ).scalar() or 0
     assert count >= 1, "Global default alert rule must exist in alert_rules"
 
 
-@pytest.mark.integration
-def test_alerts_fk_wallet(pg_conn):
+def test_alerts_fk_wallet(conn: Connection) -> None:
     """No orphaned wallet foreign keys in alerts."""
-    cur = pg_conn.cursor()
-    cur.execute("""
-        SELECT COUNT(*) FROM alerts a
-        LEFT JOIN wallets w ON w.wallet = a.wallet
-        WHERE w.wallet IS NULL
-    """)
-    orphans = cur.fetchone()[0]
-    assert orphans == 0, f"Found {orphans} alerts referencing non-existent wallets"
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts a "
+            "LEFT JOIN wallets w ON w.wallet = a.wallet "
+            "WHERE w.wallet IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts referencing non-existent wallets"
 
 
-@pytest.mark.integration
-def test_alerts_fk_market(pg_conn):
+def test_alerts_fk_market(conn: Connection) -> None:
     """No orphaned market foreign keys in alerts."""
-    cur = pg_conn.cursor()
-    cur.execute("""
-        SELECT COUNT(*) FROM alerts a
-        LEFT JOIN markets m ON m.id = a.market_id
-        WHERE m.id IS NULL
-    """)
-    orphans = cur.fetchone()[0]
-    assert orphans == 0, f"Found {orphans} alerts referencing non-existent markets"
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts a "
+            "LEFT JOIN markets m ON m.id = a.market_id "
+            "WHERE m.id IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts referencing non-existent markets"
 
 
-@pytest.mark.integration
-def test_alerts_not_null_critical_columns(pg_conn):
-    """Critical columns (wallet, market_id, action, price, position_size, wallet_score, category) have no NULLs."""
-    cur = pg_conn.cursor()
-    cur.execute("""
-        SELECT COUNT(*) FROM alerts
-        WHERE wallet IS NULL
-           OR market_id IS NULL
-           OR action IS NULL
-           OR price IS NULL
-           OR position_size IS NULL
-           OR wallet_score IS NULL
-           OR category IS NULL
-    """)
-    nulls = cur.fetchone()[0]
-    assert nulls == 0, f"Found {nulls} alerts with NULL in critical columns"
+def test_alerts_not_null_critical_columns(conn: Connection) -> None:
+    """Critical columns (wallet, market_id, market_question, action, price,
+    position_size, wallet_score, category) have no NULLs."""
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts "
+            "WHERE wallet IS NULL "
+            "   OR market_id IS NULL "
+            "   OR market_question IS NULL "
+            "   OR action IS NULL "
+            "   OR price IS NULL "
+            "   OR position_size IS NULL "
+            "   OR wallet_score IS NULL "
+            "   OR category IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with NULL in critical columns"
 
 
-@pytest.mark.integration
-def test_alerts_score_range(pg_conn):
+def test_alerts_score_range(conn: Connection) -> None:
     """wallet_score must be in [0, 100]."""
-    cur = pg_conn.cursor()
-    cur.execute("""
-        SELECT COUNT(*) FROM alerts
-        WHERE wallet_score < 0 OR wallet_score > 100
-    """)
-    bad = cur.fetchone()[0]
-    assert bad == 0, f"Found {bad} alerts with wallet_score outside [0, 100]"
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM alerts "
+            "WHERE wallet_score < 0 OR wallet_score > 100"
+        )
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with wallet_score outside [0, 100]"
 
 
-@pytest.mark.integration
-def test_alerts_position_size_positive(pg_conn):
+def test_alerts_position_size_positive(conn: Connection) -> None:
     """position_size must be strictly positive."""
-    cur = pg_conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM alerts WHERE position_size <= 0")
-    bad = cur.fetchone()[0]
-    assert bad == 0, f"Found {bad} alerts with non-positive position_size"
+    count: int = conn.execute(
+        text("SELECT COUNT(*) FROM alerts WHERE position_size <= 0")
+    ).scalar() or 0
+    assert count == 0, f"Found {count} alerts with non-positive position_size"
 
 
-@pytest.mark.integration
-def test_alerts_valid_actions(pg_conn):
+def test_alerts_valid_actions(conn: Connection) -> None:
     """All action values must be valid enum members."""
-    cur = pg_conn.cursor()
-    cur.execute("""
-        SELECT DISTINCT action FROM alerts
-        WHERE action NOT IN ('NEW_POSITION', 'POSITION_INCREASE', 'POSITION_DECREASE', 'FULL_EXIT')
-    """)
-    bad = cur.fetchall()
-    assert len(bad) == 0, f"Found invalid alert actions: {bad}"
+    rows = conn.execute(
+        text(
+            "SELECT DISTINCT action FROM alerts "
+            "WHERE action NOT IN "
+            "('NEW_POSITION', 'POSITION_INCREASE', 'POSITION_DECREASE', 'FULL_EXIT')"
+        )
+    ).fetchall()
+    assert len(rows) == 0, f"Found invalid alert actions: {rows}"
 ```
 
 ---
 
-## 3. Classifier / Pure Unit Tests — `app/tests/test_action_classifier.py`
+## 3. Service-Layer Tests — Already Implemented
 
-Pure function tests — no DB, no mocking. Tests the `classify_action` function in isolation.
+### `app/tests/test_alert_service.py` — 39 tests
 
-```python
-import pytest
-from app.services.alert_service import classify_action
+Covers `classify_action`, `_format_action`, `send_discord_alert`, `poll_unnotified_alerts`, `mark_notified`, and edge cases. See [section 1](#1-unit--api-tests--already-implemented) for the full breakdown.
 
+### `app/tests/test_ws_manager.py` — 14 tests
 
-class TestClassifyAction:
-    """Tests for the classify_action pure function."""
-
-    def test_new_position_from_zero(self):
-        """Zero/Nothing → positive = NEW_POSITION."""
-        assert classify_action(None, 100) == "NEW_POSITION"
-        assert classify_action(0, 50) == "NEW_POSITION"
-        assert classify_action(0, 1) == "NEW_POSITION"
-
-    def test_increase(self):
-        """Positive increase = POSITION_INCREASE."""
-        assert classify_action(50, 100) == "POSITION_INCREASE"
-        assert classify_action(10, 20) == "POSITION_INCREASE"
-        assert classify_action(1, 5) == "POSITION_INCREASE"
-        assert classify_action(1000, 2000) == "POSITION_INCREASE"
-
-    def test_decrease(self):
-        """Positive decrease (still > 0) = POSITION_DECREASE."""
-        assert classify_action(100, 50) == "POSITION_DECREASE"
-        assert classify_action(20, 10) == "POSITION_DECREASE"
-        assert classify_action(5, 1) == "POSITION_DECREASE"
-
-    def test_full_exit(self):
-        """Positive → zero/NULL = FULL_EXIT."""
-        assert classify_action(100, 0) == "FULL_EXIT"
-        assert classify_action(50, None) == "FULL_EXIT"
-        assert classify_action(1, 0) == "FULL_EXIT"
-        assert classify_action(10, 0.0) == "FULL_EXIT"
-
-    def test_no_change(self):
-        """No meaningful change = None."""
-        assert classify_action(0, 0) is None
-        assert classify_action(None, None) is None
-        assert classify_action(100, 100) is None
-        assert classify_action(0.0, 0.0) is None
-
-    def test_large_numbers(self):
-        """Very large position changes are classified correctly."""
-        assert classify_action(1e6, 1e6 + 1) == "POSITION_INCREASE"
-        assert classify_action(0, 1e6) == "NEW_POSITION"
-        assert classify_action(1e9, 0) == "FULL_EXIT"
-```
+Covers `ConnectionManager.connect`, `disconnect`, `broadcast_alert`, and `send_heartbeat`. See [section 1](#1-unit--api-tests--already-implemented) for the full breakdown.
 
 ---
 
 ## Expected Test Counts
 
-| Suite | File | Existing | New | Total |
-|---|---|---|---|---|
-| Unit / API | `test_api/test_endpoints.py` | 9 | — | 9 |
-| Unit / API | `test_api/test_category_endpoints.py` | 8 | — | 8 |
-| Unit / API | `test_api/test_alerts.py` | — | 8 | 8 |
-| Classifier | `test_action_classifier.py` | — | 6 | 6 |
-| Classifier | `test_category_classifier.py` | 10 | — | 10 |
-| Integration | `test_db_integrity.py` | 42 | 8 | 50 |
-| **Total** | | **69** | **22** | **91** |
+| Suite | File | Tests |
+|---|---|---|
+| Unit / API | `test_api/test_endpoints.py` | 9 |
+| Unit / API | `test_api/test_category_endpoints.py` | 8 |
+| Unit / API | `test_api/test_alert_endpoints.py` | 13 |
+| Unit / API | `test_api/test_category_classifier.py` | 10 |
+| Service | `test_alert_service.py` | 39 |
+| Service / WS | `test_ws_manager.py` | 14 |
+| Integration | `test_db_integrity.py` | 56 (48 existing + 8 new) |
+| **Total** | | **149** |
 
 ---
 
 ## Regression & Migration Verification
 
 ```bash
-# Run all existing tests first — must all still pass
+# Run all tests — must all still pass
 python -m pytest app/tests/ -v
-
-# Run only new Phase 3 tests
-python -m pytest app/tests/test_api/test_alerts.py app/tests/test_action_classifier.py -v
 
 # Run only integration tests (requires running PostgreSQL)
 python -m pytest app/tests/test_db_integrity.py -m integration -v
+
+# Run Phase 3 unit tests only
+python -m pytest app/tests/test_api/test_alert_endpoints.py app/tests/test_alert_service.py app/tests/test_ws_manager.py -v
 
 # Verify migration forward+backward
 alembic upgrade head          # apply 005_smart_money_alerts
 alembic downgrade -1          # drop alerts + alert_rules
 alembic upgrade head          # re-apply — no errors
-python -m pytest app/tests/ -v  # all 91 pass
+python -m pytest app/tests/ -v  # all 149 pass
 ```
 
 ---
 
-## Files to Create / Modify
+## Files Modified
 
-| Action | Path |
-|---|---|
-| CREATE | `app/tests/test_api/test_alerts.py` |
-| CREATE | `app/tests/test_action_classifier.py` |
-| EDIT | `app/tests/test_db_integrity.py` — append 8 integration tests |
+| Action | Path | Detail |
+|---|---|---|
+| EDIT | `app/tests/test_db_integrity.py` | Append 8 integration tests for alerts |
