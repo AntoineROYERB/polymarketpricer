@@ -1,8 +1,12 @@
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 
 from app.api.router import api_router
 from app.config import settings
@@ -13,6 +17,8 @@ from app.services.alert_service import (
     send_discord_alert,
 )
 from app.services.ws_manager import manager
+
+logger = logging.getLogger(__name__)
 
 
 async def alert_delivery_loop() -> None:
@@ -33,8 +39,8 @@ async def alert_delivery_loop() -> None:
                     await mark_notified(str(alert.id), success, db)
 
                     await asyncio.sleep(0.5)
-        except Exception as e:
-            print(f"Alert delivery error: {e}")
+        except Exception:
+            logger.exception("Alert delivery error")
 
         await asyncio.sleep(settings.alert_poll_interval_seconds)
 
@@ -62,6 +68,18 @@ app = FastAPI(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins if hasattr(settings, 'cors_origins') else ["*"],
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 @app.get("/health")

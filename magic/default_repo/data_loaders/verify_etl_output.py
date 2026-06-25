@@ -11,10 +11,73 @@ from datetime import date, datetime, timezone
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
 
+from default_repo.utils.db_helpers import DATABASE_URL
+
 if "data_loader" not in globals():
     from mage_ai.data_preparation.decorators import data_loader
 if "test" not in globals():
     from mage_ai.data_preparation.decorators import test
+
+# ── SQL injection guard: whitelist-only table/column names ────────────
+ALLOWED_TABLES = frozenset({
+    "markets", "outcomes", "wallets", "events", "trades", "positions",
+    "wallet_analytics", "ranking_snapshots", "category_analytics",
+    "category_rankings", "categories", "alerts", "alert_rules",
+    "wallet_pnl_snapshots", "position_history",
+})
+
+ALLOWED_COLUMNS = frozenset({
+    # wallet_analytics columns
+    "total_pnl", "total_realized_pnl", "total_unrealized_pnl", "roi",
+    "total_volume", "total_cost_basis", "win_rate", "num_trades",
+    "num_resolved_positions", "profit_factor", "sharpe_ratio", "max_drawdown",
+    "avg_position_size", "avg_holding_duration", "consistency_score",
+    "experience_score", "wallet_score",
+    # wallets columns
+    "wallet", "proxy_wallet", "is_tracked", "tier", "first_seen", "last_seen",
+    "last_position_sync", "last_trade_sync",
+    # positions columns
+    "market_id", "outcome_id", "side", "status", "avg_entry_price", "shares",
+    "entry_time", "exit_time", "realized_pnl", "unrealized_pnl", "total_pnl",
+    # general
+    "question", "price", "timestamp", "snapshot_date", "category",
+    "id", "label", "condition_id", "list_type", "rank",
+})
+
+
+def _validate_table(tbl: str) -> None:
+    if tbl not in ALLOWED_TABLES:
+        raise ValueError(f"Invalid table name: {tbl}")
+
+
+def _validate_column(col: str) -> None:
+    if col not in ALLOWED_COLUMNS:
+        raise ValueError(f"Invalid column name: {col}")
+
+
+def _validate_condition(condition: str) -> None:
+    """Parse a simple WHERE clause to ensure only known columns are referenced.
+    
+    Extracts bare column names (words followed by comparison operators, IS,
+    IN, etc.) and validates each one against the allowed set.
+    """
+    import re
+    # Match word-boundary identifiers that appear in SQL predicate position
+    tokens = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b', condition)
+    for token in tokens:
+        # Skip SQL keywords
+        if token.upper() in {
+            "AND", "OR", "NOT", "IN", "IS", "NULL", "WHERE", "SELECT",
+            "COUNT", "AS", "ON", "LEFT", "RIGHT", "JOIN", "FROM",
+            "TRUE", "FALSE",
+        }:
+            continue
+        # Skip numeric literals
+        if token.isdigit() or (token.startswith("-") and token[1:].isdigit()):
+            continue
+        if token not in ALLOWED_COLUMNS:
+            raise ValueError(f"Invalid column reference in condition: {token}")
+
 
 # ── Global defaults (mirrored from default_repo/__init__.py) ─────────
 # Override by passing matching keys in trigger variables or environment variables.
@@ -47,8 +110,6 @@ REQUIRED_COLUMNS = {
     ],
 }
 
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
-
 
 @data_loader
 def load_data_from_api(*args, **kwargs) -> DataFrame:
@@ -62,6 +123,7 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
     # ── 1. Row counts ────────────────────────────────────────────────
     print("=== Row counts ===")
     for tbl, min_rows in thresholds.items():
+        _validate_table(tbl)
         count = engine.execute(text(f"SELECT count(*) FROM {tbl}")).scalar()
         if count < min_rows:
             errors.append(f"{tbl}: {count} rows, expected >= {min_rows}")
@@ -71,7 +133,9 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
     # ── 2. NOT NULL on critical columns ──────────────────────────────
     print("=== NOT NULL checks ===")
     for tbl, cols in REQUIRED_COLUMNS.items():
+        _validate_table(tbl)
         for col in cols:
+            _validate_column(col)
             nulls = engine.execute(
                 text(f"SELECT count(*) FROM {tbl} WHERE {col} IS NULL")
             ).scalar()
@@ -89,6 +153,10 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
         ("ranking_snapshots", "wallets", "wallet", "wallet"),
     ]
     for child, parent, c_col, p_col in fk_checks:
+        _validate_table(child)
+        _validate_table(parent)
+        _validate_column(c_col)
+        _validate_column(p_col)
         orphans = engine.execute(
             text(
                 f"SELECT count(*) FROM {child} c "
@@ -111,6 +179,7 @@ def load_data_from_api(*args, **kwargs) -> DataFrame:
         ("experience_score IS NULL", "experience_score NULL"),
     ]
     for condition, label in quality_checks:
+        _validate_condition(condition)
         bad = engine.execute(
             text(f"SELECT count(*) FROM wallet_analytics WHERE {condition}")
         ).scalar()
