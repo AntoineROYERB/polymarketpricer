@@ -6,9 +6,8 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
+from default_repo.utils.db_helpers import DATABASE_URL
 from default_repo.utils.sync_mode import get_sync_cutoff, is_full_sync
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 
 @data_loader

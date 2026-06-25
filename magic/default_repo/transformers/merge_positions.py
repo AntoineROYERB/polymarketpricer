@@ -9,7 +9,8 @@ if 'transformer' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+from default_repo.utils.db_helpers import DATABASE_URL
+
 POS_COLS = [
     "wallet", "market_id", "outcome_id", "side", "status",
     "avg_entry_price", "shares", "entry_time", "exit_time",

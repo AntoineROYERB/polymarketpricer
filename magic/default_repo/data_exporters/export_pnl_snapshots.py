@@ -8,9 +8,7 @@ if 'data_exporter' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from default_repo.utils.db_helpers import safe_value
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+from default_repo.utils.db_helpers import DATABASE_URL, safe_value
 
 NUM_COLS = [
     "total_pnl", "total_realized_pnl", "total_unrealized_pnl",

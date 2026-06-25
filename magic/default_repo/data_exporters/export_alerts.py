@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, text
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+from default_repo.utils.db_helpers import DATABASE_URL
 
 
 @data_exporter

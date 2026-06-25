@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 
 from sqlalchemy import create_engine, text
@@ -14,7 +15,10 @@ sys.path.insert(0, ".")
 
 from magic.default_repo.utils.category_classifier import infer_category
 
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://app:devpassword@localhost:5432/polymarket",
+)
 
 
 def main() -> None:

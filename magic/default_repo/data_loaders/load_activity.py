@@ -12,7 +12,7 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from default_repo.utils.db_helpers import load_condition_map
+from default_repo.utils.db_helpers import DATABASE_URL, load_condition_map
 
 DATA_API = "https://data-api.polymarket.com"
 PAGE_SIZE = 500
@@ -205,7 +205,7 @@ def load_data_from_api(tracked: DataFrame, *args, **kwargs) -> DataFrame:
     print("Loading condition_id -> market_id and category maps...")
     cond_map = load_condition_map()
 
-    engine = create_engine("postgresql://app:devpassword@postgres:5432/polymarket")
+    engine = create_engine(DATABASE_URL)
     market_cat = DataFrame(engine.execute(
         text("SELECT id AS market_id, mapped_category AS category FROM markets "
              "WHERE mapped_category IS NOT NULL")

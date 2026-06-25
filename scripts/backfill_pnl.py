@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 
 sys.path.insert(0, ".")
@@ -19,9 +20,7 @@ from sqlalchemy import create_engine, text
 from magic.default_repo.data_loaders.load_activity import (
     classify_activity_type,
 )
-from magic.default_repo.utils.db_helpers import load_condition_map
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+from magic.default_repo.utils.db_helpers import DATABASE_URL, load_condition_map
 
 
 DATA_API = "https://data-api.polymarket.com"

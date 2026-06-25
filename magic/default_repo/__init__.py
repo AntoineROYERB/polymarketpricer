@@ -5,6 +5,8 @@ and the post-run verification block. Override at trigger runtime
 by passing matching keys in trigger variables.
 """
 
+import os
+
 # ── Row count thresholds for post-run verification ───────────────────
 POLYMARKET_MIN_MARKETS = 50_000
 POLYMARKET_MIN_OUTCOMES = 100_000
@@ -30,7 +32,10 @@ POLYMARKET_TIMEOUT_RANKING = 30
 POLYMARKET_TOTAL_SLA_SECONDS = 300  # 5 minutes
 
 # ── Database ─────────────────────────────────────────────────────────
-POLYMARKET_DB_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+POLYMARKET_DB_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://app:devpassword@postgres:5432/polymarket",
+)
 
 # ── Required columns per table (for NOT NULL verification) ───────────
 POLYMARKET_REQUIRED_COLUMNS = {

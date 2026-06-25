@@ -6,10 +6,8 @@ from sqlalchemy import create_engine, text
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
 
-from default_repo.utils.db_helpers import safe_value
+from default_repo.utils.db_helpers import DATABASE_URL, safe_value
 from default_repo.utils.tier_assignment import assign_tier
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 
 NUM_COLS = [
