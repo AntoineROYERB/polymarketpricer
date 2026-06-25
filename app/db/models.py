@@ -335,7 +335,7 @@ class AlertRule(Base):
 
     id = Column(Uuid, primary_key=True, server_default=text("gen_random_uuid()"))
     wallet = Column(Text, nullable=True, unique=True)
-    min_score = Column(Numeric(8, 6), nullable=False, server_default=text("80.0"))
+    min_score = Column(Numeric(8, 6), nullable=False, server_default=text("0.80"))
     min_position_size = Column(Numeric(28, 2), nullable=False, server_default=text("500"))
     min_liquidity = Column(Numeric(28, 2), nullable=False, server_default=text("1000"))
     cooldown_minutes = Column(Integer, nullable=False, server_default=text("15"))

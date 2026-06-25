@@ -61,7 +61,7 @@ def upgrade() -> None:
     # Seed global default rule
     op.execute("""
         INSERT INTO alert_rules (wallet, min_score, min_position_size, min_liquidity, cooldown_minutes)
-        VALUES (NULL, 80.0, 500, 1000, 15)
+        VALUES (NULL, 0.80, 500, 1000, 15)
     """)
 
 
