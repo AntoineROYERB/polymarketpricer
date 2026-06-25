@@ -22,6 +22,38 @@ docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.
 docker compose exec app alembic upgrade head
 ```
 
+## Environment Configuration
+
+The project uses a two-file `.env` system:
+
+| File | Tracked by git | Purpose |
+|------|---------------|---------|
+| `.env.sample` | **Yes** | Template with placeholder values and explanatory comments. Copy this to `.env`. |
+| `.env` | **No** (`.gitignore`) | Actual secrets and config. Per-developer, never committed. |
+
+```bash
+# First time setup
+cp .env.sample .env
+# Then edit .env with your actual values
+```
+
+### Variables overview
+
+| Variable | Required? | Default | Used by | Description |
+|----------|-----------|---------|---------|-------------|
+| `DATABASE_URL` | ✅ | — | `app/`, `mage/` | Asyncpg connection string (use `localhost` for local dev, `postgres` inside Docker) |
+| `POSTGRES_DB` | ✅ | `polymarket` | `postgres` service | Database name |
+| `POSTGRES_USER` | ✅ | `app` | `postgres` service | Database user |
+| `POSTGRES_PASSWORD` | ✅ | `devpassword` | `postgres` service | Database password |
+| `DISCORD_WEBHOOK_URL` | ❌ (alerts off) | empty | `app/` | Discord webhook for smart money alerts |
+| `ALERT_POLL_INTERVAL_SECONDS` | ❌ | `10` | `app/` | Background poll interval for new alerts |
+| `MAGE_MEM_LIMIT` | ❌ | none (no limit) | `mage` service | Docker memory limit (e.g. `4g`, `8g`) |
+| `TARGET_WALLET_COUNT` | ❌ | `1000` | `mage/` | Target wallets to discover |
+| `FULL_SYNC` | ❌ | `false` | `mage/` | Set to `true` to force full sync (bypass incremental) |
+| `VERIFY_MIN_*` | ❌ | see `.env.sample` | `mage/` | Row count thresholds for ETL verification |
+
+> **`DATABASE_URL` inside Docker Compose:** The `docker-compose.yml` hardcodes `postgresql+asyncpg://app:devpassword@postgres:5432/polymarket` for the `mage` and `app` services (using the Docker network hostname `postgres`). The `.env` value is used when running the app or Mage scripts outside Docker (with `localhost`).
+
 ## ETL Pipelines
 
 10 Mage AI pipelines under `magic/default_repo/pipelines/`:
@@ -186,6 +218,8 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 
 ```
 .
+├── .env                       # Local config (gitignored — copy from .env.sample)
+├── .env.sample                # Template with placeholder values
 ├── docker-compose.yml         # PostgreSQL + Redis + Mage + app
 ├── Dockerfile                 # FastAPI app image
 ├── requirements.txt
