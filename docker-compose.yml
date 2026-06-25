@@ -17,6 +17,7 @@ services:
     depends_on: [postgres]
     environment:
       DATABASE_URL: postgresql+asyncpg://app:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/polymarket
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}"
       TARGET_WALLET_COUNT: "${TARGET_WALLET_COUNT:-1000}"
       VERIFY_MIN_WALLETS: "${VERIFY_MIN_WALLETS:-500}"
       VERIFY_MIN_TRADES: "${VERIFY_MIN_TRADES:-25000}"

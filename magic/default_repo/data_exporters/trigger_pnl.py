@@ -3,19 +3,26 @@ if 'data_exporter' not in globals():
 
 from mage_ai.orchestration.triggers.api import trigger_pipeline
 
+from default_repo.utils.pipeline_status import record_status
+
 
 @data_exporter
 def export_data(data, **kwargs) -> None:
     for tier in [1, 2, 3]:
-        trigger_pipeline(
-            'ingestion_pnl',
-            variables={
-                "TIER": tier,
-                "FULL_SYNC": kwargs.get("FULL_SYNC", "false"),
-            },
-            check_status=False,
-            error_on_failure=True,
-            poll_interval=30,
-            poll_timeout=300,
-            verbose=True,
-        )
+        try:
+            trigger_pipeline(
+                'ingestion_pnl',
+                variables={
+                    "TIER": tier,
+                    "FULL_SYNC": kwargs.get("FULL_SYNC", "false"),
+                },
+                check_status=False,
+                error_on_failure=True,
+                poll_interval=30,
+                poll_timeout=300,
+                verbose=True,
+            )
+            record_status(f'ingestion_pnl_tier{tier}', 'success')
+        except Exception as e:
+            record_status(f'ingestion_pnl_tier{tier}', f'failed: {e}')
+            raise
