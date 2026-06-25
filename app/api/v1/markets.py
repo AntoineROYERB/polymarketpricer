@@ -16,9 +16,14 @@ async def markets(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> MarketListResponse:
+    from app.utils.category import validate_category
+
     stmt = select(Market)
-    if category:
-        stmt = stmt.where(Market.category == category)
+    if category is not None:
+        norm_category = validate_category(category)
+        if norm_category is None:
+            return MarketListResponse(data=[], limit=limit, offset=offset)
+        stmt = stmt.where(Market.category == norm_category)
     stmt = stmt.limit(limit).offset(offset)
 
     result = await db.execute(stmt)

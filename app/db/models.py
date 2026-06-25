@@ -161,6 +161,10 @@ class PositionHistory(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+    __table_args__ = (
+        Index("idx_position_history_recorded_at", "recorded_at"),
+    )
+
 
 class WalletAnalytic(Base):
     __tablename__ = "wallet_analytics"
@@ -321,6 +325,8 @@ class Alert(Base):
         Index("idx_alerts_detected_at", "detected_at"),
         Index("idx_alerts_category", "category"),
         Index("idx_alerts_wallet", "wallet"),
+        Index("idx_alerts_unnotified", "notified_at"),
+        Index("idx_alerts_wallet_market", "wallet", "market_id"),
     )
 
 
@@ -360,3 +366,8 @@ class WalletPnlSnapshot(Base):
     open_position_value = Column(Numeric(28, 2), nullable=True)
     computed_at = Column(DateTime(timezone=True), nullable=False,
                          server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_pnl_snapshots_date", "snapshot_date"),
+        Index("idx_pnl_snapshots_wallet_date", "wallet", "snapshot_date"),
+    )

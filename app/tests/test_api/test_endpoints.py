@@ -77,3 +77,49 @@ async def test_market_summary_shape(client: AsyncClient) -> None:
         assert "volume_usd" in market
         assert "winning_outcome" in market
         assert "close_time" in market
+
+
+@pytest.mark.asyncio
+async def test_get_wallet_profile_success(client: AsyncClient) -> None:
+    """Test successful wallet profile response with mocked service layer."""
+    from unittest.mock import patch
+
+    mock_profile = {
+        "wallet": "0x1234",
+        "proxy_wallet": None,
+        "label": "Test Wallet",
+        "is_tracked": True,
+        "first_seen": "2026-01-01T00:00:00Z",
+        "last_seen": "2026-06-01T00:00:00Z",
+    }
+    from unittest.mock import MagicMock
+    mock_analytics = MagicMock()
+    mock_analytics.total_pnl = 50000.0
+    mock_analytics.roi = 0.25
+    mock_analytics.win_rate = 0.65
+    mock_analytics.num_trades = 120
+    mock_analytics.wallet_score = 85.5
+    mock_analytics.avg_holding_duration = None
+    mock_analytics.total_volume = 100000.0
+    mock_analytics.avg_position_size = 500.0
+    mock_analytics.sharpe_ratio = 1.5
+    mock_analytics.profit_factor = 2.0
+    mock_analytics.max_drawdown = -0.15
+    mock_analytics.consistency_score = 0.8
+    mock_analytics.experience_score = 0.7
+    mock_positions: list[object] = []
+
+    with (
+        patch("app.api.v1.wallets.get_wallet_profile", return_value=mock_profile),
+        patch("app.api.v1.wallets.get_wallet_analytics", return_value=mock_analytics),
+        patch("app.api.v1.wallets.get_wallet_positions", return_value=mock_positions),
+        patch("app.api.v1.wallets.get_wallet_categories_data", return_value=[]),
+    ):
+        response = await client.get("/api/v1/wallets/0x1234")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet"] == "0x1234"
+        assert data["analytics"]["total_pnl"] == "50000.0"
+        assert data["analytics"]["roi"] == "0.25"
+        assert data["analytics"]["num_trades"] == 120
+        assert data["current_positions"] == []
