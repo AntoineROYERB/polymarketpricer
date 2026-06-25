@@ -39,6 +39,8 @@ ALLOWED_COLUMNS = frozenset({
     # positions columns
     "market_id", "outcome_id", "side", "status", "avg_entry_price", "shares",
     "entry_time", "exit_time", "realized_pnl", "unrealized_pnl", "total_pnl",
+    # trades columns
+    "amount_usd", "fee_usd", "tx_hash",
     # general
     "question", "price", "timestamp", "snapshot_date", "category",
     "id", "label", "condition_id", "list_type", "rank",
