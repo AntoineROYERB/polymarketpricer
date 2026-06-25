@@ -32,7 +32,7 @@ def export_data(alerts: DataFrame, **kwargs) -> None:
                               SELECT (cooldown_minutes || ' minutes')::interval
                               FROM alert_rules
                               WHERE (wallet = :wallet OR wallet IS NULL)
-                              ORDER BY wallet NULLS LAST
+                              ORDER BY CASE WHEN wallet = :wallet THEN 0 ELSE 1 END, wallet NULLS LAST
                               LIMIT 1
                           ),
                           '15 minutes'::interval

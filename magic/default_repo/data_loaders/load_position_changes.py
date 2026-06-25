@@ -14,6 +14,7 @@ DETECTION_WINDOW_MINUTES = 24 * 60  # 1440 minutes = full daily window for @dail
 
 EXPECTED_COLUMNS = [
     "wallet", "market_id", "shares_before", "shares_after",
+    "pnl_change",
     "market_question", "liquidity_usd", "category",
 ]
 
@@ -31,6 +32,7 @@ def load_data(*args, **kwargs) -> DataFrame:
                 ph.market_id,
                 ph.shares_before,
                 ph.shares_after,
+                COALESCE(ph.pnl_change, 0) AS pnl_change,
                 m.question AS market_question,
                 m.liquidity_usd,
                 COALESCE(m.mapped_category, m.category, 'unknown') AS category

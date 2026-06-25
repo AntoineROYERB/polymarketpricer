@@ -105,9 +105,11 @@ def transform_df(positions: DataFrame, *args, **kwargs) -> dict:
                                               pnl_change, recorded_at)
                 SELECT wallet, market_id, outcome_id, side,
                        shares_before, shares_after,
-                       COALESCE(realized_pnl, 0) - COALESCE(pnl_before, 0),
+                       COALESCE(realized_pnl, 0) - COALESCE(pnl_before, 0) AS pnl_change,
                        %(now)s
                 FROM changed
+                WHERE shares_before IS DISTINCT FROM shares_after
+                   OR COALESCE(realized_pnl, 0) != COALESCE(pnl_before, 0)
             """, {"now": now})
             changed_count = cur.rowcount
             print(f"Changed positions: {changed_count}")
@@ -133,6 +135,7 @@ def transform_df(positions: DataFrame, *args, **kwargs) -> dict:
                 SELECT wallet, market_id, outcome_id, side,
                        shares_before, 0, 0, %(now)s
                 FROM closed
+                WHERE shares_before != 0
             """, {"now": now})
             closed_count = cur.rowcount
             print(f"Closed positions: {closed_count}")
@@ -153,6 +156,7 @@ def transform_df(positions: DataFrame, *args, **kwargs) -> dict:
                 SELECT wallet, market_id, outcome_id, side,
                        shares_before, 0, 0, %(now)s
                 FROM closed
+                WHERE shares_before != 0
             """, {"now": now})
             closed_count = cur.rowcount
             print(f"Closed positions (no API data): {closed_count}")

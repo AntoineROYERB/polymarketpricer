@@ -75,9 +75,7 @@ def detect_alerts(changes: DataFrame, scores: DataFrame, rules: DataFrame, *args
         if float(row.get("wallet_score", 0)) < float(rule.get("min_score", 0.80)):
             continue
 
-        position_size = abs(
-            float(row["shares_after"]) - float(row["shares_before"])
-        )
+        position_size = abs(float(row.get("pnl_change", 0)))
         if position_size < float(rule.get("min_position_size", 500)):
             continue
 
