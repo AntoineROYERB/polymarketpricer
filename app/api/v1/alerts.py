@@ -1,4 +1,3 @@
-import asyncio
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -48,13 +47,11 @@ async def list_alerts(
 
 @router.get("/stats", response_model=dict)
 async def alert_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    total, today = await asyncio.gather(
-        db.execute(select(sa_func.count(Alert.id))),
-        db.execute(
-            select(sa_func.count(Alert.id)).where(
-                Alert.detected_at >= sa_func.current_date()
-            )
-        ),
+    total = await db.execute(select(sa_func.count(Alert.id)))
+    today = await db.execute(
+        select(sa_func.count(Alert.id)).where(
+            Alert.detected_at >= sa_func.current_date()
+        )
     )
 
     cat_rows = await db.execute(
