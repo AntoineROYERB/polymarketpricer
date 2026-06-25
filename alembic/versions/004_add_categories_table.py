@@ -36,7 +36,10 @@ def upgrade() -> None:
     ]
     for cat, label in categories_data:
         op.execute(
-            f"INSERT INTO categories (category, label) VALUES ('{cat}', '{label}')"
+            sa.text(
+                "INSERT INTO categories (category, label) VALUES (:cat, :label)"
+            ),
+            {"cat": cat, "label": label},
         )
 
     op.create_foreign_key(
