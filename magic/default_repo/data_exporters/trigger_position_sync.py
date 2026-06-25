@@ -4,9 +4,8 @@ if 'data_exporter' not in globals():
 from mage_ai.orchestration.triggers.api import trigger_pipeline
 from sqlalchemy import create_engine, text
 
+from default_repo.utils.db_helpers import DATABASE_URL
 from default_repo.utils.sync_mode import get_sync_cutoff, is_full_sync
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 BATCH_SIZE = 5000
 
 

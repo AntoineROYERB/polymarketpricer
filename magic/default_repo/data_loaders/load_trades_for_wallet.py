@@ -11,14 +11,12 @@ if 'data_loader' not in globals():
 if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
-from default_repo.utils.db_helpers import load_condition_map
+from default_repo.utils.db_helpers import DATABASE_URL, load_condition_map
 
 DATA_API = "https://data-api.polymarket.com"
 PAGE_SIZE = 500
 BATCH_WALLETS = 200
 INSERT_BATCH = 1000
-
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
 
 INSERT_SQL = text("""
     INSERT INTO trades (id, wallet, market_id, outcome_id, side, type,

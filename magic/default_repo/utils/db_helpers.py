@@ -2,11 +2,15 @@
 
 import functools
 import math
+import os
 
 from pandas import isna
 from sqlalchemy import create_engine, text
 
-DATABASE_URL = "postgresql://app:devpassword@postgres:5432/polymarket"
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://app:devpassword@postgres:5432/polymarket",
+)
 
 
 @functools.lru_cache(maxsize=1)
