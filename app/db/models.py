@@ -317,6 +317,12 @@ class Alert(Base):
     wallet_rel = relationship("Wallet", backref="alerts")
     market_rel = relationship("Market", backref="alerts")
 
+    __table_args__ = (
+        Index("idx_alerts_detected_at", "detected_at"),
+        Index("idx_alerts_category", "category"),
+        Index("idx_alerts_wallet", "wallet"),
+    )
+
 
 class AlertRule(Base):
     __tablename__ = "alert_rules"

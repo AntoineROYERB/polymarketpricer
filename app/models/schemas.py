@@ -142,6 +142,28 @@ class CategoryItem(BaseModel):
     label: str
 
 
+class AlertItem(BaseModel):
+    id: str
+    wallet: str
+    market_id: str
+    market_question: str
+    action: str
+    price: Decimal
+    position_size: Decimal
+    wallet_score: Decimal
+    category: str
+    detected_at: datetime
+    notified_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AlertListResponse(BaseModel):
+    data: list[AlertItem]
+    limit: int
+    offset: int
+
+
 class MarketSummary(BaseModel):
     id: str
     question: str

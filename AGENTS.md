@@ -120,21 +120,35 @@ Classifier source: `magic/default_repo/utils/category_classifier.py`
 
 ## Testing
 
-The project has three test suites:
+The project has four test suites:
 
-### Unit / API Tests (27 tests)
+### Unit / API Tests (40 tests)
 
 Mock-based tests that verify endpoint behaviour without a real database:
 
 ```bash
-python3 -m pytest app/tests/test_api/ app/tests/test_category_classifier.py -v
+python3 -m pytest app/tests/test_api/ -v
 ```
 
 | File | Tests | What it validates |
 |---|---|---|---|
 | `test_endpoints.py` | 9 | Phase 1 endpoints (leaderboard, wallets, markets) |
 | `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
+| `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
 | `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
+
+### Service / Unit Tests (53 tests)
+
+Pure function and mocked-service tests:
+
+```bash
+python3 -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py -v
+```
+
+| File | Tests | What it validates |
+|---|---|---|---|
+| `test_alert_service.py` | 39 | `classify_action`, `_format_action`, `send_discord_alert`, `poll_unnotified_alerts`, `mark_notified`, edge cases |
+| `test_ws_manager.py` | 14 | Connection lifecycle, broadcast, heartbeat, dead connection cleanup |
 
 ### Integration Tests (real database)
 
@@ -145,15 +159,15 @@ ETL pipeline output. Requires `docker compose up -d` (postgres service running).
 # Run only integration tests
 python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 
-# Run all tests (72 total)
+# Run all tests (149 total)
 python3 -m pytest app/tests/ -v
 ```
 
-What the 45 integration tests check:
+What the 56 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
-| Row counts | 8 | Each populated table meets a minimum row threshold |
+| Row counts | 11 | Each populated table meets a minimum row threshold |
 | Referential integrity | 9 | No orphaned foreign keys across all FK relationships (incl. `wallet_pnl_snapshots`) |
 | Not-null constraints | 8 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics, pnl_snapshot keys) have no NULLs |
 | Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
@@ -161,6 +175,8 @@ What the 45 integration tests check:
 | Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
 | Cross-table consistency | 5 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets`, pnl_snapshot FK valid |
 | ROI range (relaxed) | 1 | Category analytics ROI within [-100000, 500000] |
+| **Alerts (Phase 3)** | **8** | Alerts table queryable, alert_rules global default, FK (wallet, market), NOT NULL (8 cols), score range [0,100], position_size > 0, valid action enums |
+| **PnL snapshot** | 3 | Consistency, bounds, plus 1 combined with row counts |
 
 **Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
 concurrency issues with parametrized test functions. The sync URL is derived from
@@ -184,14 +200,17 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 │   ├── services/              # Business logic
 │   ├── models/                # Pydantic schemas
 │   └── tests/                 # Test suites
+│       ├── __init__.py
+│       ├── conftest.py            # Shared mock fixtures
+│       ├── test_alert_service.py  # 39 alert service tests
+│       ├── test_category_classifier.py# 10 classifier unit tests
+│       ├── test_ws_manager.py     # 14 WebSocket manager tests
 │       ├── test_api/              # Mock-based API tests
 │       │   ├── __init__.py
 │       │   ├── test_endpoints.py          # 9 endpoint tests
-│       │   ├── test_category_endpoints.py # 8 Phase 2 endpoint tests
-│       │   └── test_category_classifier.py# 10 classifier unit tests
-│       ├── __init__.py
-│       ├── conftest.py            # Shared mock fixtures
-│       └── test_db_integrity.py   # 45 integration tests
+│       │   ├── test_alert_endpoints.py # 13 Phase 3 alert endpoint tests
+│       │   └── test_category_endpoints.py # 8 Phase 2 endpoint tests
+│       └── test_db_integrity.py   # 56 integration tests
 │
 ├── alembic/                   # DB migrations
 │   └── versions/

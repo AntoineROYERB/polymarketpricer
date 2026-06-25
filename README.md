@@ -4,7 +4,7 @@
 
 Identify the most skilled Polymarket traders, measure their performance by niche, detect when they open new positions, and generate actionable alerts.
 
-> **Status:** Phase 3 — Smart Money Detection 🚧 In Progress (Data Pipeline Complete; API/Alerts deferred to Phase 3.2)
+> **Status:** Phase 3 — Smart Money Detection ✅ Complete (Action Classification, Alert REST API, WebSocket Streaming, Discord Delivery, Alert Testing Suite)
 
 ---
 
@@ -149,11 +149,14 @@ uvicorn app.main:app --reload
 
 ### Testing
 
-The project has two test suites:
+The project has four test suites:
 
 ```bash
 # Unit / API tests (mocked, no Docker needed)
 python -m pytest app/tests/test_api/ -v
+
+# Service / classifier unit tests (mocked, no Docker needed)
+python -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py -v
 
 # Integration tests (requires docker compose up -d)
 python -m pytest app/tests/test_db_integrity.py -m integration -v
@@ -165,9 +168,10 @@ python -m pytest app/tests/ -v
 python -m pytest app/tests/ --cov=app -v
 ```
 
-The **72 tests** (27 API + 45 integration) validate row counts, referential integrity,
+The **149 tests** (93 unit/API + 56 integration) validate row counts, referential integrity,
 not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
-and data filtering — with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
+data filtering, alert classification logic, Discord delivery, and WebSocket streaming —
+with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
 
 ### Code Quality
 
@@ -210,19 +214,27 @@ pre-commit run --all-files
 │   │   ├── engine.py            # AsyncEngine + session factory
 │   │   └── models.py            # SQLAlchemy ORM (10 tables)
 │   ├── services/
+│   │   ├── alert_service.py     # Discord delivery, action classification
+│   │   ├── category_service.py  # Category leaderboards, wallet breakdown
+│   │   ├── category_classifier.py  # Thin wrapper around keyword classifier
 │   │   ├── leaderboard_service.py
 │   │   ├── wallet_service.py
-│   │   ├── category_service.py  # Category leaderboards, wallet breakdown
-│   │   └── category_classifier.py  # Thin wrapper around keyword classifier
+│   │   └── ws_manager.py        # WebSocket connection manager
 │   ├── models/
 │   │   ├── schemas.py           # Pydantic response models
 │   │   └── enums.py             # TradeSide, MarketCategory
 │   └── tests/
-│       ├── conftest.py          # Mock DB fixtures
-│       └── test_api/
-│           ├── test_endpoints.py
-│           ├── test_category_endpoints.py  # Phase 2 category API tests
-│           └── test_category_classifier.py # Phase 2 classifier unit tests
+│       ├── __init__.py
+│       ├── conftest.py              # Mock DB fixtures
+│       ├── test_alert_service.py    # Alert delivery service tests (39)
+│       ├── test_category_classifier.py  # Phase 2 classifier unit tests
+│       ├── test_ws_manager.py       # WebSocket manager tests (14)
+│       ├── test_api/
+│       │   ├── __init__.py
+│       │   ├── test_endpoints.py
+│       │   ├── test_alert_endpoints.py  # Phase 3 alert API tests (13)
+│       │   └── test_category_endpoints.py  # Phase 2 category API tests
+│       └── test_db_integrity.py   # 56 integration tests
 │
 ├── alembic/                     # Database migrations
 │   ├── env.py
@@ -400,6 +412,71 @@ Detailed analytics for a specific wallet+category combination.
 
 ---
 
+### `GET /api/v1/alerts`
+
+List detected smart money alerts.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | int | 50 | Results per page (max 200) |
+| `offset` | int | 0 | Pagination offset |
+| `category` | string | — | Filter by category (case-insensitive) |
+| `min_score` | decimal | — | Minimum wallet score |
+| `wallet` | string | — | Partial-match filter on wallet address |
+
+**Example response:**
+```json
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-...",
+      "wallet": "0x1234...",
+      "market_id": "12345",
+      "market_question": "Will candidate X win?",
+      "action": "NEW_POSITION",
+      "price": "0.420000000000",
+      "position_size": "12000.00",
+      "wallet_score": "89.500000",
+      "category": "Politics",
+      "detected_at": "2026-06-24T12:00:00Z",
+      "notified_at": null
+    }
+  ],
+  "limit": 50,
+  "offset": 0
+}
+```
+
+### `GET /api/v1/alerts/{wallet}`
+
+Alerts for a specific wallet address (paginated).
+
+### `GET /api/v1/alerts/stats`
+
+Aggregated alert statistics.
+
+**Example response:**
+```json
+{
+  "total_alerts": 142,
+  "alerts_today": 12,
+  "top_categories": [
+    {"category": "Politics", "count": 58},
+    {"category": "Crypto", "count": 43}
+  ],
+  "top_wallets": [
+    {"wallet": "0x1234...", "alert_count": 15},
+    {"wallet": "0xabcd...", "alert_count": 10}
+  ]
+}
+```
+
+### `WS /api/v1/alerts/ws`
+
+Real-time WebSocket stream of new smart money alerts. The server sends heartbeat pings (`{"type": "ping"}`) and alert payloads (`{"type": "alert", "payload": {...}}`). Clients should respond with `{"type": "pong"}` to keep the connection alive.
+
+---
+
 ## Database Schema
 
 | Table | Purpose |
@@ -425,7 +502,7 @@ Detailed analytics for a specific wallet+category combination.
 | 0 — Feasibility Study | ✅ Complete | Data source validation, rate limits, architecture |
 | 1 — MVP Leaderboard | ✅ Complete | FastAPI backend + Mage ETL pipelines |
 | 2 — Niche Expertise | ✅ Complete | Category-specific rankings and specialist detection |
-| 3 — Smart Money Detection | 🚧 In Progress | Real-time alerts via Telegram/Discord (Data Pipeline Complete; API/Alerts deferred) |
+| 3 — Smart Money Detection | ✅ Complete | Action classification, alert rules engine, PnL cash-flow reconstruction, REST API (`GET /api/v1/alerts`), WebSocket stream (`WS /api/v1/alerts/ws`), Discord delivery service, alert testing suite |
 | 4 — Edge Scoring | 📋 Planned | Predictive accuracy metrics |
 | 5 — Recommendation Engine | 📋 Planned | Follow recommendations |
 | 6 — Dashboard | 📋 Planned | Next.js frontend |
