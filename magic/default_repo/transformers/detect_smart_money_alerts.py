@@ -37,10 +37,10 @@ def get_applicable_rule(wallet: str, rules_df: DataFrame, market_volume: float =
         return global_rule.iloc[0].to_dict()
 
     if market_volume < 100_000:
-        return {"min_score": 60, "min_position_size": 200, "min_liquidity": 500, "cooldown_minutes": 15}
+        return {"min_score": 0.60, "min_position_size": 200, "min_liquidity": 500, "cooldown_minutes": 15}
     if market_volume < 1_000_000:
-        return {"min_score": 80, "min_position_size": 500, "min_liquidity": 1000, "cooldown_minutes": 15}
-    return {"min_score": 85, "min_position_size": 1000, "min_liquidity": 2000, "cooldown_minutes": 15}
+        return {"min_score": 0.80, "min_position_size": 500, "min_liquidity": 1000, "cooldown_minutes": 15}
+    return {"min_score": 0.85, "min_position_size": 1000, "min_liquidity": 2000, "cooldown_minutes": 15}
 
 
 @transformer
@@ -72,7 +72,7 @@ def detect_alerts(changes: DataFrame, scores: DataFrame, rules: DataFrame, *args
 
         rule = get_applicable_rule(row["wallet"], rules)
 
-        if float(row.get("wallet_score", 0)) < float(rule.get("min_score", 80)):
+        if float(row.get("wallet_score", 0)) < float(rule.get("min_score", 0.80)):
             continue
 
         position_size = abs(
