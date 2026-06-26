@@ -20,15 +20,8 @@ def load_data_from_api(active_wallets: DataFrame, *args, **kwargs) -> DataFrame:
         text("""
             SELECT
                 p.wallet, p.market_id, p.realized_pnl, p.unrealized_pnl, p.total_pnl,
-                p.status, p.entry_time, p.exit_time,
-                wps.total_pnl AS pnl_accurate,
-                wps.total_realized_pnl AS realized_accurate,
-                wps.total_unrealized_pnl AS unrealized_accurate,
-                wps.category_breakdown
+                p.status, p.entry_time, p.exit_time
             FROM positions p
-            LEFT JOIN wallet_pnl_snapshots wps
-                ON p.wallet = wps.wallet
-                AND wps.snapshot_date = CURRENT_DATE
             WHERE p.wallet = ANY(:wallets)
               AND p.entry_time >= CURRENT_DATE - INTERVAL '90 days'
         """),
