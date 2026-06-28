@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Alert
@@ -51,55 +51,29 @@ def _format_action(action: str, price: float) -> str:
     return labels.get(action, action)
 
 
-async def send_discord_alert(alert: Alert, webhook_url: str) -> bool:
+def _build_discord_embed(alert: Alert) -> dict:
     color = DISCORD_EMBED_COLORS.get(str(alert.action), 0x95A5A6)
-
-    embed = {
+    return {
         "embeds": [{
             "title": "🚨 Smart Money Alert",
             "color": color,
             "fields": [
-                {
-                    "name": "Trader",
-                    "value": f"`{alert.wallet[:10]}...{alert.wallet[-4:]}`",
-                    "inline": True,
-                },
-                {
-                    "name": "Score",
-                    "value": str(alert.wallet_score),
-                    "inline": True,
-                },
-                {
-                    "name": "Category",
-                    "value": alert.category,
-                    "inline": True,
-                },
-                {
-                    "name": "Action",
-                    "value": _format_action(str(alert.action), float(alert.price)),
-                    "inline": True,
-                },
-                {
-                    "name": "Market",
-                    "value": alert.market_question,
-                    "inline": False,
-                },
-                {
-                    "name": "Price",
-                    "value": f"${float(alert.price):.4f}",
-                    "inline": True,
-                },
-                {
-                    "name": "Position Size",
-                    "value": f"${float(alert.position_size):,.2f}",
-                    "inline": True,
-                },
+                {"name": "Trader", "value": f"`{alert.wallet[:10]}...{alert.wallet[-4:]}`", "inline": True},
+                {"name": "Score", "value": str(alert.wallet_score), "inline": True},
+                {"name": "Category", "value": alert.category, "inline": True},
+                {"name": "Action", "value": _format_action(str(alert.action), float(alert.price)), "inline": True},
+                {"name": "Market", "value": alert.market_question, "inline": False},
+                {"name": "Price", "value": f"${float(alert.price):.4f}", "inline": True},
+                {"name": "Position Size", "value": f"${float(alert.position_size):,.2f}", "inline": True},
             ],
             "footer": {"text": "Polymarket Smart Money Tracker"},
             "timestamp": alert.detected_at.isoformat(),
         }]
     }
 
+
+async def send_discord_alert(alert: Alert, webhook_url: str) -> bool:
+    embed = _build_discord_embed(alert)
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             resp = await client.post(webhook_url, json=embed)
@@ -109,13 +83,17 @@ async def send_discord_alert(alert: Alert, webhook_url: str) -> bool:
 
 
 async def mark_notified(alert_id: str, success: bool, db: AsyncSession) -> None:
-    stmt = select(Alert).where(Alert.id == alert_id)
-    result = await db.execute(stmt)
-    alert = result.scalar_one_or_none()
-    if alert is None:
-        return
     if success:
-        alert.notified_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+        stmt = (
+            update(Alert)
+            .where(Alert.id == alert_id)
+            .values(notified_at=datetime.now(timezone.utc))
+        )
     else:
-        alert.delivery_attempts = (alert.delivery_attempts or 0) + 1  # type: ignore[assignment]
+        stmt = (
+            update(Alert)
+            .where(Alert.id == alert_id)
+            .values(delivery_attempts=Alert.delivery_attempts + 1)
+        )
+    await db.execute(stmt)
     await db.commit()
