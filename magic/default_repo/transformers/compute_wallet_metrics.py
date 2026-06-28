@@ -212,7 +212,7 @@ def compute_metrics_for_wallet(
         "avg_holding_duration": avg_holding_duration,
         "consistency_score": consistency_score,
         "experience_score": experience_score,
-        "wallet_score": None,
+        "wallet_score": 0,
     }
 
 
