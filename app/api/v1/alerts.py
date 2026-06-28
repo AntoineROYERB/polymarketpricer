@@ -11,12 +11,15 @@ from app.config import settings
 from app.db.models import Alert, Wallet
 from app.models.schemas import AlertItem, AlertListResponse
 from app.services.ws_manager import manager
-from app.utils.decimal_helpers import to_decimal
-
 router = APIRouter()
 
 
-@router.get("", response_model=AlertListResponse)
+@router.get(
+    "",
+    response_model=AlertListResponse,
+    summary="List Alerts",
+    description="Smart money alerts, filterable by category, score, or wallet.",
+)
 async def list_alerts(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -45,7 +48,12 @@ async def list_alerts(
     )
 
 
-@router.get("/stats", response_model=dict)
+@router.get(
+    "/stats",
+    response_model=dict,
+    summary="Alert Statistics",
+    description="Aggregate counts and top categories/wallets for alerts.",
+)
 async def alert_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     total = await db.execute(select(sa_func.count(Alert.id)))
     today = await db.execute(
@@ -83,7 +91,10 @@ async def alert_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.websocket("/ws")
-async def alert_websocket(websocket: WebSocket) -> None:
+async def alert_websocket(
+    websocket: WebSocket,
+) -> None:
+    """Real-time smart money alert stream via WebSocket."""
     origin = websocket.headers.get("origin", "")
     allowed_origins = getattr(settings, "cors_origins", ["*"])
     if origin and allowed_origins != ["*"] and origin not in allowed_origins:
@@ -99,7 +110,12 @@ async def alert_websocket(websocket: WebSocket) -> None:
         manager.disconnect(websocket)
 
 
-@router.get("/{wallet}", response_model=AlertListResponse)
+@router.get(
+    "/{wallet}",
+    response_model=AlertListResponse,
+    summary="Wallet Alerts",
+    description="Alerts triggered for a specific wallet.",
+)
 async def wallet_alerts(
     wallet: str,
     limit: int = Query(default=50, ge=1, le=200),
@@ -128,16 +144,4 @@ async def wallet_alerts(
 
 
 def _alert_to_item(a: Alert) -> AlertItem:
-    return AlertItem(
-        id=str(a.id),
-        wallet=a.wallet,  # type: ignore[arg-type]
-        market_id=a.market_id,  # type: ignore[arg-type]
-        market_question=a.market_question,  # type: ignore[arg-type]
-        action=a.action,  # type: ignore[arg-type]
-        price=to_decimal(a.price),
-        position_size=to_decimal(a.position_size),
-        wallet_score=to_decimal(a.wallet_score),
-        category=a.category,  # type: ignore[arg-type]
-        detected_at=a.detected_at,  # type: ignore[arg-type]
-        notified_at=a.notified_at,  # type: ignore[arg-type]
-    )
+    return AlertItem.model_validate(a)

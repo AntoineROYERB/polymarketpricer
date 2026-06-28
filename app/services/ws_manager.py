@@ -3,17 +3,33 @@ from fastapi import WebSocket
 from app.db.models import Alert
 
 
+MAX_WS_CONNECTIONS = 100
+
+
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket) -> None:
+        if len(self.active_connections) >= MAX_WS_CONNECTIONS:
+            await websocket.close(code=1013)
+            return
         await websocket.accept()
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket) -> None:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+
+    async def _broadcast(self, send_fn) -> None:
+        dead = []
+        for conn in self.active_connections:
+            try:
+                await send_fn(conn)
+            except Exception:
+                dead.append(conn)
+        for conn in dead:
+            self.disconnect(conn)
 
     async def broadcast_alert(self, alert: Alert) -> None:
         payload = {
@@ -31,24 +47,10 @@ class ConnectionManager:
                 "detected_at": alert.detected_at.isoformat(),
             },
         }
-        dead_connections = []
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(payload)
-            except Exception:
-                dead_connections.append(connection)
-        for conn in dead_connections:
-            self.disconnect(conn)
+        await self._broadcast(lambda conn: conn.send_json(payload))
 
     async def send_heartbeat(self) -> None:
-        dead = []
-        for conn in self.active_connections:
-            try:
-                await conn.send_json({"type": "ping"})
-            except Exception:
-                dead.append(conn)
-        for c in dead:
-            self.disconnect(c)
+        await self._broadcast(lambda conn: conn.send_json({"type": "ping"}))
 
 
 manager = ConnectionManager()

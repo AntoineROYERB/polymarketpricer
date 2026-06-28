@@ -9,7 +9,12 @@ from app.models.schemas import MarketListResponse, MarketSummary
 router = APIRouter()
 
 
-@router.get("", response_model=MarketListResponse)
+@router.get(
+    "",
+    response_model=MarketListResponse,
+    summary="List Markets",
+    description="All markets, optionally filtered by category.",
+)
 async def markets(
     category: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
