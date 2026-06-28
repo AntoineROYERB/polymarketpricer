@@ -48,6 +48,7 @@ ROW_THRESHOLDS = {
     "category_analytics": 100,
     "category_rankings": 100,
     "wallet_pnl_snapshots": 100,
+    "wallet_edge_snapshots": 50,
 }
 
 EMPTY_TABLES: set[str] = set()
@@ -452,3 +453,111 @@ def test_alerts_valid_actions(conn: Connection) -> None:
         )
     ).fetchall()
     assert len(rows) == 0, f"Found invalid alert actions: {rows}"
+
+
+# ── Phase 4: Edge Scoring ──────────────────────────────────────────
+
+
+def test_wallet_edge_snapshots_queryable(conn: Connection) -> None:
+    count: int = conn.execute(
+        text("SELECT COUNT(*) FROM wallet_edge_snapshots")
+    ).scalar() or 0
+    assert count >= 0, "wallet_edge_snapshots query failed"
+
+
+def test_wallet_edge_snapshots_fk(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots wes "
+            "LEFT JOIN wallets w ON w.wallet = wes.wallet "
+            "WHERE w.wallet IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots referencing non-existent wallets"
+    )
+
+
+def test_wallet_edge_snapshots_not_null(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots "
+            "WHERE wallet IS NULL "
+            "   OR snapshot_date IS NULL "
+            "   OR avg_edge IS NULL "
+            "   OR num_edge_trades IS NULL"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots with NULL in critical columns"
+    )
+
+
+def test_wallet_edge_snapshots_score_range(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots "
+            "WHERE edge_score < 0 OR edge_score > 1"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots with edge_score outside [0, 1]"
+    )
+
+
+def test_wallet_edge_snapshots_consistency_range(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots "
+            "WHERE edge_consistency < 0 OR edge_consistency > 1"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots with edge_consistency outside [0, 1]"
+    )
+
+
+def test_wallet_edge_snapshots_volatility_non_negative(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots "
+            "WHERE edge_volatility < 0"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots with negative edge_volatility"
+    )
+
+
+def test_wallet_edge_snapshots_avg_edge_bounds(conn: Connection) -> None:
+    count: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM wallet_edge_snapshots "
+            "WHERE avg_edge < -100 OR avg_edge > 100"
+        )
+    ).scalar() or 0
+    assert count == 0, (
+        f"Found {count} edge snapshots with avg_edge outside [-100, 100]"
+    )
+
+
+def test_wallet_analytics_edge_score_column(conn: Connection) -> None:
+    result: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = 'wallet_analytics' "
+            "AND column_name = 'edge_score'"
+        )
+    ).scalar() or 0
+    assert result == 1, "edge_score column missing from wallet_analytics"
+
+
+def test_ranking_snapshots_edge_score_column(conn: Connection) -> None:
+    result: int = conn.execute(
+        text(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = 'ranking_snapshots' "
+            "AND column_name = 'edge_score'"
+        )
+    ).scalar() or 0
+    assert result == 1, "edge_score column missing from ranking_snapshots"
