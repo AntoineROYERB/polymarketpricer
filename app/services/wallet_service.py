@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Market, Position, Wallet, WalletAnalytic
+from app.db.models import Market, Position, Wallet, WalletAnalytic, WalletEdgeSnapshot
 from app.models.schemas import PositionSummary
 
 
@@ -57,3 +57,17 @@ async def get_wallet_positions(
         )
         for p, q in rows
     ]
+
+
+async def get_latest_edge_snapshot(
+    db: AsyncSession,
+    address: str,
+) -> Optional[WalletEdgeSnapshot]:
+    stmt = (
+        select(WalletEdgeSnapshot)
+        .where(WalletEdgeSnapshot.wallet == address)
+        .order_by(WalletEdgeSnapshot.snapshot_date.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
