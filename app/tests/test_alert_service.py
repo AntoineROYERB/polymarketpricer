@@ -317,36 +317,39 @@ class TestMarkNotified:
         alert = make_alert()
         db = make_mock_db(alert)
         await mark_notified(str(alert.id), success=True, db=db)
-        assert alert.notified_at is not None
+        db.execute.assert_awaited_once()
         db.commit.assert_awaited_once()
+        call_args = db.execute.call_args
+        stmt = str(call_args[0][0].compile())
+        assert "UPDATE" in stmt.upper()
+        assert "notified_at" in stmt
 
     @pytest.mark.asyncio
     async def test_failure_increments_delivery_attempts(self) -> None:
         alert = make_alert(delivery_attempts=0)
         db = make_mock_db(alert)
         await mark_notified(str(alert.id), success=False, db=db)
-        assert alert.notified_at is None
-        assert alert.delivery_attempts == 1
+        db.execute.assert_awaited_once()
         db.commit.assert_awaited_once()
+        call_args = db.execute.call_args
+        stmt = str(call_args[0][0].compile())
+        assert "UPDATE" in stmt.upper()
+        assert "delivery_attempts" in stmt
 
     @pytest.mark.asyncio
     async def test_failure_increments_twice(self) -> None:
         alert = make_alert(delivery_attempts=2)
         db = make_mock_db(alert)
         await mark_notified(str(alert.id), success=False, db=db)
-        assert alert.delivery_attempts == 3
+        db.execute.assert_awaited_once()
         db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_noop_when_alert_not_found(self) -> None:
-        db = make_mock_db()  # alert is None
-        db.execute = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        db.execute.return_value = mock_result
-
+        db = make_mock_db()
         await mark_notified(str(uuid4()), success=True, db=db)
-        db.commit.assert_not_called()
+        db.execute.assert_awaited_once()
+        db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_uses_correct_uuid_filter(self) -> None:
@@ -358,7 +361,7 @@ class TestMarkNotified:
         assert call_args is not None
         stmt = call_args[0][0]
         sql = str(stmt.compile())
-        assert "from alerts" in sql.lower()
+        assert "UPDATE" in sql.upper()
         assert "WHERE" in sql
         assert "alerts.id" in sql.lower() or "alerts." in sql.lower()
 
@@ -381,8 +384,12 @@ class TestEdgeCases:
         assert success is True
 
         await mark_notified(str(alert.id), success=True, db=db)
-        assert alert.notified_at is not None
-        assert alert.delivery_attempts == 0
+        db.execute.assert_awaited_once()
+        db.commit.assert_awaited_once()
+        call_args = db.execute.call_args
+        stmt = str(call_args[0][0].compile())
+        assert "UPDATE" in stmt.upper()
+        assert "notified_at" in stmt
 
     @pytest.mark.asyncio
     async def test_retry_after_failure(self) -> None:
@@ -397,5 +404,9 @@ class TestEdgeCases:
         assert success is False
 
         await mark_notified(str(alert.id), success=False, db=db)
-        assert alert.notified_at is None
-        assert alert.delivery_attempts == 1
+        db.execute.assert_awaited_once()
+        db.commit.assert_awaited_once()
+        call_args = db.execute.call_args
+        stmt = str(call_args[0][0].compile())
+        assert "UPDATE" in stmt.upper()
+        assert "delivery_attempts" in stmt
