@@ -9,7 +9,7 @@ if 'test' not in globals():
     from mage_ai.data_preparation.decorators import test
 
 
-def normalize(series, default=0.5):
+def normalize(series: pd.Series, default: float = 0.5) -> pd.Series:
     mn, mx = series.min(), series.max()
     if mx == mn:
         return pd.Series(default, index=series.index)
@@ -32,16 +32,16 @@ def transform_df(df: DataFrame, *args, **kwargs) -> dict:
     df["sharpe_ratio"] = to_numeric(df["sharpe_ratio"], errors="coerce").fillna(0)
     df["total_pnl"] = to_numeric(df["total_pnl"], errors="coerce").fillna(0)
     df["num_trades"] = to_numeric(df["num_trades"], errors="coerce").fillna(0)
+    df["edge_score"] = to_numeric(df["edge_score"], errors="coerce").fillna(0)
 
     norm_roi = normalize(df["roi"])
-    norm_winrate = normalize(df["win_rate"])
     norm_sharpe = normalize(df["sharpe_ratio"])
 
     df["wallet_score"] = (
-        0.35 * norm_roi
-        + 0.25 * norm_winrate
-        + 0.15 * df["consistency_score"]
-        + 0.15 * df["experience_score"]
+        0.40 * df["edge_score"]
+        + 0.20 * df["consistency_score"]
+        + 0.20 * norm_roi
+        + 0.10 * df["experience_score"]
         + 0.10 * norm_sharpe
     )
 
@@ -59,13 +59,8 @@ def transform_df(df: DataFrame, *args, **kwargs) -> dict:
     consistent = df.nlargest(10, "consistency_score").copy()
     consistent["list_type"] = "consistent"
 
-    all_lists = DataFrame()
-    if not top_100.empty:
-        all_lists = pd.concat([all_lists, top_100], ignore_index=True)
-    if not emerging.empty:
-        all_lists = pd.concat([all_lists, emerging], ignore_index=True)
-    if not consistent.empty:
-        all_lists = pd.concat([all_lists, consistent], ignore_index=True)
+    frames = [frame for frame in (top_100, emerging, consistent) if not frame.empty]
+    all_lists = pd.concat(frames, ignore_index=True) if frames else DataFrame()
 
     if not all_lists.empty:
         all_lists = all_lists.drop_duplicates(subset=["wallet", "list_type"])
@@ -80,9 +75,12 @@ def transform_df(df: DataFrame, *args, **kwargs) -> dict:
     ranking_cols = [
         "wallet", "snapshot_date", "list_type", "rank", "wallet_score",
         "roi", "win_rate", "consistency_score", "experience_score",
-        "risk_adj_return", "total_pnl", "num_trades",
+        "risk_adj_return", "total_pnl", "num_trades", "edge_score",
     ]
-    rankings = all_lists[[c for c in ranking_cols if c in all_lists.columns]].copy() if not all_lists.empty else DataFrame(columns=ranking_cols)
+    if not all_lists.empty:
+        rankings = all_lists[[c for c in ranking_cols if c in all_lists.columns]].copy()
+    else:
+        rankings = DataFrame(columns=ranking_cols)
 
     wallet_scores = df[["wallet", "wallet_score"]].copy()
     wallet_scores["snapshot_date"] = today
