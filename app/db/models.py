@@ -188,6 +188,7 @@ class WalletAnalytic(Base):
     consistency_score = Column(Numeric(28, 6), nullable=True)
     experience_score = Column(Numeric(28, 6), nullable=True)
     wallet_score = Column(Numeric(28, 6), nullable=True)
+    edge_score = Column(Numeric(8, 6), nullable=True)
 
     __table_args__ = (
         Index(
@@ -213,6 +214,7 @@ class RankingSnapshot(Base):
     risk_adj_return = Column(Numeric(8, 6), nullable=True)
     total_pnl = Column(Numeric(28, 2), nullable=True)
     num_trades = Column(Integer, nullable=True)
+    edge_score = Column(Numeric(8, 6), nullable=True)
 
     __table_args__ = (
         Index(
@@ -370,4 +372,28 @@ class WalletPnlSnapshot(Base):
     __table_args__ = (
         Index("idx_pnl_snapshots_date", "snapshot_date"),
         Index("idx_pnl_snapshots_wallet_date", "wallet", "snapshot_date"),
+    )
+
+
+class WalletEdgeSnapshot(Base):
+    __tablename__ = "wallet_edge_snapshots"
+
+    wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
+    snapshot_date = Column(Date, primary_key=True)
+    avg_edge = Column(Numeric(28, 6), nullable=False)
+    median_edge = Column(Numeric(28, 6), nullable=True)
+    edge_consistency = Column(Numeric(8, 6), nullable=True)
+    edge_volatility = Column(Numeric(28, 6), nullable=True)
+    edge_score = Column(Numeric(8, 6), nullable=True)
+    num_edge_trades = Column(Integer, nullable=False)
+    positive_edge_trades = Column(Integer, nullable=True)
+    negative_edge_trades = Column(Integer, nullable=True)
+    computed_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("idx_ws_wallet_date", "wallet", text("snapshot_date DESC")),
+        Index("idx_ws_date", text("snapshot_date DESC")),
+        Index("idx_ws_edge_score", text("edge_score DESC")),
     )
