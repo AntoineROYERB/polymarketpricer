@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, text
 
 _DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://app:devpassword@postgres:5432/polymarket",
+    "postgresql+asyncpg://app:changeme@postgres:5432/polymarket",
 )
 # Mage blocks use synchronous SQLAlchemy — replace async driver with sync driver.
 # The FastAPI backend (app/) uses its own async engine from app/db/engine.py.

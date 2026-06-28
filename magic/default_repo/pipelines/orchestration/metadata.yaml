@@ -115,13 +115,13 @@ blocks:
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - trigger_analytics
+  - trigger_edge_scoring
   uuid: trigger_ranking
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
   downstream_blocks:
-  - trigger_verify
+  - trigger_edge_scoring
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -132,8 +132,25 @@ blocks:
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - trigger_ranking
+  - trigger_analytics
   uuid: trigger_category_analytics
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - trigger_verify
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: trigger_edge_scoring
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - trigger_category_analytics
+  uuid: trigger_edge_scoring
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
@@ -149,7 +166,7 @@ blocks:
   timeout: null
   type: data_exporter
   upstream_blocks:
-  - trigger_category_analytics
+  - trigger_edge_scoring
   uuid: trigger_verify
 - all_upstream_blocks_executed: false
   color: null
