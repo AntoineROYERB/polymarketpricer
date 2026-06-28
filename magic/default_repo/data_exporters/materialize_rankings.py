@@ -7,6 +7,36 @@ if 'data_exporter' not in globals():
 from default_repo.utils.db_helpers import DATABASE_URL
 
 
+INSERT_RANKING_SQL = """
+    INSERT INTO ranking_snapshots (
+        wallet, snapshot_date, list_type, rank, wallet_score,
+        roi, win_rate, consistency_score, experience_score,
+        risk_adj_return, total_pnl, num_trades, edge_score
+    ) VALUES (
+        :wallet, :snapshot_date, :list_type, :rank, :wallet_score,
+        :roi, :win_rate, :consistency_score, :experience_score,
+        :risk_adj_return, :total_pnl, :num_trades, :edge_score
+    )
+"""
+
+_INSERT_FIELDS = [
+    "wallet_score", "roi", "win_rate", "consistency_score",
+    "experience_score", "risk_adj_return", "total_pnl", "num_trades", "edge_score",
+]
+
+
+def _ranking_row_params(row) -> dict:
+    params = {
+        "wallet": row["wallet"],
+        "snapshot_date": row["snapshot_date"],
+        "list_type": row["list_type"],
+        "rank": row["rank"],
+    }
+    for f in _INSERT_FIELDS:
+        params[f] = row.get(f)
+    return params
+
+
 @data_exporter
 def export_data(data: dict, **kwargs) -> None:
     rankings = data.get("rankings", DataFrame())
@@ -19,43 +49,9 @@ def export_data(data: dict, **kwargs) -> None:
 
     print(f"Materializing {len(rankings)} ranking rows, updating {len(wallet_scores)} wallet scores")
     with engine.begin() as conn:
-        result = conn.execute(
-            text("""
-                DELETE FROM ranking_snapshots
-                WHERE snapshot_date = CURRENT_DATE
-            """)
-        )
-        print(f"Deleted {result.rowcount} existing ranking snapshots for today")
-
-    with engine.begin() as conn:
-        for _, row in rankings.iterrows():
-            conn.execute(
-                text("""
-                    INSERT INTO ranking_snapshots (
-                        wallet, snapshot_date, list_type, rank, wallet_score,
-                        roi, win_rate, consistency_score, experience_score,
-                        risk_adj_return, total_pnl, num_trades
-                    ) VALUES (
-                        :wallet, :snapshot_date, :list_type, :rank, :wallet_score,
-                        :roi, :win_rate, :consistency_score, :experience_score,
-                        :risk_adj_return, :total_pnl, :num_trades
-                    )
-                """),
-                {
-                    "wallet": row["wallet"],
-                    "snapshot_date": row["snapshot_date"],
-                    "list_type": row["list_type"],
-                    "rank": row["rank"],
-                    "wallet_score": row.get("wallet_score"),
-                    "roi": row.get("roi"),
-                    "win_rate": row.get("win_rate"),
-                    "consistency_score": row.get("consistency_score"),
-                    "experience_score": row.get("experience_score"),
-                    "risk_adj_return": row.get("risk_adj_return"),
-                    "total_pnl": row.get("total_pnl"),
-                    "num_trades": row.get("num_trades"),
-                },
-            )
+        conn.execute(text("DELETE FROM ranking_snapshots WHERE snapshot_date = CURRENT_DATE"))
+        params_list = [_ranking_row_params(row) for _, row in rankings.iterrows()]
+        conn.execute(text(INSERT_RANKING_SQL), params_list)
 
     if not wallet_scores.empty:
         print(f"Updating wallet_score in wallet_analytics for {len(wallet_scores)} wallets")
