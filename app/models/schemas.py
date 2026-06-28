@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -15,6 +15,9 @@ class LeaderboardEntry(BaseModel):
     num_trades: int
     consistency_score: Decimal
     experience_score: Decimal
+    edge_score: Optional[Decimal] = None
+    edge_consistency: Optional[Decimal] = None
+    num_edge_trades: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -58,6 +61,37 @@ class WalletAnalyticsData(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WalletEdgeSnapshot(BaseModel):
+    wallet: str
+    snapshot_date: Optional[date] = None
+    avg_edge: Decimal
+    median_edge: Optional[Decimal] = None
+    edge_consistency: Optional[Decimal] = None
+    edge_volatility: Optional[Decimal] = None
+    edge_score: Optional[Decimal] = None
+    num_edge_trades: int
+    positive_edge_trades: Optional[int] = None
+    negative_edge_trades: Optional[int] = None
+    computed_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class EdgeLeaderboardEntry(BaseModel):
+    wallet: str
+    edge_score: Decimal
+    avg_edge: Decimal
+    edge_consistency: Optional[Decimal] = None
+    num_edge_trades: int
+    rank: int
+
+
+class EdgeLeaderboardResponse(BaseModel):
+    data: list[EdgeLeaderboardEntry]
+    limit: int
+    offset: int
+
+
 class WalletProfile(BaseModel):
     wallet: str
     main_wallet: Optional[str] = None
@@ -71,6 +105,7 @@ class WalletProfile(BaseModel):
     current_positions: list[PositionSummary] = []
     rank: Optional[int] = None
     categories: list["WalletCategorySummary"] = []
+    edge_metrics: Optional[WalletEdgeSnapshot] = None
 
     model_config = {"from_attributes": True}
 
@@ -183,7 +218,4 @@ class MarketListResponse(BaseModel):
     data: list[MarketSummary]
     limit: int
     offset: int
-
-
-
 
