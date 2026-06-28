@@ -349,6 +349,18 @@ wallet_score = (
 )
 ```
 
+> ✅ **Phase 4 Complete — v0.4.0** (2026-06-27)
+
+| Deliverable | Status |
+|---|---|
+| Database schema (migration `017_add_edge_scoring.py`) | ✅ Complete |
+| `enrichment_edge_scoring` pipeline (FIFO matching, min-max normalization) | ✅ Complete |
+| Ranking formula update (`0.40×edge + 0.20×consistency + 0.20×roi + 0.10×experience + 0.10×sharpe`) | ✅ Complete |
+| `GET /api/v1/leaderboard/edge` | ✅ Complete |
+| `GET /api/v1/wallets/{address}/edge` | ✅ Complete |
+| Edge-integrated wallet profile (`edge_metrics` on `GET /api/v1/wallets/{address}`) | ✅ Complete |
+| 26 new tests (10 unit + 7 API + 9 integration) | ✅ Complete |
+
 ---
 
 # Phase 5 — Follow Recommendation Engine

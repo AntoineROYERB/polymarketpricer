@@ -6,7 +6,7 @@ import time
 import requests
 
 GAMMA_API = "https://gamma-api.polymarket.com"
-PAGE_SIZE = 100
+PAGE_SIZE = 500
 MAX_PAGES = 500
 
 
@@ -59,19 +59,51 @@ def _parse_json_list(raw, default=None):
     return raw if isinstance(raw, list) else default
 
 
+def compute_winner_from_prices(market: dict) -> str | None:
+    """Detect the winning outcome label from outcomePrices.
+
+    After resolution, Polymarket sets the winning token's price to 1.0
+    and the losing token's price to 0.0. We detect this by checking
+    if any outcome price >= 0.99.
+    """
+    if not market.get("closed"):
+        return None
+    try:
+        outcomes = _parse_json_list(market.get("outcomes", "[]"))
+        prices = _parse_json_list(market.get("outcomePrices", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    for i, price in enumerate(prices):
+        try:
+            if float(price) >= 0.99 and i < len(outcomes):
+                return outcomes[i]
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
 def build_market_rows(markets: list[dict]) -> list[dict]:
     """Convert raw Gamma market objects into normalised rows with merged outcomes."""
     rows = []
     for m in markets:
         outcomes_list = _parse_json_list(m.get("outcomes", "[]"))
         outcome_prices = _parse_json_list(m.get("outcomePrices", "[]"))
+        winner_label = compute_winner_from_prices(m)
 
         outcomes_merged = []
         for i, label in enumerate(outcomes_list):
+            raw_price = outcome_prices[i] if i < len(outcome_prices) else None
+            is_winner = False
+            if raw_price is not None:
+                try:
+                    is_winner = float(raw_price) >= 0.99
+                except (ValueError, TypeError):
+                    pass
             outcomes_merged.append({
                 "id": f"{m['id']}_{i}",
                 "label": label,
-                "price": outcome_prices[i] if i < len(outcome_prices) else None,
+                "price": raw_price,
+                "winner": is_winner,
             })
 
         event = None
@@ -96,7 +128,7 @@ def build_market_rows(markets: list[dict]) -> list[dict]:
             "close_time": m.get("endDate"),
             "created_at": m.get("startDate"),
             "resolved_at": m.get("resolvedAt"),
-            "winning_outcome": m.get("outcome"),
+            "winning_outcome": winner_label or m.get("outcome"),
             "outcomes": outcomes_merged,
         })
     return rows

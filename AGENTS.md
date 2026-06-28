@@ -56,7 +56,21 @@ cp .env.sample .env
 
 ## ETL Pipelines
 
-10 Mage AI pipelines under `magic/default_repo/pipelines/`:
+```mermaid
+flowchart LR
+    ingestion_market_discovery --> ingestion_wallet_discovery
+    ingestion_wallet_discovery --> ingestion_position_sync
+    ingestion_position_sync --> ingestion_pnl
+    ingestion_pnl --> ingestion_trade_history
+    ingestion_trade_history --> enrichment_analytics_computation
+    enrichment_analytics_computation --> enrichment_ranking_computation
+    enrichment_ranking_computation --> category_analytics
+    category_analytics --> enrichment_edge_scoring
+    enrichment_edge_scoring --> smart_money_detection
+    smart_money_detection --> verify_etl_output
+```
+
+11 Mage AI pipelines under `magic/default_repo/pipelines/`:
 
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|---|
@@ -68,6 +82,7 @@ cp .env.sample .env
 | `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
 | `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
 | `category_analytics` | PG queries (markets + categories) | Per-category PnL, ROI, win rate, specialist flag | `category_analytics`, `category_rankings` |
+| `enrichment_edge_scoring` | PG queries (resolved trades + outcomes) | FIFO buy/sell matching, edge per trade, min-max normalization | `wallet_edge_snapshots` |
 | `smart_money_detection` | PG queries (position changes, scores, rules) | Classify actions, apply score/size/liquidity thresholds | `alerts` |
 | `verify_etl_output` | PG integrity checks | — | — |
 
@@ -167,6 +182,7 @@ python3 -m pytest app/tests/test_api/ -v
 | `test_endpoints.py` | 9 | Phase 1 endpoints (leaderboard, wallets, markets) |
 | `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
 | `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
+| `test_edge_endpoints.py` | 7 | Phase 4 edge endpoints (leaderboard, wallet edge, 404/422) |
 | `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
 
 ### Service / Unit Tests (53 tests)
@@ -181,6 +197,7 @@ python3 -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py -
 |---|---|---|---|
 | `test_alert_service.py` | 39 | `classify_action`, `_format_action`, `send_discord_alert`, `poll_unnotified_alerts`, `mark_notified`, edge cases |
 | `test_ws_manager.py` | 14 | Connection lifecycle, broadcast, heartbeat, dead connection cleanup |
+| `test_edge_scoring.py` | 10 | Edge computation (FIFO matching, normalization, empty/zero edge cases) |
 
 ### Integration Tests (real database)
 
@@ -191,15 +208,15 @@ ETL pipeline output. Requires `docker compose up -d` (postgres service running).
 # Run only integration tests
 python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 
-# Run all tests (149 total)
+# Run all tests (175 total)
 python3 -m pytest app/tests/ -v
 ```
 
-What the 56 integration tests check:
+What the 64 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
-| Row counts | 11 | Each populated table meets a minimum row threshold |
+| Row counts | 12 | Each populated table meets a minimum row threshold |
 | Referential integrity | 9 | No orphaned foreign keys across all FK relationships (incl. `wallet_pnl_snapshots`) |
 | Not-null constraints | 8 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics, pnl_snapshot keys) have no NULLs |
 | Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
@@ -209,6 +226,7 @@ What the 56 integration tests check:
 | ROI range (relaxed) | 1 | Category analytics ROI within [-100000, 500000] |
 | **Alerts (Phase 3)** | **8** | Alerts table queryable, alert_rules global default, FK (wallet, market), NOT NULL (8 cols), score range [0,100], position_size > 0, valid action enums |
 | **PnL snapshot** | 3 | Consistency, bounds, plus 1 combined with row counts |
+| **Edge Scoring (Phase 4)** | **9** | Edge snapshots queryable, FK, NOT NULL (4 cols), edge_score in [0,1], edge_consistency in [0,1], edge_volatility ≥ 0, avg_edge bounds, edge_score column in wallet_analytics, edge_score column in ranking_snapshots |
 
 **Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
 concurrency issues with parametrized test functions. The sync URL is derived from

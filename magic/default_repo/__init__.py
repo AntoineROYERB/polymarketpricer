@@ -34,7 +34,7 @@ POLYMARKET_TOTAL_SLA_SECONDS = 300  # 5 minutes
 # ── Database ─────────────────────────────────────────────────────────
 POLYMARKET_DB_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://app:devpassword@postgres:5432/polymarket",
+    "postgresql+asyncpg://app:changeme@postgres:5432/polymarket",
 )
 
 # ── Required columns per table (for NOT NULL verification) ───────────

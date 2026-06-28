@@ -1,27 +1,59 @@
 # Changelog
 
-## v0.4.0 (2026-06-25)
+## v0.4.0 (2026-06-27)
 
 ### Features
-- **Alert REST API**: `GET /api/v1/alerts` with category, score, wallet, and pagination filters
-- **Wallet Alert Lookup**: `GET /api/v1/alerts/{wallet}` with pagination
-- **Alert Statistics**: `GET /api/v1/alerts/stats` — total alerts, daily count, top categories, top wallets
-- **WebSocket Stream**: `WS /api/v1/alerts/ws` — real-time alert delivery with heartbeat ping/pong
-- **Discord Delivery Service**: `alert_service.py` — `poll_unnotified_alerts()` (max 3 retry attempts), `send_discord_alert()` with richly formatted embeds (per-action colors, trader score, category, market question), `mark_notified()` with delivery tracking
-- **WebSocket Connection Manager**: `ws_manager.py` — broadcast with dead-connection cleanup, heartbeat to all connected clients, alert payload serialization
+- **Edge Scoring Pipeline** (Phase 4): New `enrichment_edge_scoring` pipeline computes predictive accuracy per wallet via FIFO trade matching against resolved market outcomes
+- **Edge Leaderboard**: `GET /api/v1/leaderboard/edge` — traders ranked by min-max normalized edge score
+- **Wallet Edge Metrics**: `GET /api/v1/wallets/{address}/edge` — detailed edge snapshot per wallet
+- **Edge-integrated Rankings**: `wallet_score` formula updated to `0.40×edge_score + 0.20×consistency + 0.20×roi + 0.10×experience + 0.10×sharpe`
+- **Edge-integrated Wallet Profile**: `GET /api/v1/wallets/{address}` now includes `edge_metrics`
+- All Phase 3 features (alert REST API, WebSocket, Discord delivery) finalized
+
+### Database
+- Migration `017_add_edge_scoring.py`: new `wallet_edge_snapshots` table + `edge_score` columns on `wallet_analytics` and `ranking_snapshots`
+- FK from `wallet_edge_snapshots.wallet` → `wallets.wallet`, composite PK `(wallet, snapshot_date)`
+- Indexes on wallet+date DESC, snapshot_date DESC, edge_score DESC
+
+### ETL
+- New `enrichment_edge_scoring` pipeline: load resolved trades + outcomes → FIFO buy/sell matching → per-wallet edge aggregation → min-max normalization → UPSERT to `wallet_edge_snapshots`
+- `compute_wallet_scores.py`: edge_score integrated into ranking formula
+- `load_all_analytics.py`: LEFT JOIN to latest edge snapshot
+- `materialize_rankings.py`: edge_score propagated to `ranking_snapshots`
+- Orchestration pipeline updated: `trigger_edge_scoring` runs after `trigger_category_analytics`, before `trigger_verify`
+
+### Security & Infrastructure
+- **Critical**: App port restricted to `127.0.0.1:8000:8000` (was `0.0.0.0:8000`)
+- **Critical**: WebSocket max connections capped at 100 (DoS protection)
+- **High**: Mage Docker image pinned to `0.9.84` (was `:latest`), non-root user added
+- **High**: Credential fallbacks changed from `devpassword` to `changeme` across all 5 files
+- **High**: `alembic.ini` now reads DB URL from env var instead of hardcoded value
+- **High**: `.dockerignore` created to prevent secret leakage in Docker builds
+- **High**: `bandit` + `safety` added to CI pipeline
+- **Medium**: `types-redis` removed from mypy deps (Redis was already removed)
+- **Medium**: `HEALTHCHECK` added to app service
+- **Low**: CORS fallback `["*"]` replaced with explicit `settings.cors_origins`
+
+### Code Quality
+- `compute_trade_edge.py`: 3 parallel dicts → single `NamedTuple`, min-max normalization extracted, `resolve_price` simplified to ternary
+- `wallets.py`: manual 11-field mapping → `model_validate()`, duplicated edge query → `get_latest_edge_snapshot()` in `wallet_service.py`
+- `leaderboard.py`: `_to_entry()` and `_build_leaderboard_entry()` → shared `_safe_decimal()` helper
+- `alerts.py`: `_alert_to_item()` with 7 `# type: ignore` → `model_validate()` (zero ignores)
+- `alert_service.py`: embed dict → `_build_discord_embed()`, `SELECT+mutate+COMMIT` → direct `update()`
+- `ws_manager.py`: duplicated dead-connection cleanup → extracted `_broadcast()` method
+- `categories.py` + `leaderboard.py`: duplicated `_validate_category_or_404` → shared `utils/category.py`
+- `export_edge_snapshots.py`: row-by-row `iterrows()` → batch `execute()` with param list
+- `materialize_rankings.py`: split DELETE/INSERT transactions → single transaction; row-by-row → batch
+- `compute_wallet_scores.py`: added type hints, 3x `pd.concat` → single concat of list
 
 ### Tests
-- 13 new API endpoint tests (`test_api/test_alert_endpoints.py`) — list, filter, pagination, 422 validation, 404 handling, stats shape
-- 39 new service unit tests (`test_alert_service.py`) — `classify_action` (11), `_format_action` (7), `send_discord_alert` (8), `poll_unnotified_alerts` (5), `mark_notified` (5), edge case integration (3)
-- 14 new WebSocket manager tests (`test_ws_manager.py`) — connect/disconnect lifecycle (5), broadcast (5), heartbeat (4)
-- 8 new integration tests (`test_db_integrity.py`) — alerts table queryable, alert_rules global default, FK integrity (wallet + market), not-null with `market_question`, score range [0, 100], position size positivity, valid action enums
-- Total: 72 → **149 tests** (93 unit/API + 56 integration)
+- 10 new unit tests (`test_edge_scoring.py`) — edge computation, FIFO matching, normalization, empty/zero edge cases
+- 7 new API tests (`test_api/test_edge_endpoints.py`) — leaderboard empty/with-data/pagination/validation, wallet edge 200/404
+- 9 new integration tests (`test_db_integrity.py`) — edge snapshots queryable, FK, NOT NULL, score/consistency/volatility/bounds ranges, edge_score columns exist
+- Total: 149 → **175 tests** (111 unit/API + 64 integration)
 
-### Documentation
-- README.md: Updated status banner (Phase 3 ✅ Complete), testing section (72→149), project structure tree, phases table
-- README.md: Added alert API reference (`GET /api/v1/alerts`, `/stats`, `/{wallet}`, `WS /ws`)
-- AGENTS.md: Updated test counts, file listings, and running instructions
-- Phase 3 test plan: Updated to reflect actual filenames and coverage
+### Notes
+- Phase 4 Edge Scoring complete; partial share matching deferred (MV assumes full close)
 
 ---
 

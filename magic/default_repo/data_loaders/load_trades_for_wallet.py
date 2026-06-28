@@ -62,6 +62,8 @@ def map_fields(trades: list[dict], wallet: str, cond_map: dict) -> list[dict]:
         tx_hash = t.get("transactionHash") or t.get("txHash")
         asset = t.get("asset")
         ts = t.get("timestamp")
+        if not ts:
+            continue
         rows.append({
             "id": f"{tx_hash}-{asset}" if tx_hash and asset else (tx_hash or asset),
             "wallet": wallet,
@@ -73,7 +75,7 @@ def map_fields(trades: list[dict], wallet: str, cond_map: dict) -> list[dict]:
             "shares": t.get("size"),
             "amount_usd": float(t.get("size", 0)) * float(t.get("price", 0)),
             "fee_usd": t.get("fee"),
-            "timestamp": datetime.fromtimestamp(int(ts), tz=timezone.utc) if ts else None,
+            "timestamp": datetime.fromtimestamp(int(ts), tz=timezone.utc),
             "tx_hash": tx_hash,
         })
     return rows
