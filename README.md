@@ -4,7 +4,7 @@
 
 Identify the most skilled Polymarket traders, measure their performance by niche, detect when they open new positions, and generate actionable alerts.
 
-> **Status:** Phase 3 — Smart Money Detection ✅ Complete (Action Classification, Alert REST API, WebSocket Streaming, Discord Delivery, Alert Testing Suite)
+> **Status:** Phase 4 — Edge Scoring ✅ Complete (Edge Scoring Pipeline, Edge Leaderboard, Edge-Integrated Rankings, 26 new tests)
 
 ---
 
@@ -149,7 +149,7 @@ Then open **Mage AI** at `http://localhost:6789` to create ETL pipelines that pu
 | 1 — MVP Leaderboard | ✅ Complete | FastAPI backend + Mage ETL pipelines |
 | 2 — Niche Expertise | ✅ Complete | Category-specific rankings and specialist detection |
 | 3 — Smart Money Detection | ✅ Complete | Action classification, alert rules engine, PnL cash-flow reconstruction, REST API, WebSocket stream, Discord delivery, alert testing suite |
-| 4 — Edge Scoring | 📋 Planned | Predictive accuracy metrics |
+| 4 — Edge Scoring | ✅ Complete | Predictive accuracy metrics via edge scoring pipeline, edge leaderboard, edge-integrated rankings |
 | 5 — Recommendation Engine | 📋 Planned | Follow recommendations |
 | 6 — Dashboard | 📋 Planned | Next.js frontend |
 | 7 — Advanced Features | 📋 Planned | ML, clustering, portfolio simulation |

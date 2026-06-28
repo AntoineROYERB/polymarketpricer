@@ -17,7 +17,7 @@ from magic.default_repo.utils.category_classifier import infer_category
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://app:devpassword@localhost:5432/polymarket",
+    "postgresql+asyncpg://app:changeme@localhost:5432/polymarket",
 )
 
 

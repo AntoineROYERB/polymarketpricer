@@ -7,7 +7,7 @@ from default_repo.utils.pipeline_status import record_status
 
 
 @data_exporter
-def export_data(**kwargs) -> None:
+def export_data(data, **kwargs) -> None:
     try:
         trigger_pipeline(
             'ingestion_market_discovery',

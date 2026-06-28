@@ -169,7 +169,7 @@ def _build_content(
             lines.append(f"\u2022 Wallet: `{display}`")
             lines.append(f"\u2022 Wallet Score: {score_fmt}")
             lines.append(f"\u2022 Market: \"{question}\"")
-            lines.append(f"\u2022 Platform: Polymarket")
+            lines.append("\u2022 Platform: Polymarket")
             lines.append("")
     else:
         lines.append("\U0001F3C6 Top Wallets by Category")

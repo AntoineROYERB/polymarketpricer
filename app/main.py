@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.3.0",
+    version="0.4.0",
     debug=settings.debug,
     lifespan=lifespan,
 )
@@ -71,7 +71,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins if hasattr(settings, 'cors_origins') else ["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET"],
     allow_headers=["*"],

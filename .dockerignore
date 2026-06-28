@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.git/
+.gitignore
+mage_data/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+*.egg-info/
+.idea/
+.vscode/

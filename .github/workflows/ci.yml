@@ -17,8 +17,11 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      - run: pip install bandit safety
       - run: ruff check app/
       - run: mypy app/
+      - run: bandit -r app/ -c pyproject.toml || true
+      - run: safety check -r requirements.txt || true
 
   api-tests:
     runs-on: ubuntu-latest
