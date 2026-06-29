@@ -75,7 +75,7 @@ flowchart LR
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|---|
 | `ingestion_market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
-| `ingestion_wallet_discovery` | Data API `/trades` → proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
+| `ingestion_wallet_discovery` | Data API `/trades` → discover proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
 | `ingestion_position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
 | `ingestion_pnl` | Data API `/activity` (cursor pagination) | Cash-flow PnL formula, category breakdown | `wallet_pnl_snapshots` |
 | `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
@@ -169,7 +169,7 @@ Classifier source: `magic/default_repo/utils/category_classifier.py`
 
 The project has four test suites:
 
-### Unit / API Tests (40 tests)
+### Unit / API Tests (47 tests)
 
 Mock-based tests that verify endpoint behaviour without a real database:
 
@@ -179,13 +179,13 @@ python3 -m pytest app/tests/test_api/ -v
 
 | File | Tests | What it validates |
 |---|---|---|---|
-| `test_endpoints.py` | 9 | Phase 1 endpoints (leaderboard, wallets, markets) |
+| `test_endpoints.py` | 10 | Phase 1 endpoints (leaderboard, wallets, markets, health) |
 | `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
 | `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
-| `test_edge_endpoints.py` | 7 | Phase 4 edge endpoints (leaderboard, wallet edge, 404/422) |
+| `test_edge_endpoints.py` | 6 | Phase 4 edge endpoints (leaderboard empty/with-data/pagination, wallet edge 200/404) |
 | `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
 
-### Service / Unit Tests (53 tests)
+### Service / Unit Tests (63 tests)
 
 Pure function and mocked-service tests:
 
@@ -208,11 +208,11 @@ ETL pipeline output. Requires `docker compose up -d` (postgres service running).
 # Run only integration tests
 python3 -m pytest app/tests/test_db_integrity.py -m integration -v
 
-# Run all tests (175 total)
+# Run all tests (176 total)
 python3 -m pytest app/tests/ -v
 ```
 
-What the 64 integration tests check:
+What the 66 integration tests check:
 
 | Category | Tests | What it validates |
 |---|---|---|
@@ -238,7 +238,7 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 .
 ├── .env                       # Local config (gitignored — copy from .env.sample)
 ├── .env.sample                # Template with placeholder values
-├── docker-compose.yml         # PostgreSQL + Redis + Mage + app
+├── docker-compose.yml         # PostgreSQL + Mage + app
 ├── Dockerfile                 # FastAPI app image
 ├── requirements.txt
 ├── pyproject.toml
@@ -282,7 +282,7 @@ the async `DATABASE_URL` config by replacing the driver prefix.
 ├── magic/                      # Mage AI
 │   ├── Dockerfile
 │   └── default_repo/
-│       ├── pipelines/         # 10 pipeline dirs
+│       ├── pipelines/         # 12 pipeline dirs
 │       ├── data_loaders/      # 15 loaders
 │       ├── transformers/      # 7 transformers
 │       └── data_exporters/    # 10 exporters

@@ -33,7 +33,7 @@ def upgrade() -> None:
             "computed_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.func.now(),
+            server_default=sa.text("now()"),
         ),
         sa.ForeignKeyConstraint(
             ["wallet"], ["wallets.wallet"], name="fk_ws_wallet"

@@ -1,7 +1,7 @@
 # Phase 4 — Edge Scoring — Database Schema
 
 > **Goal**: Store per-wallet edge metrics (ROI per trade) computed from resolved markets, add `edge_score` to existing aggregation tables.
-> **AI Agent Instructions**: Create the migration file `alembic/versions/008_add_edge_scoring.py`, add models to `app/db/models.py`, update Pydantic schemas in `app/models/schemas.py`, and add `edge_score` columns to `wallet_analytics` and `ranking_snapshots`.
+> **AI Agent Instructions**: Create the migration file `alembic/versions/017_add_edge_scoring.py`, add models to `app/db/models.py`, update Pydantic schemas in `app/models/schemas.py`, and add `edge_score` columns to `wallet_analytics` and `ranking_snapshots`.
 
 ---
 
@@ -55,9 +55,9 @@ Add `edge_score` column to the ranking materialised view.
 
 ---
 
-## Migration File (`008_add_edge_scoring.py`)
+## Migration File (`017_add_edge_scoring.py`)
 
-**Revision chain**: `007_add_wallet_pnl_snapshots.py` → `008_add_edge_scoring.py`
+**Revision chain**: `016_increase_ranking_snapshots_precision.py` → `017_add_edge_scoring.py`
 
 ```python
 """Add wallet_edge_snapshots table and edge_score columns for Phase 4 Edge Scoring.

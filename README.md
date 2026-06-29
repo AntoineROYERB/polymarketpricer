@@ -56,7 +56,7 @@ Then open **Mage AI** at `http://localhost:6789` to create ETL pipelines that pu
 | **FastAPI** | `8000` | REST API for leaderboard, wallets, markets |
 | **Mage AI** | `6789` | ETL orchestration (data loaders → transformers → exporters) |
 | **PostgreSQL** | `5432` | Primary database |
-| **Redis** | `6379` | Cache and rate-limit tracking |
+
 
 ---
 
@@ -64,7 +64,7 @@ Then open **Mage AI** at `http://localhost:6789` to create ETL pipelines that pu
 
 ```
 .
-├── docker-compose.yml           # PostgreSQL + Redis + Mage + app
+├── docker-compose.yml           # PostgreSQL + Mage + app
 ├── Dockerfile                   # FastAPI app image
 ├── requirements.txt             # Python dependencies
 ├── pyproject.toml               # Ruff, MyPy, Pytest config

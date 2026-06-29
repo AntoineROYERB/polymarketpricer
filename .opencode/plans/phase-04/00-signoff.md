@@ -10,7 +10,7 @@
 
 ### What this phase delivers
 
-- Migration `008_add_edge_scoring.py` — `wallet_edge_snapshots` table + `edge_score` columns on `wallet_analytics` and `ranking_snapshots`
+- Migration `017_add_edge_scoring.py` — `wallet_edge_snapshots` table + `edge_score` columns on `wallet_analytics` and `ranking_snapshots`
 - `enrichment_edge_scoring` ETL pipeline — load resolved trades, compute edge per trade (FIFO matching), aggregate into per-wallet snapshots
 - Update to `enrichment_ranking_computation` — new formula: `0.40*edge_score + 0.20*consistency + 0.20*roi + 0.10*experience + 0.10*risk_adj_return`
 - `GET /api/v1/leaderboard/edge` — rankings by edge_score
@@ -43,7 +43,7 @@
 
 ### 1. Database Schema
 
-- [ ] Migration `008_add_edge_scoring.py` created
+- [x] Migration `017_add_edge_scoring.py` created (numbered 017 due to prior migrations)
 - [ ] `wallet_edge_snapshots` table: wallet, snapshot_date, avg_edge, median_edge, edge_consistency, edge_volatility, edge_score, num_edge_trades, positive_edge_trades, negative_edge_trades, computed_at
 - [ ] Foreign key: `wallet_edge_snapshots.wallet` → `wallets.wallet`
 - [ ] Composite PK: (wallet, snapshot_date)
@@ -133,7 +133,7 @@
   - [ ] edge_score column exists in ranking_snapshots
 - [ ] ROW_THRESHOLDS updated with `wallet_edge_snapshots: 50`
 - [ ] All tests pass
-- [ ] Migration forward + backward verified (008)
+- [x] Migration forward + backward verified (017)
 - [ ] No regression on existing tests (~149 → ~174 total)
 
 ### 6. Documentation

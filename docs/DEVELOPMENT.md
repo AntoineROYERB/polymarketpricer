@@ -12,8 +12,8 @@
 cp .env.sample .env
 # Then edit .env with your actual values (database URL, Discord webhook, etc.)
 
-# Start infrastructure (PostgreSQL + Redis)
-docker compose up -d postgres redis
+# Start infrastructure (PostgreSQL)
+docker compose up -d postgres
 
 # Create virtual environment
 python3 -m venv .venv
@@ -53,7 +53,7 @@ python -m pytest app/tests/ -v
 python -m pytest app/tests/ --cov=app -v
 ```
 
-The **175 tests** (111 unit/API + 64 integration) validate row counts, referential integrity,
+The **176 tests** (47 unit/API + 63 service + 66 integration) validate row counts, referential integrity,
 not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
 data filtering, alert classification logic, Discord delivery, WebSocket streaming,
 and edge scoring (FIFO matching, normalization, edge quality ranges) —
@@ -65,10 +65,10 @@ Mock-based tests that verify endpoint behaviour without a real database:
 
 | File | Tests | What it validates |
 |---|---|---|
-| `test_endpoints.py` | 9 | Phase 1 endpoints (leaderboard, wallets, markets) |
+| `test_endpoints.py` | 10 | Phase 1 endpoints (leaderboard, wallets, markets, health) |
 | `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
 | `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
-| `test_edge_endpoints.py` | 7 | Phase 4 edge endpoints (leaderboard empty/with-data/pagination, wallet edge 200/404) |
+| `test_edge_endpoints.py` | 6 | Phase 4 edge endpoints (leaderboard empty/with-data/pagination, wallet edge 200/404) |
 | `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
 
 ### Service / Unit Tests (63 tests)
@@ -81,7 +81,7 @@ Pure function and mocked-service tests:
 | `test_ws_manager.py` | 14 | Connection lifecycle, broadcast, heartbeat, dead connection cleanup |
 | `test_edge_scoring.py` | 10 | Edge computation (FIFO matching, normalization, empty/zero edge cases) |
 
-### Integration Tests (64 tests)
+### Integration Tests (66 tests)
 
 Connect to the actual PostgreSQL instance and validate ETL pipeline output:
 

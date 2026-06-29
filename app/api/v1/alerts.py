@@ -96,8 +96,7 @@ async def alert_websocket(
 ) -> None:
     """Real-time smart money alert stream via WebSocket."""
     origin = websocket.headers.get("origin", "")
-    allowed_origins = getattr(settings, "cors_origins", ["*"])
-    if origin and allowed_origins != ["*"] and origin not in allowed_origins:
+    if origin and settings.cors_origins and origin not in settings.cors_origins:
         await websocket.close(code=4001)
         return
     await manager.connect(websocket)

@@ -58,7 +58,7 @@
 - 10 new unit tests (`test_edge_scoring.py`) — edge computation, FIFO matching, normalization, empty/zero edge cases
 - 7 new API tests (`test_api/test_edge_endpoints.py`) — leaderboard empty/with-data/pagination/validation, wallet edge 200/404
 - 9 new integration tests (`test_db_integrity.py`) — edge snapshots queryable, FK, NOT NULL, score/consistency/volatility/bounds ranges, edge_score columns exist
-- Total: 149 → **175 tests** (111 unit/API + 64 integration)
+- Total: 149 → **176 tests** (110 unit/API + 66 integration)
 
 ### Notes
 - Phase 4 Edge Scoring complete; partial share matching deferred (MV assumes full close)
