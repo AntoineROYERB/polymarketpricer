@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock, AsyncMock
@@ -8,7 +10,7 @@ from app.main import app
 
 
 @pytest.fixture
-def mock_session():
+def mock_session() -> AsyncMock:
     session = AsyncMock()
 
     mock_scalars = MagicMock()
@@ -25,8 +27,8 @@ def mock_session():
 
 
 @pytest.fixture
-async def client(mock_session):
-    async def override_get_db():
+async def client(mock_session: AsyncMock) -> AsyncIterator[AsyncClient]:
+    async def override_get_db() -> AsyncIterator[AsyncMock]:
         yield mock_session
 
     app.dependency_overrides[get_db] = override_get_db
@@ -37,7 +39,7 @@ async def client(mock_session):
 
 
 class TestEdgeLeaderboard:
-    async def test_edge_leaderboard_empty(self, client: AsyncClient):
+    async def test_edge_leaderboard_empty(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/leaderboard/edge?limit=5")
         assert resp.status_code == 200
         body = resp.json()
@@ -45,7 +47,7 @@ class TestEdgeLeaderboard:
         assert body["limit"] == 5
         assert body["offset"] == 0
 
-    async def test_edge_leaderboard_with_data(self, client: AsyncClient, mock_session: AsyncMock):
+    async def test_edge_leaderboard_with_data(self, client: AsyncClient, mock_session: AsyncMock) -> None:
         mock_wallet = MagicMock()
         mock_wallet.wallet = "0xwallet1"
         mock_wallet.edge_score = Decimal("0.95")
@@ -66,20 +68,20 @@ class TestEdgeLeaderboard:
         assert entry["edge_score"] == "0.95"
         assert entry["rank"] == 1
 
-    async def test_edge_leaderboard_pagination(self, client: AsyncClient):
+    async def test_edge_leaderboard_pagination(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/leaderboard/edge?limit=10&offset=20")
         assert resp.status_code == 200
         body = resp.json()
         assert body["limit"] == 10
         assert body["offset"] == 20
 
-    async def test_edge_leaderboard_invalid_limit(self, client: AsyncClient):
+    async def test_edge_leaderboard_invalid_limit(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/leaderboard/edge?limit=999")
         assert resp.status_code == 422
 
 
 class TestWalletEdge:
-    async def test_wallet_edge_success(self, client: AsyncClient, mock_session: AsyncMock):
+    async def test_wallet_edge_success(self, client: AsyncClient, mock_session: AsyncMock) -> None:
         mock_wallet_row = MagicMock()
         mock_wallet_row.wallet = "0xwallet1"
         mock_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=mock_wallet_row)))
@@ -100,7 +102,7 @@ class TestWalletEdge:
         mock_edge_result = MagicMock()
         mock_edge_result.scalar_one_or_none.return_value = mock_snapshot
 
-        def execute_side_effect(*args, **kwargs):
+        def execute_side_effect(*args: object, **kwargs: object) -> MagicMock:
             return mock_edge_result
 
         mock_session.execute = AsyncMock(side_effect=execute_side_effect)
@@ -108,6 +110,6 @@ class TestWalletEdge:
         resp = await client.get("/api/v1/wallets/0xwallet1/edge")
         assert resp.status_code == 200
 
-    async def test_wallet_edge_not_found(self, client: AsyncClient):
+    async def test_wallet_edge_not_found(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/wallets/0xnonexistent/edge")
         assert resp.status_code == 404

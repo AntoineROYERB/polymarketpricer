@@ -1,3 +1,4 @@
+from typing import Any
 import sys
 from unittest.mock import MagicMock
 
@@ -21,7 +22,7 @@ def make_trade(
     trade_id: str, wallet: str, market_id: str, outcome_id: str,
     type: str, price: float, size: float = 100.0,
     created_at: str = "2026-01-01",
-) -> dict:
+) -> dict[str, Any]:
     return {
         "trade_id": trade_id,
         "wallet": wallet,
@@ -41,7 +42,7 @@ def make_trade(
     }
 
 
-def make_outcome(outcome_id: str, market_id: str, outcome: str, winner: bool | None) -> dict:
+def make_outcome(outcome_id: str, market_id: str, outcome: str, winner: bool | None) -> dict[str, Any]:
     return {
         "outcome_id": outcome_id,
         "market_id": market_id,
@@ -51,7 +52,7 @@ def make_outcome(outcome_id: str, market_id: str, outcome: str, winner: bool | N
 
 
 class TestComputeTradeEdge:
-    def test_buy_hold_to_resolution_win(self):
+    def test_buy_hold_to_resolution_win(self) -> None:
         trades = DataFrame([make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.40)])
         outcomes = DataFrame([make_outcome("o1", "m1", "Yes", True)])
         results = compute_wallet_edge(trades, outcomes)
@@ -60,7 +61,7 @@ class TestComputeTradeEdge:
         assert results[0]["is_positive"] is True
         assert results[0]["had_sell"] is False
 
-    def test_buy_hold_to_resolution_loss(self):
+    def test_buy_hold_to_resolution_loss(self) -> None:
         trades = DataFrame([make_trade("t1", "wallet_a", "m1", "o2", "BUY", 0.60)])
         outcomes = DataFrame([make_outcome("o2", "m1", "No", False)])
         results = compute_wallet_edge(trades, outcomes)
@@ -68,7 +69,7 @@ class TestComputeTradeEdge:
         assert results[0]["edge"] == pytest.approx(-1.0, rel=1e-3)
         assert results[0]["is_positive"] is False
 
-    def test_buy_then_sell(self):
+    def test_buy_then_sell(self) -> None:
         trades = DataFrame([
             make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.30),
             make_trade("t2", "wallet_a", "m1", "o1", "SELL", 0.55),
@@ -79,7 +80,7 @@ class TestComputeTradeEdge:
         assert float(results[0]["edge"]) == pytest.approx(0.8333, rel=1e-3)
         assert results[0]["had_sell"] is True
 
-    def test_multiple_buys_fifo_matching(self):
+    def test_multiple_buys_fifo_matching(self) -> None:
         trades = DataFrame([
             make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.30),
             make_trade("t2", "wallet_a", "m1", "o1", "BUY", 0.40),
@@ -93,7 +94,7 @@ class TestComputeTradeEdge:
         assert float(buy1["edge"]) == pytest.approx(0.6667, rel=1e-3)
         assert float(buy2["edge"]) == pytest.approx(1.50, rel=1e-3)
 
-    def test_edge_zero_counts_as_negative(self):
+    def test_edge_zero_counts_as_negative(self) -> None:
         trades = DataFrame([
             make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.50),
             make_trade("t2", "wallet_a", "m1", "o1", "SELL", 0.50),
@@ -104,19 +105,19 @@ class TestComputeTradeEdge:
         assert results[0]["edge"] == pytest.approx(0.0, abs=1e-6)
         assert results[0]["is_positive"] is False
 
-    def test_sell_without_buy_ignored(self):
+    def test_sell_without_buy_ignored(self) -> None:
         trades = DataFrame([make_trade("t1", "wallet_a", "m1", "o1", "SELL", 0.80)])
         outcomes = DataFrame([make_outcome("o1", "m1", "Yes", True)])
         results = compute_wallet_edge(trades, outcomes)
         assert len(results) == 0
 
-    def test_zero_entry_price_skipped(self):
+    def test_zero_entry_price_skipped(self) -> None:
         trades = DataFrame([make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.0)])
         outcomes = DataFrame([make_outcome("o1", "m1", "Yes", True)])
         results = compute_wallet_edge(trades, outcomes)
         assert len(results) == 0
 
-    def test_aggregation_correctness(self):
+    def test_aggregation_correctness(self) -> None:
         from magic.default_repo.transformers.compute_trade_edge import compute_edges
         trades = DataFrame([
             make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.50, size=100),
@@ -136,14 +137,14 @@ class TestComputeTradeEdge:
         assert row["positive_edge_trades"] == 1
         assert row["negative_edge_trades"] == 2
 
-    def test_empty_trades_returns_empty(self):
+    def test_empty_trades_returns_empty(self) -> None:
         from magic.default_repo.transformers.compute_trade_edge import compute_edges
         trades = DataFrame()
         outcomes = DataFrame()
         result = compute_edges(trades, outcomes)
         assert result.empty
 
-    def test_min_max_normalisation(self):
+    def test_min_max_normalisation(self) -> None:
         from magic.default_repo.transformers.compute_trade_edge import compute_edges
         trades = DataFrame([
             make_trade("t1", "wallet_a", "m1", "o1", "BUY", 0.40, size=100),

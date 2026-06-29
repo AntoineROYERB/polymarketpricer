@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime, timezone
 
 import httpx
@@ -51,7 +52,7 @@ def _format_action(action: str, price: float) -> str:
     return labels.get(action, action)
 
 
-def _build_discord_embed(alert: Alert) -> dict:
+def _build_discord_embed(alert: Alert) -> dict[str, Any]:
     color = DISCORD_EMBED_COLORS.get(str(alert.action), 0x95A5A6)
     return {
         "embeds": [{

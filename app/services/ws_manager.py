@@ -1,3 +1,5 @@
+from collections.abc import Awaitable, Callable
+
 from fastapi import WebSocket
 
 from app.db.models import Alert
@@ -21,7 +23,7 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def _broadcast(self, send_fn) -> None:
+    async def _broadcast(self, send_fn: Callable[[WebSocket], Awaitable[None]]) -> None:
         dead = []
         for conn in self.active_connections:
             try:

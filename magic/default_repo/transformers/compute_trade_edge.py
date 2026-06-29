@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from statistics import median as stat_median, stdev as stat_stdev
 from collections import defaultdict, deque
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from pandas import DataFrame, to_numeric
 
@@ -43,22 +43,22 @@ def _build_resolution_prices(outcomes: DataFrame) -> dict[str, dict[str, Decimal
 def compute_wallet_edge(
     trades: DataFrame,
     outcomes_or_prices: DataFrame | dict[str, dict[str, Decimal]],
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     resolution_prices = (
         _build_resolution_prices(outcomes_or_prices)
         if isinstance(outcomes_or_prices, DataFrame)
         else outcomes_or_prices
     )
-    groups: dict[tuple[str, str, str], deque] = defaultdict(deque)
+    groups: dict[tuple[str, str, str], deque[dict[str, Any]]] = defaultdict(deque)
     for _, row in trades.iterrows():
         key = (str(row["wallet"]), str(row["market_id"]), str(row["outcome_id"]))
         groups[key].append(row.to_dict())
 
-    edge_results: list[dict] = []
+    edge_results: list[dict[str, Any]] = []
 
     for (wallet, market_id, outcome_id), trade_list in groups.items():
-        buy_queue: deque = deque()
-        sell_queue: deque = deque()
+        buy_queue: deque[dict[str, Any]] = deque()
+        sell_queue: deque[dict[str, Any]] = deque()
 
         for trade in trade_list:
             ttype = str(trade.get("type", "")).strip().upper()
@@ -76,7 +76,7 @@ def compute_wallet_edge(
 
             matched_sell = sell_queue.popleft() if sell_queue else None
             if matched_sell is not None:
-                edge_price = Decimal(str(matched_sell.get("price", 0)))
+                edge_price: Decimal | None = Decimal(str(matched_sell.get("price", 0)))
             else:
                 edge_price = resolution_prices.get(market_id, {}).get(outcome_id)
 
@@ -109,7 +109,7 @@ def _normalize_columns(df: DataFrame) -> DataFrame:
     return df
 
 
-def _aggregate_wallet_edges(edge_records: list[dict]) -> dict[str, WalletEdgeAgg]:
+def _aggregate_wallet_edges(edge_records: list[dict[str, Any]]) -> dict[str, WalletEdgeAgg]:
     wallet_data: dict[str, WalletEdgeAgg] = {}
     for rec in edge_records:
         w = rec["wallet"]
@@ -139,7 +139,7 @@ def _build_snapshot_rows(
     snapshot_date: date,
     min_edge: float,
     edge_range: float,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     rows = []
     for wallet, agg in wallet_data.items():
         float_edges = [float(e) for e in agg.edges]
@@ -164,8 +164,8 @@ def _build_snapshot_rows(
     return rows
 
 
-@transformer
-def compute_edges(trades_df: DataFrame, outcomes_df: DataFrame, *args, **kwargs) -> DataFrame:
+@transformer  # type: ignore[untyped-decorator]
+def compute_edges(trades_df: DataFrame, outcomes_df: DataFrame, *args: Any, **kwargs: Any) -> DataFrame:
     if trades_df.empty:
         return DataFrame(columns=EMPTY_SNAPSHOT_COLUMNS)
 
@@ -187,8 +187,8 @@ def compute_edges(trades_df: DataFrame, outcomes_df: DataFrame, *args, **kwargs)
     return result
 
 
-@test
-def test_output(df) -> None:
+@test  # type: ignore[untyped-decorator]
+def test_output(df: DataFrame) -> None:
     assert df is not None, "Output is undefined"
     if not df.empty:
         assert "wallet" in df.columns

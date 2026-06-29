@@ -72,8 +72,9 @@ async def consistent(
     return [_to_entry(e) for e in entries]
 
 
-def _safe_decimal(row: Any, attr: str) -> Decimal | None:
-    return to_decimal(getattr(row, attr, None))
+def _safe_decimal(row: Any, attr: str) -> Decimal:
+    val = to_decimal(getattr(row, attr, None))
+    return val if val is not None else Decimal("0")
 
 
 def _to_entry(e: Any) -> LeaderboardEntry:
@@ -87,8 +88,8 @@ def _to_entry(e: Any) -> LeaderboardEntry:
         num_trades=e.num_trades or 0,
         consistency_score=_safe_decimal(e, "consistency_score"),
         experience_score=_safe_decimal(e, "experience_score"),
-        edge_score=_safe_decimal(e, "edge_score"),
-        edge_consistency=_safe_decimal(e, "edge_consistency"),
+        edge_score=_safe_decimal(e, "edge_score") or None,
+        edge_consistency=_safe_decimal(e, "edge_consistency") or None,
         num_edge_trades=getattr(e, "num_edge_trades", 0) or 0,
     )
 
@@ -116,11 +117,11 @@ async def edge_leaderboard(
 
     data = [
         EdgeLeaderboardEntry(
-            wallet=r.wallet,
+            wallet=str(r.wallet),
             edge_score=to_decimal(r.edge_score),
             avg_edge=to_decimal(r.avg_edge),
             edge_consistency=to_decimal(r.edge_consistency) if r.edge_consistency else None,
-            num_edge_trades=r.num_edge_trades,
+            num_edge_trades=int(r.num_edge_trades),
             rank=offset + idx + 1,
         )
         for idx, r in enumerate(rows)
