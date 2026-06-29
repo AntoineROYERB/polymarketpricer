@@ -9,7 +9,7 @@ flowchart LR
 
     subgraph ETL["Mage AI ETL — 11 Pipelines"]
         MD["ingestion_market_discovery<br/>markets + events + outcomes"]
-        WD["ingestion_wallet_discovery<br/>proxy → main wallet"]
+        WD["ingestion_wallet_discovery<br/>discover proxy wallets → resolve main wallet"]
         PS["ingestion_position_sync<br/>current positions"]
         PN["ingestion_pnl<br/>cashflow PnL from /activity"]
         TH["ingestion_trade_history<br/>per-wallet trades"]
@@ -93,7 +93,7 @@ flowchart LR
 | Pipeline | Loads | Transforms | Exports |
 |---|---|---|---|
 | `ingestion_market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
-| `ingestion_wallet_discovery` | Data API `/trades` → proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
+| `ingestion_wallet_discovery` | Data API `/trades` → discover proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
 | `ingestion_position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
 | `ingestion_pnl` | Data API `/activity` (cursor pagination) | Cash-flow PnL formula, category breakdown | `wallet_pnl_snapshots` |
 | `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
