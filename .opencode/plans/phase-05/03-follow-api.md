@@ -149,6 +149,104 @@ Unfollow a wallet (soft delete — sets `active = false`, `unfollowed_at = now()
 
 ---
 
+---
+
+### `GET /api/v1/follow/recommendations/by-category/{category}`
+
+Top wallets to follow in a specific category, ranked by per-category `follow_score` descending.
+
+**Path Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `category` | str | Category name (e.g. `politics`, `crypto`) |
+
+**Query Parameters:**
+
+| Param | Type | Default | Valid Range | Description |
+|-------|------|---------|-------------|-------------|
+| `limit` | int | 20 | 1–100 | Max results |
+| `offset` | int | 0 | ≥ 0 | Pagination offset |
+
+**Response `200 OK`:**
+```json
+{
+  "category": "politics",
+  "data": [
+    {
+      "wallet": "0x1234...abcd",
+      "follow_score": 0.92,
+      "recommendation": "FOLLOW",
+      "roi_percentile": 0.97,
+      "win_rate": 0.78,
+      "is_specialist": true,
+      "reasons": [
+        "Top 3% ROI in politics",
+        "Politics specialist (120 trades)",
+        "Positive global edge (0.88)"
+      ]
+    }
+  ],
+  "limit": 20,
+  "offset": 0
+}
+```
+
+**Error Responses:** 404 for invalid category, 422 for invalid params.
+
+---
+
+### `GET /api/v1/follow/recommendations/{wallet}/by-category`
+
+All per-category follow scores for a specific wallet.
+
+**Path Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `wallet` | str | Ethereum address (0x-prefixed) |
+
+**Response `200 OK`:**
+```json
+{
+  "wallet": "0x1234...abcd",
+  "global_follow_score": 0.85,
+  "category_scores": [
+    {
+      "category": "politics",
+      "follow_score": 0.92,
+      "recommendation": "FOLLOW",
+      "roi_percentile": 0.97,
+      "win_rate": 0.78,
+      "is_specialist": true,
+      "reasons": ["Top 3% ROI in politics"]
+    },
+    {
+      "category": "crypto",
+      "follow_score": 0.45,
+      "recommendation": "WATCH",
+      "roi_percentile": 0.55,
+      "win_rate": 0.52,
+      "is_specialist": false,
+      "reasons": ["Only 8 trades — limited history"]
+    },
+    {
+      "category": "sports",
+      "follow_score": 0.12,
+      "recommendation": "IGNORE",
+      "roi_percentile": 0.15,
+      "win_rate": 0.38,
+      "is_specialist": false,
+      "reasons": ["Win rate below 40%"]
+    }
+  ]
+}
+```
+
+**Error Responses:** 404 for unknown wallet.
+
+---
+
 ## Router Implementation
 
 ```python
@@ -162,8 +260,14 @@ from app.db.models import Wallet, WalletFollow, PaperPortfolio
 from app.models.schemas import (
     FollowCreate, FollowUpdate, FollowResponse, FollowListResponse,
     FollowRecommendation, FollowRecommendationResponse,
+    CategoryFollowLeaderboardEntry, CategoryFollowLeaderboardResponse,
+    CategoryFollowScoreItem, WalletCategoryFollowScoresResponse,
 )
-from app.services.follow_scoring import get_follow_recommendations
+from app.services.follow_scoring import (
+    get_follow_recommendations,
+    get_category_follow_leaderboard,
+    get_wallet_category_scores,
+)
 
 router = APIRouter()
 
@@ -174,7 +278,7 @@ async def recommendations(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """Top-N wallets recommended to follow."""
+    """Top-N wallets recommended to follow (global follow_score)."""
     recs = await get_follow_recommendations(db, limit, offset)
     data = [
         FollowRecommendation(
@@ -185,6 +289,79 @@ async def recommendations(
         for r in recs
     ]
     return FollowRecommendationResponse(data=data, limit=limit, offset=offset)
+
+
+@router.get(
+    "/recommendations/by-category/{category}",
+    response_model=CategoryFollowLeaderboardResponse,
+)
+async def recommendations_by_category(
+    category: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """Top-N wallets to follow in a specific category."""
+    from app.utils.category import validate_category_or_404
+    norm_category = validate_category_or_404(category)
+
+    recs = await get_category_follow_leaderboard(db, norm_category, limit, offset)
+    data = [
+        CategoryFollowLeaderboardEntry(
+            wallet=r["wallet"],
+            follow_score=r["follow_score"],
+            recommendation=r["recommendation"],
+            roi_percentile=r.get("roi_percentile"),
+            win_rate=r.get("win_rate"),
+            is_specialist=r.get("is_specialist", False),
+            reasons=r.get("reasons", []),
+        )
+        for r in recs
+    ]
+    return CategoryFollowLeaderboardResponse(
+        category=category.lower(), data=data, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/recommendations/{wallet}/by-category",
+    response_model=WalletCategoryFollowScoresResponse,
+)
+async def wallet_recommendations_by_category(
+    wallet: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Per-category follow scores for a specific wallet."""
+    from app.services.wallet_service import get_wallet_profile
+    w = await get_wallet_profile(db, wallet)
+    if w is None:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    scores = await get_wallet_category_scores(db, wallet)
+    global_score = None
+    if scores:
+        global_score = scores[0].get("global_follow_score")
+
+    category_items = [
+        CategoryFollowScoreItem(
+            category=s["category"],
+            follow_score=s["follow_score"],
+            recommendation=s["recommendation"],
+            roi_percentile=s.get("roi_percentile"),
+            win_rate=s.get("win_rate"),
+            is_specialist=s.get("is_specialist", False),
+            volume_percentile=s.get("volume_percentile"),
+            recency_days=s.get("recency_days"),
+            reasons=s.get("reasons", []),
+        )
+        for s in scores
+    ]
+
+    return WalletCategoryFollowScoresResponse(
+        wallet=wallet,
+        global_follow_score=global_score,
+        category_scores=category_items,
+    )
 
 
 @router.get("", response_model=FollowListResponse)
@@ -333,6 +510,22 @@ api_router.include_router(follow_router, prefix="/follow", tags=["follow"])
 |--------|------|
 | CREATE | `app/api/v1/follow.py` |
 | EDIT | `app/api/router.py` — register follow router |
+| EDIT | `app/services/follow_scoring.py` — add `get_category_follow_leaderboard`, `get_wallet_category_scores` |
+
+---
+
+## Verification
+
+```bash
+# Get recommendations by category
+curl "http://localhost:8000/api/v1/follow/recommendations/by-category/politics?limit=5"
+
+# Get wallet per-category scores
+curl "http://localhost:8000/api/v1/follow/recommendations/0x1234...abcd/by-category"
+
+# 404 for invalid category
+curl "http://localhost:8000/api/v1/follow/recommendations/by-category/invalid"
+```
 
 ---
 

@@ -127,11 +127,43 @@ CREATE INDEX idx_paper_trades_source_alert ON paper_trades (source_alert_id);
 
 ## Modified Table: `wallet_analytics`
 
-Add `follow_score` column.
+Add `follow_score` and `category_follow_scores` columns.
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
-| `follow_score` | `numeric(8,6)` | NULLABLE | Added in Phase 5 — how recommendable this wallet is to follow |
+| `follow_score` | `numeric(8,6)` | NULLABLE | Added in Phase 5 — how recommendable this wallet is to follow globally |
+| `category_follow_scores` | `jsonb` | NULLABLE | Added in Phase 5 — per-category follow scores dict: `{"politics": 0.92, "crypto": 0.45}` |
+
+---
+
+## New Table: `wallet_category_follow_scores`
+
+Per-category follow scores for each wallet. Allows querying "who should I follow in Politics?" without loading all wallets.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `wallet` | `text` | PK, FK → `wallets.wallet` | |
+| `category` | `text` | PK, FK → `categories.category` | |
+| `snapshot_date` | `date` | PK | |
+| `follow_score` | `numeric(8,6)` | NOT NULL | Per-category follow score [0, 1] |
+| `recommendation` | `text` | NOT NULL, check in (`'FOLLOW'`, `'WATCH'`, `'IGNORE'`) | Based on thresholds |
+| `roi_percentile` | `numeric(8,6)` | NULLABLE | Wallet's ROI percentile in this category |
+| `win_rate` | `numeric(8,6)` | NULLABLE | Win rate in this category |
+| `is_specialist` | `boolean` | NOT NULL, default `false` | Whether wallet is specialist in this category |
+| `volume_percentile` | `numeric(8,6)` | NULLABLE | Volume percentile in this category |
+| `recency_days` | `integer` | NULLABLE | Days since last trade in this category |
+| `reasons` | `jsonb` | NULLABLE | Array of reason strings |
+| `global_follow_score` | `numeric(8,6)` | NULLABLE | Wallet's global follow_score (from wallet_analytics) for context |
+
+**Indexes:**
+```sql
+CREATE INDEX idx_cat_follow_scores_score ON wallet_category_follow_scores (category, follow_score DESC);
+CREATE INDEX idx_cat_follow_scores_wallet ON wallet_category_follow_scores (wallet, snapshot_date DESC);
+CREATE INDEX idx_cat_follow_scores_recommendation ON wallet_category_follow_scores (category, recommendation)
+    WHERE recommendation = 'FOLLOW';
+```
+
+**Unique constraint:** `(wallet, category, snapshot_date)` — one score per wallet per category per day.
 
 ---
 
@@ -212,6 +244,72 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_column("wallet_analytics", "follow_score")
+```
+
+### Migration 021: `021_add_category_follow_scores.py`
+
+**Revision chain**: `020_add_follow_score.py` → `021_add_category_follow_scores.py`
+
+Adds `wallet_category_follow_scores` table and `category_follow_scores` JSONB column on `wallet_analytics`.
+
+```python
+"""Add wallet_category_follow_scores table for per-category follow recommendations.
+
+Revision ID: 021
+Revises: 020
+Create Date: 2026-06-29
+"""
+
+from typing import Sequence, Union
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+revision: str = "021"
+down_revision: Union[str, None] = "020"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "wallet_category_follow_scores",
+        sa.Column("wallet", sa.Text(), nullable=False),
+        sa.Column("category", sa.Text(), nullable=False),
+        sa.Column("snapshot_date", sa.Date(), nullable=False),
+        sa.Column("follow_score", sa.Numeric(8, 6), nullable=False),
+        sa.Column("recommendation", sa.Text(), nullable=False),
+        sa.Column("roi_percentile", sa.Numeric(8, 6), nullable=True),
+        sa.Column("win_rate", sa.Numeric(8, 6), nullable=True),
+        sa.Column("is_specialist", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column("volume_percentile", sa.Numeric(8, 6), nullable=True),
+        sa.Column("recency_days", sa.Integer(), nullable=True),
+        sa.Column("reasons", postgresql.JSONB(), nullable=True),
+        sa.Column("global_follow_score", sa.Numeric(8, 6), nullable=True),
+        sa.ForeignKeyConstraint(["wallet"], ["wallets.wallet"], name="fk_cat_follow_wallet"),
+        sa.ForeignKeyConstraint(["category"], ["categories.category"], name="fk_cat_follow_category"),
+        sa.PrimaryKeyConstraint("wallet", "category", "snapshot_date"),
+    )
+    op.create_index("idx_cat_follow_scores_score", "wallet_category_follow_scores",
+                    ["category", sa.text("follow_score DESC")])
+    op.create_index("idx_cat_follow_scores_wallet", "wallet_category_follow_scores",
+                    ["wallet", sa.text("snapshot_date DESC")])
+    op.create_index("idx_cat_follow_scores_rec", "wallet_category_follow_scores",
+                    ["category", "recommendation"],
+                    postgresql_where=sa.text("recommendation = 'FOLLOW'"))
+
+    op.add_column(
+        "wallet_analytics",
+        sa.Column("category_follow_scores", postgresql.JSONB(), nullable=True),
+    )
+
+
+def downgrade() -> None:
+    op.drop_column("wallet_analytics", "category_follow_scores")
+    op.drop_index("idx_cat_follow_scores_rec", table_name="wallet_category_follow_scores")
+    op.drop_index("idx_cat_follow_scores_wallet", table_name="wallet_category_follow_scores")
+    op.drop_index("idx_cat_follow_scores_score", table_name="wallet_category_follow_scores")
+    op.drop_table("wallet_category_follow_scores")
 ```
 
 ---
@@ -296,13 +394,35 @@ class PaperTrade(Base):
     executed_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 ```
 
-### Add `follow_score` to `WalletAnalytic` model
+### Add `follow_score` and `category_follow_scores` to `WalletAnalytic` model
 
 ```python
 class WalletAnalytic(Base):
     __tablename__ = "wallet_analytics"
     # ... existing columns ...
     follow_score = Column(Numeric(8, 6), nullable=True)  # Phase 5
+    category_follow_scores = Column(JSONB, nullable=True)  # Phase 5 — per-category scores
+```
+
+
+### New Model: `WalletCategoryFollowScore`
+
+```python
+class WalletCategoryFollowScore(Base):
+    __tablename__ = "wallet_category_follow_scores"
+
+    wallet = Column(Text, ForeignKey("wallets.wallet"), primary_key=True)
+    category = Column(Text, ForeignKey("categories.category"), primary_key=True)
+    snapshot_date = Column(Date, primary_key=True)
+    follow_score = Column(Numeric(8, 6), nullable=False)
+    recommendation = Column(Text, nullable=False)
+    roi_percentile = Column(Numeric(8, 6), nullable=True)
+    win_rate = Column(Numeric(8, 6), nullable=True)
+    is_specialist = Column(Boolean, nullable=False, server_default=text("false"))
+    volume_percentile = Column(Numeric(8, 6), nullable=True)
+    recency_days = Column(Integer, nullable=True)
+    reasons = Column(JSONB, nullable=True)
+    global_follow_score = Column(Numeric(8, 6), nullable=True)
 ```
 
 ---
@@ -438,6 +558,45 @@ class PortfolioResetRequest(BaseModel):
 class PortfolioResetResponse(BaseModel):
     portfolio: PortfolioResponse
     message: str
+
+
+# ── Phase 5: Per-Category Follow Scores ─────────────────────────────
+
+class CategoryFollowScoreItem(BaseModel):
+    category: str
+    follow_score: Decimal
+    recommendation: str  # FOLLOW / WATCH / IGNORE
+    roi_percentile: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    is_specialist: bool = False
+    volume_percentile: Optional[Decimal] = None
+    recency_days: Optional[int] = None
+    reasons: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class WalletCategoryFollowScoresResponse(BaseModel):
+    wallet: str
+    global_follow_score: Optional[Decimal] = None
+    category_scores: list[CategoryFollowScoreItem]
+
+
+class CategoryFollowLeaderboardEntry(BaseModel):
+    wallet: str
+    follow_score: Decimal
+    recommendation: str
+    roi_percentile: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    is_specialist: bool = False
+    reasons: list[str] = []
+
+
+class CategoryFollowLeaderboardResponse(BaseModel):
+    category: str
+    data: list[CategoryFollowLeaderboardEntry]
+    limit: int
+    offset: int
 ```
 
 ---
@@ -449,7 +608,8 @@ class PortfolioResetResponse(BaseModel):
 | CREATE | `alembic/versions/018_add_wallet_follows.py` |
 | CREATE | `alembic/versions/019_add_paper_trading.py` |
 | CREATE | `alembic/versions/020_add_follow_score.py` |
-| EDIT | `app/db/models.py` — add `WalletFollow`, `PaperPortfolio`, `PaperPosition`, `PaperTrade`; add `follow_score` to `WalletAnalytic` |
+| CREATE | `alembic/versions/021_add_category_follow_scores.py` |
+| EDIT | `app/db/models.py` — add `WalletFollow`, `PaperPortfolio`, `PaperPosition`, `PaperTrade`, `WalletCategoryFollowScore`; add `follow_score` + `category_follow_scores` to `WalletAnalytic` |
 | EDIT | `app/models/schemas.py` — add all schemas above |
 | RUN | `alembic upgrade head` |
 
@@ -458,12 +618,13 @@ class PortfolioResetResponse(BaseModel):
 ## Verification
 
 ```bash
-alembic upgrade head          # apply 018 → 019 → 020
-alembic downgrade -3          # rollback all three
+alembic upgrade head          # apply 018 → 019 → 020 → 021
+alembic downgrade -4          # rollback all four
 alembic upgrade head          # re-apply, no errors
 psql -U app -d polymarket -c "\d wallet_follows"
 psql -U app -d polymarket -c "\d paper_portfolios"
 psql -U app -d polymarket -c "\d paper_positions"
 psql -U app -d polymarket -c "\d paper_trades"
-psql -U app -d polymarket -c "\d wallet_analytics"  # verify follow_score
+psql -U app -d polymarket -c "\d wallet_category_follow_scores"
+psql -U app -d polymarket -c "\d wallet_analytics"  # verify follow_score + category_follow_scores
 ```
