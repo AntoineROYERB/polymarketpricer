@@ -6,12 +6,16 @@ Health check.
 
 ## `GET /api/v1/leaderboard`
 
-Top 100 traders ranked by skill score.
+Top 100 traders ranked by composite wallet score.
+
+**Score formula:** `0.40×edge_score + 0.20×consistency_score + 0.20×normalized_roi + 0.10×experience_score + 0.10×normalized_sharpe`
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
 | `limit` | int | 100 | Results per page (max 500) |
 | `offset` | int | 0 | Pagination offset |
+
+Each entry includes `edge_score`, `edge_consistency`, and `num_edge_trades` in addition to the core metrics.
 
 ## `GET /api/v1/leaderboard/emerging`
 
@@ -21,9 +25,40 @@ Top 10 emerging traders.
 
 Top 10 most consistent traders.
 
+## `GET /api/v1/leaderboard/edge`
+
+Traders ranked by edge score. Edge per trade = `(exit_price - entry_price) / entry_price`. The wallet `edge_score` is a min-max normalized `avg_edge` across all wallets (0–1). `edge_consistency` is the proportion of trades with positive edge.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | int | 50 | Results per page (max 200) |
+| `offset` | int | 0 | Pagination offset |
+
+**Example response:**
+```json
+{
+  "data": [
+    {
+      "rank": 1,
+      "wallet": "0x17e5...",
+      "edge_score": "0.950000",
+      "avg_edge": "0.123400",
+      "edge_consistency": "0.870000",
+      "num_edge_trades": 45
+    }
+  ],
+  "limit": 50,
+  "offset": 0
+}
+```
+
+---
+
 ## `GET /api/v1/wallets/{address}`
 
-Full wallet profile with analytics and current positions.
+Full wallet profile with analytics, current positions, category breakdown, and **edge metrics**.
+
+The `edge_metrics` field (when available) contains the edge scoring snapshot for the wallet.
 
 ## `GET /api/v1/markets`
 
@@ -188,6 +223,33 @@ Aggregated alert statistics.
   ]
 }
 ```
+
+---
+
+## `GET /api/v1/wallets/{address}/edge`
+
+Latest edge scoring snapshot for a specific wallet.
+
+**Example response:**
+```json
+{
+  "wallet": "0x17e5...",
+  "snapshot_date": "2026-06-27",
+  "avg_edge": "0.123400",
+  "median_edge": "0.110000",
+  "edge_consistency": "0.870000",
+  "edge_volatility": "0.050000",
+  "edge_score": "0.950000",
+  "num_edge_trades": 45,
+  "positive_edge_trades": 39,
+  "negative_edge_trades": 6,
+  "computed_at": "2026-06-27T23:59:59Z"
+}
+```
+
+When no edge data exists, returns a default response with `avg_edge: 0` and `num_edge_trades: 0`.
+
+---
 
 ## `WS /api/v1/alerts/ws`
 

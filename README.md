@@ -77,47 +77,55 @@ Then open **Mage AI** at `http://localhost:6789` to create ETL pipelines that pu
 │   │   ├── router.py            # Route aggregation
 │   │   ├── dependencies.py      # DB session dependency
 │   │   └── v1/
-│   │       ├── leaderboard.py   # GET /leaderboard, /emerging, /consistent
-│   │       ├── wallets.py       # GET /wallets/{address}
+│   │       ├── leaderboard.py   # GET /leaderboard, /emerging, /consistent, /edge
+│   │       ├── wallets.py       # GET /wallets/{address}, /{address}/edge, /{address}/categories
 │   │       ├── markets.py       # GET /markets
-│   │       └── categories.py    # GET /categories, /leaderboard/{category}, /wallets/{addr}/categories
+│   │       ├── categories.py    # GET /categories, /leaderboard/{category}, /{category}/specialists
+│   │       └── alerts.py        # GET /alerts, /{wallet}, /stats
 │   ├── db/
 │   │   ├── engine.py            # AsyncEngine + session factory
-│   │   └── models.py            # SQLAlchemy ORM (10 tables)
+│   │   └── models.py            # SQLAlchemy ORM (16 tables)
 │   ├── services/
 │   │   ├── alert_service.py     # Discord delivery, action classification
 │   │   ├── category_service.py  # Category leaderboards, wallet breakdown
 │   │   ├── category_classifier.py  # Thin wrapper around keyword classifier
 │   │   ├── leaderboard_service.py
-│   │   ├── wallet_service.py
+│   │   ├── wallet_service.py    # Wallet profile + edge snapshot queries
 │   │   └── ws_manager.py        # WebSocket connection manager
 │   ├── models/
-│   │   ├── schemas.py           # Pydantic response models
-│   │   └── enums.py             # TradeSide, MarketCategory
+│   │   ├── schemas.py           # Pydantic response models (incl. edge scoring)
+│   │   └── enums.py             # TradeSide, MarketCategory, AlertAction
+│   ├── utils/
+│   │   ├── category.py          # Shared category validation helper
+│   │   └── decimal_helpers.py   # Decimal conversion utilities
 │   └── tests/
 │       ├── __init__.py
 │       ├── conftest.py              # Mock DB fixtures
 │       ├── test_alert_service.py    # Alert delivery service tests (39)
 │       ├── test_category_classifier.py  # Phase 2 classifier unit tests
+│       ├── test_edge_scoring.py     # Edge scoring unit tests (10)
 │       ├── test_ws_manager.py       # WebSocket manager tests (14)
 │       ├── test_api/
 │       │   ├── __init__.py
 │       │   ├── test_endpoints.py
 │       │   ├── test_alert_endpoints.py  # Phase 3 alert API tests (13)
-│       │   └── test_category_endpoints.py  # Phase 2 category API tests
-│       └── test_db_integrity.py   # 56 integration tests
+│       │   ├── test_category_endpoints.py  # Phase 2 category API tests
+│       │   └── test_edge_endpoints.py  # Phase 4 edge API tests (7)
+│       └── test_db_integrity.py   # 64 integration tests
 │
-├── alembic/                     # Database migrations
+├── alembic/                     # Database migrations (17 versions)
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
-│       ├── 001_initial.py
+│       ├── 001_initial.py       → Core tables
 │       ├── 002_category_analytics.py
 │       ├── 003_add_mapped_category.py
 │       ├── 004_add_categories_table.py
 │       ├── 005_smart_money_alerts.py
 │       ├── 006_drop_outcome_id_fks.py
-│       └── 007_add_wallet_pnl_snapshots.py
+│       ├── 007_add_wallet_pnl_snapshots.py
+│       ├── 008-016              → Indexes, tiers, precision, pipeline log
+│       └── 017_add_edge_scoring.py  → Edge scoring tables + columns
 │
 ├── mage/                        # Mage AI (bootstrapped on startup)
 │   ├── Dockerfile

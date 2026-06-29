@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.1 (2026-06-28)
+
+### Fixes
+- **ETL Pipeline Error Propagation**: `trigger_verify` now reads block errors from Mage SQLite DB when `verify_etl_output` pipeline fails, providing meaningful error messages instead of generic failure
+- **wallet_score Default**: `compute_wallet_metrics` defaults `wallet_score` to `0` instead of `None`, preventing null scores in rankings
+
+---
+
 ## v0.4.0 (2026-06-27)
 
 ### Features
