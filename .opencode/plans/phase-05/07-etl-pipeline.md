@@ -19,7 +19,7 @@ enrichment_follow_scoring  ◄── NEW
 enrichment_ranking_computation (downstream — unchanged)
 ```
 
-### Data Flow
+### Data Flow (Global Scoring)
 
 ```
          wallet_analytics (edge_score, consistency_score)
@@ -28,18 +28,31 @@ enrichment_ranking_computation (downstream — unchanged)
          trades (for recency + frequency)
                 │
                 ▼
-    load_follow_metrics.py
-    (PG query: join all relevant metrics per wallet)
+    load_follow_metrics.py  ───────────────────┐
+    (main query: per-wallet metrics)            │
+                │                               │
+                ▼                               │
+    compute_follow_score.py                     │
+    (global follow_score formula)               │
+                │                               │
+                ▼                               │
+    export_follow_scores.py                     │
+    (UPDATE wallet_analytics                    │
+     SET follow_score = ...)                    │
+                                                │
+    load_follow_metrics.py  ◄───────────────────┘
+    (extended query: per-wallet x per-category metrics)
                 │
                 ▼
-    compute_follow_score.py
-    (transformer — implements follow scoring formula:
-     0.30*edge + 0.20*consistency + 0.20*specialization
-     + 0.15*recency + 0.15*frequency)
+    compute_category_follow_scores.py
+    (per-category follow_score formula:
+     0.25*edge + 0.25*roi_percentile + 0.20*win_rate
+      + 0.15*specialist_bonus + 0.10*volume_percentile + 0.05*recency)
                 │
                 ▼
-    export_follow_scores.py
-    (UPDATE wallet_analytics SET follow_score = ...)
+    export_category_follow_scores.py
+    (UPSERT wallet_category_follow_scores
+     + UPDATE wallet_analytics.category_follow_scores)
 ```
 
 ### File Manifest
@@ -47,12 +60,14 @@ enrichment_ranking_computation (downstream — unchanged)
 ```
 magic/default_repo/pipelines/enrichment_follow_scoring/
 ├── __init__.py
-├── metadata.yaml
+├── metadata.yaml                     # Updated with per-category block
 └── triggers/
 
-magic/default_repo/data_loaders/load_follow_metrics.py
-magic/default_repo/transformers/compute_follow_score.py
+magic/default_repo/data_loaders/load_follow_metrics.py    # Extended with per-category query
+magic/default_repo/transformers/compute_follow_score.py   # Updated global scoring
+magic/default_repo/transformers/compute_category_follow_scores.py  # NEW — per-category
 magic/default_repo/data_exporters/export_follow_scores.py
+magic/default_repo/data_exporters/export_category_follow_scores.py  # NEW
 magic/default_repo/data_exporters/trigger_follow_scoring.py
 ```
 
@@ -60,7 +75,55 @@ magic/default_repo/data_exporters/trigger_follow_scoring.py
 
 ## 1. Data Loader: `load_follow_metrics.py`
 
-Loads all metrics needed for follow scoring per wallet.
+Loads all metrics needed for follow scoring per wallet. Updated to also load per-category data.
+
+### Global metrics query (same as original)
+
+The main query loads per-wallet metrics as shown below.
+
+### Extended query: per-category metrics
+
+A second query loads per-wallet, per-category metrics for the category-level follow scoring:
+
+```sql
+SELECT
+    ca.wallet,
+    ca.category,
+    ca.roi,
+    ca.win_rate,
+    ca.num_trades,
+    ca.total_volume,
+    ca.is_specialist,
+    -- Percentile ranking within category
+    PERCENT_RANK() OVER (
+        PARTITION BY ca.category
+        ORDER BY ca.roi DESC
+    ) as roi_percentile,
+    PERCENT_RANK() OVER (
+        PARTITION BY ca.category
+        ORDER BY ca.total_volume DESC
+    ) as volume_percentile,
+    -- Recency in category
+    EXTRACT(DAY FROM (CURRENT_DATE - MAX(t.timestamp::date))) as recency_days,
+    -- Global edge for context
+    wes.edge_score as global_edge_score,
+    -- Global follow_score for context
+    wa.follow_score as global_follow_score
+FROM category_analytics ca
+LEFT JOIN trades t ON t.wallet = ca.wallet
+LEFT JOIN markets m ON m.id = t.market_id
+    AND (m.mapped_category = ca.category OR m.category = ca.category)
+LEFT JOIN (
+    SELECT DISTINCT ON (wallet) wallet, edge_score
+    FROM wallet_edge_snapshots
+    ORDER BY wallet, snapshot_date DESC
+) wes ON wes.wallet = ca.wallet
+LEFT JOIN wallet_analytics wa ON wa.wallet = ca.wallet
+    AND wa.snapshot_date = CURRENT_DATE
+WHERE ca.snapshot_date = CURRENT_DATE
+GROUP BY ca.wallet, ca.category, ca.roi, ca.win_rate, ca.num_trades,
+         ca.total_volume, ca.is_specialist, wes.edge_score, wa.follow_score
+```
 
 ```python
 from pandas import DataFrame
@@ -212,6 +275,106 @@ def test_output(df: DataFrame) -> None:
     assert df['follow_score'].between(0, 1).all(), "Scores must be in [0, 1]"
 ```
 
+
+### Per-Category Transformer
+
+A separate transformer that processes the per-category metrics loaded by the extended query:
+
+```python
+import math
+from pandas import DataFrame
+
+if 'transformer' not in globals():
+    from mage_ai.data_preparation.decorators import transformer
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+def compute_category_specialist_bonus(is_specialist: bool) -> float:
+    """Specialist bonus: 1.0 if specialist, 0.5 otherwise."""
+    return 1.0 if is_specialist else 0.5
+
+
+@transformer
+def compute_category_follow_scores(df: DataFrame, *args, **kwargs) -> DataFrame:
+    """Compute per-category follow_score for each wallet x category."""
+    results = []
+    for _, row in df.iterrows():
+        edge = float(row.get('global_edge_score', 0))
+        roi_percentile = float(row.get('roi_percentile', 0.5))
+        win_rate = float(row.get('win_rate', 0))
+        is_specialist = bool(row.get('is_specialist', False))
+        specialist_bonus = compute_category_specialist_bonus(is_specialist)
+        volume_percentile = float(row.get('volume_percentile', 0.5))
+        recency_days = float(row.get('recency_days', 999))
+        recency_score = math.exp(-recency_days / 90)
+        global_follow_score = float(row.get('global_follow_score', 0))
+
+        follow_score = (
+            0.25 * edge +
+            0.25 * roi_percentile +
+            0.20 * win_rate +
+            0.15 * specialist_bonus +
+            0.10 * volume_percentile +
+            0.05 * recency_score
+        )
+        follow_score = min(max(follow_score, 0), 1)  # clamp to [0, 1]
+
+        # Generate reasons
+        reasons = []
+        if roi_percentile > 0.90:
+            reasons.append(f"Top 10% ROI in {row['category']}")
+        if is_specialist:
+            reasons.append(f"{row['category']} specialist ({int(row.get('num_trades', 0))} trades)")
+        if win_rate > 0.65:
+            reasons.append(f"Win rate {win_rate:.0%} in {row['category']}")
+        if edge > 0.50:
+            reasons.append(f"Positive global edge ({edge:.2f})")
+        num_trades = int(row.get('num_trades', 0))
+        if num_trades < 15:
+            reasons.append(f"Only {num_trades} trades — limited history")
+        if recency_days > 90:
+            reasons.append(f"No trades in {row['category']} for {int(recency_days/30)} months")
+        if win_rate < 0.40:
+            reasons.append(f"Win rate below 40% in {row['category']}")
+        if not reasons:
+            reasons.append("Insufficient data")
+
+        # Recommendation
+        recommendation = "FOLLOW" if follow_score >= 0.70 else \
+                         "WATCH" if follow_score >= 0.35 else \
+                         "IGNORE"
+
+        results.append({
+            'wallet': row['wallet'],
+            'category': row['category'],
+            'follow_score': round(follow_score, 6),
+            'recommendation': recommendation,
+            'roi_percentile': round(roi_percentile, 6),
+            'win_rate': round(win_rate, 6),
+            'is_specialist': is_specialist,
+            'volume_percentile': round(volume_percentile, 6) if volume_percentile else None,
+            'recency_days': int(recency_days) if recency_days != 999 else None,
+            'reasons': reasons,
+            'global_follow_score': round(global_follow_score, 6),
+        })
+
+    return DataFrame(results)
+
+
+@test
+def test_output(df: DataFrame) -> None:
+    assert df is not None
+    assert 'wallet' in df.columns
+    assert 'category' in df.columns
+    assert 'follow_score' in df.columns
+    assert 'recommendation' in df.columns
+    if not df.empty:
+        assert df['follow_score'].between(0, 1).all(), "Scores must be in [0, 1]"
+        valid_recs = {'FOLLOW', 'WATCH', 'IGNORE'}
+        assert df['recommendation'].isin(valid_recs).all(), "Invalid recommendation value"
+```
+
 ## 3. Data Exporter: `export_follow_scores.py`
 
 ```python
@@ -239,6 +402,111 @@ def export_follow_scores(df: DataFrame, *args, **kwargs) -> None:
                       AND snapshot_date = CURRENT_DATE
                 """),
                 {"wallet": row["wallet"], "score": row["follow_score"]},
+            )
+
+
+@test
+def test_output(*args) -> None:
+    pass
+```
+
+---
+
+## 3b. Data Exporter: `export_category_follow_scores.py`
+
+After computing per-category scores in the pipeline, export them to `wallet_category_follow_scores` and update `wallet_analytics.category_follow_scores`.
+
+```python
+from datetime import date
+import json
+from pandas import DataFrame
+from sqlalchemy import create_engine, text
+
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_exporter
+def export_category_follow_scores(df: DataFrame, *args, **kwargs) -> None:
+    """Export per-category follow scores to wallet_category_follow_scores.
+
+    Input DataFrame columns:
+        wallet, category, follow_score, recommendation, roi_percentile,
+        win_rate, is_specialist, volume_percentile, recency_days, reasons, global_follow_score
+    """
+    if df.empty:
+        return
+
+    engine = create_engine(kwargs.get('db_url'))
+    today = date.today()
+    category_scores_by_wallet = {}
+
+    with engine.begin() as conn:
+        for _, row in df.iterrows():
+            # Upsert into wallet_category_follow_scores
+            conn.execute(
+                text("""
+                    INSERT INTO wallet_category_follow_scores
+                        (wallet, category, snapshot_date, follow_score, recommendation,
+                         roi_percentile, win_rate, is_specialist, volume_percentile,
+                         recency_days, reasons, global_follow_score)
+                    VALUES
+                        (:wallet, :category, :snapshot_date, :follow_score, :recommendation,
+                         :roi_percentile, :win_rate, :is_specialist, :volume_percentile,
+                         :recency_days, :reasons::jsonb, :global_follow_score)
+                    ON CONFLICT (wallet, category, snapshot_date)
+                    DO UPDATE SET
+                        follow_score = EXCLUDED.follow_score,
+                        recommendation = EXCLUDED.recommendation,
+                        roi_percentile = EXCLUDED.roi_percentile,
+                        win_rate = EXCLUDED.win_rate,
+                        is_specialist = EXCLUDED.is_specialist,
+                        volume_percentile = EXCLUDED.volume_percentile,
+                        recency_days = EXCLUDED.recency_days,
+                        reasons = EXCLUDED.reasons,
+                        global_follow_score = EXCLUDED.global_follow_score
+                """),
+                {
+                    "wallet": row["wallet"],
+                    "category": row["category"],
+                    "snapshot_date": today,
+                    "follow_score": row["follow_score"],
+                    "recommendation": row["recommendation"],
+                    "roi_percentile": row.get("roi_percentile"),
+                    "win_rate": row.get("win_rate"),
+                    "is_specialist": row.get("is_specialist", False),
+                    "volume_percentile": row.get("volume_percentile"),
+                    "recency_days": row.get("recency_days"),
+                    "reasons": json.dumps(row.get("reasons", [])),
+                    "global_follow_score": row.get("global_follow_score"),
+                },
+            )
+
+            # Accumulate JSONB for wallet_analytics update
+            wallet_key = row["wallet"]
+            if wallet_key not in category_scores_by_wallet:
+                category_scores_by_wallet[wallet_key] = {}
+            category_scores_by_wallet[wallet_key][row["category"]] = {
+                "follow_score": float(row["follow_score"]),
+                "recommendation": row["recommendation"],
+            }
+
+        # Update wallet_analytics.category_follow_scores JSONB
+        for wallet, scores in category_scores_by_wallet.items():
+            conn.execute(
+                text("""
+                    UPDATE wallet_analytics
+                    SET category_follow_scores = :scores::jsonb
+                    WHERE wallet = :wallet
+                      AND snapshot_date = :snapshot_date
+                """),
+                {
+                    "wallet": wallet,
+                    "snapshot_date": today,
+                    "scores": json.dumps(scores),
+                },
             )
 
 
@@ -455,7 +723,9 @@ ingestion_market_discovery
 | CREATE | `magic/default_repo/pipelines/enrichment_follow_scoring/` (dir + metadata.yaml) |
 | CREATE | `magic/default_repo/data_loaders/load_follow_metrics.py` |
 | CREATE | `magic/default_repo/transformers/compute_follow_score.py` |
+| CREATE | `magic/default_repo/transformers/compute_category_follow_scores.py` |
 | CREATE | `magic/default_repo/data_exporters/export_follow_scores.py` |
+| CREATE | `magic/default_repo/data_exporters/export_category_follow_scores.py` |
 | CREATE | `magic/default_repo/data_exporters/trigger_follow_scoring.py` |
 | MODIFY | `magic/default_repo/pipelines/smart_money_detection/data_exporters/export_alerts.py` — add paper trade logic |
 | MODIFY | `magic/default_repo/pipelines/orchestration/metadata.yaml` — add enrichment_follow_scoring |

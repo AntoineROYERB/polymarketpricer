@@ -30,6 +30,7 @@ When the alert.wallet is being followed by the user:
 👤 Trader: 0x1234...5678 (Score: 89)
    Label: Politics whale
    Followed since: 2026-06-20
+   🏆 Best categories: Politics (FOLLOW, 0.92), Crypto (WATCH, 0.45)
 
 📊 Action: **BUY YES**
    Market: Will candidate X win?
@@ -126,6 +127,42 @@ async def _format_discord_embed(
         })
 
     return embed
+```
+
+### Category Scores in Embed
+
+When building the embed, also include the wallet's top category scores:
+
+```python
+async def _get_top_category_scores(db: AsyncSession, wallet: str) -> str:
+    """Get wallet's top 2 category follow scores as a formatted string."""
+    result = await db.execute(
+        text("""
+            SELECT category, follow_score, recommendation
+            FROM wallet_category_follow_scores
+            WHERE wallet = :wallet
+              AND snapshot_date = CURRENT_DATE
+            ORDER BY follow_score DESC
+            LIMIT 2
+        """),
+        {"wallet": wallet},
+    )
+    rows = result.all()
+    if not rows:
+        return ""
+    parts = []
+    for r in rows:
+        emoji = "🟢" if r.recommendation == "FOLLOW" else "🟡" if r.recommendation == "WATCH" else "🔴"
+        parts.append(f"{r.category} ({emoji} {r.recommendation}, {float(r.follow_score):.2f})")
+    return " | ".join(parts)
+```
+
+Then add the category scores line to the Trader field in the embed:
+
+```python
+category_str = await _get_top_category_scores(db, alert.wallet)
+if category_str:
+    trader_value += f"\n🏆 {category_str}"
 ```
 
 ### Follow Info & Copy Suggestion Lookup
@@ -256,7 +293,7 @@ Extend the WebSocket alert payload with optional follow/copy fields:
 
 | Action | Path |
 |--------|------|
-| EDIT | `app/services/alert_service.py` — add `_get_follow_info`, extend `_format_discord_embed`, update delivery loop |
+| EDIT | `app/services/alert_service.py` — add `_get_follow_info`, `_get_top_category_scores`, extend `_format_discord_embed`, update delivery loop |
 
 ---
 

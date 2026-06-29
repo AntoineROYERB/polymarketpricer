@@ -9,7 +9,9 @@
 
 New test file: `app/tests/test_follow_scoring.py`
 
-### Scenarios (~8 tests)
+### Scenarios (~12 tests, 8 global + 4 per-category)
+
+#### Global scoring (8 tests)
 
 | # | Test | Input | Expected |
 |---|------|-------|----------|
@@ -21,6 +23,15 @@ New test file: `app/tests/test_follow_scoring.py`
 | 6 | `test_recency_score_old` | days_since=365 | recency = e^(-365/90) ≈ 0.017 |
 | 7 | `test_frequency_score_low` | 2 trades, 12 months active | tpm ≈ 0.17, score = 1/(1+e^(-0.1*(0.17-10))) ≈ 0.27 |
 | 8 | `test_frequency_score_high` | 500 trades, 10 months active | tpm = 50, score ≈ 0.98 |
+
+#### Per-category scoring (4 additional tests)
+
+| # | Test | Input | Expected |
+|---|------|-------|----------|
+| 9 | `test_perfect_category_score` | edge=1.0, roi_percentile=1.0, win_rate=1.0, specialist=true, volume_percentile=1.0, recency=1.0 | category_follow_score = 1.0 |
+| 10 | `test_zero_category_score` | edge=0, roi_percentile=0, win_rate=0, specialist=false, volume_percentile=0, recency=0 | category_follow_score = 0.075 (specialist_bonus=0.5*0.15) |
+| 11 | `test_category_follow_thresholds` | score=0.85 → FOLLOW, score=0.50 → WATCH, score=0.20 → IGNORE | correct recommendation |
+| 12 | `test_category_reason_generation` | roi_percentile=0.95, specialist=true, win_rate=0.72, edge=0.60 | reasons contain "Top 5% ROI", "specialist", "Win rate 72%", "Positive global edge" |
 
 ### Pure function tests (no DB needed)
 
@@ -50,6 +61,28 @@ def test_category_specialization(specialist_count, avg_rank, expected_min):
 def test_recency_score(days_since, expected):
     from app.services.follow_scoring import compute_recency_score
     assert abs(compute_recency_score(days_since) - expected) < 0.01
+
+
+# ── Per-category scoring tests ──────────────────────────────────────
+
+def test_perfect_category_follow_score():
+    """Perfect inputs should yield category_follow_score = 1.0."""
+    from app.services.follow_scoring import compute_category_follow_score_formula
+    score = compute_category_follow_score_formula(
+        edge=1.0, roi_percentile=1.0, win_rate=1.0,
+        is_specialist=True, volume_percentile=1.0, recency_score=1.0,
+    )
+    assert score == pytest.approx(1.0, abs=0.01)
+
+
+@pytest.mark.parametrize("score_value,expected_recommendation", [
+    (0.85, "FOLLOW"),
+    (0.50, "WATCH"),
+    (0.20, "IGNORE"),
+])
+def test_category_follow_recommendation_thresholds(score_value, expected_recommendation):
+    from app.services.follow_scoring import get_recommendation
+    assert get_recommendation(score_value) == expected_recommendation
 ```
 
 ---
@@ -81,7 +114,9 @@ New test file: `app/tests/test_paper_trading.py`
 
 New test file: `app/tests/test_api/test_follow_endpoints.py`
 
-### Scenarios (~8 tests)
+### Scenarios (~11 tests, 8 existing + 3 per-category)
+
+#### Existing follow CRUD (8 tests)
 
 | # | Test | Method | Expected |
 |---|------|--------|----------|
@@ -93,6 +128,14 @@ New test file: `app/tests/test_api/test_follow_endpoints.py`
 | 6 | `test_list_follows` | GET `/api/v1/follow` | 200, list |
 | 7 | `test_update_follow` | PATCH `/api/v1/follow/{wallet}` | 200, updated |
 | 8 | `test_unfollow` | DELETE `/api/v1/follow/{wallet}` | 204 |
+
+#### Per-category recommendations (3 additional tests)
+
+| # | Test | Method | Expected |
+|---|------|--------|----------|
+| 9 | `test_recommendations_by_category` | GET `/api/v1/follow/recommendations/by-category/politics` | 200, leaderboard |
+| 10 | `test_recommendations_by_invalid_category` | GET `/api/v1/follow/recommendations/by-category/invalid` | 404 |
+| 11 | `test_wallet_recommendations_by_category` | GET `/api/v1/follow/recommendations/{wallet}/by-category` | 200, per-category scores |
 
 ---
 
@@ -261,6 +304,92 @@ class TestPhase05FollowScore:
         """)
         out_of_range = cur.fetchone()[0]
         assert out_of_range == 0, f"Found {out_of_range} out-of-range follow_scores"
+
+    def test_category_follow_scores_column_exists(self, db):
+        """category_follow_scores JSONB column exists on wallet_analytics."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'wallet_analytics'
+              AND column_name = 'category_follow_scores'
+        """)
+        assert cur.fetchone() is not None
+
+
+class TestPhase05CategoryFollowScores:
+    """Integration tests for wallet_category_follow_scores table."""
+
+    def test_wallet_category_follow_scores_queryable(self, db):
+        """wallet_category_follow_scores table exists and is queryable."""
+        cur = db.cursor()
+        cur.execute("SELECT COUNT(*) FROM wallet_category_follow_scores")
+        count = cur.fetchone()[0]
+        assert count >= 0
+
+    def test_wallet_category_follow_scores_fk_wallet(self, db):
+        """FK reference to wallets.wallet."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores wcfs
+            LEFT JOIN wallets w ON w.wallet = wcfs.wallet
+            WHERE w.wallet IS NULL
+        """)
+        orphans = cur.fetchone()[0]
+        assert orphans == 0, f"Found {orphans} orphan rows referencing non-existent wallets"
+
+    def test_wallet_category_follow_scores_fk_category(self, db):
+        """FK reference to categories.category."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores wcfs
+            LEFT JOIN categories c ON c.category = wcfs.category
+            WHERE c.category IS NULL
+        """)
+        orphans = cur.fetchone()[0]
+        assert orphans == 0, f"Found {orphans} orphan rows referencing non-existent categories"
+
+    def test_wallet_category_follow_scores_not_null(self, db):
+        """Critical columns have no NULLs."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores
+            WHERE wallet IS NULL OR category IS NULL
+               OR snapshot_date IS NULL
+               OR follow_score IS NULL
+               OR recommendation IS NULL
+        """)
+        nulls = cur.fetchone()[0]
+        assert nulls == 0, f"Found {nulls} rows with NULL in critical columns"
+
+    def test_wallet_category_follow_scores_score_range(self, db):
+        """follow_score must be in [0, 1]."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores
+            WHERE follow_score < 0 OR follow_score > 1
+        """)
+        out_of_range = cur.fetchone()[0]
+        assert out_of_range == 0, f"Found {out_of_range} rows with follow_score outside [0, 1]"
+
+    def test_wallet_category_follow_scores_valid_recommendation(self, db):
+        """recommendation must be FOLLOW, WATCH, or IGNORE."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores
+            WHERE recommendation NOT IN ('FOLLOW', 'WATCH', 'IGNORE')
+        """)
+        invalid = cur.fetchone()[0]
+        assert invalid == 0, f"Found {invalid} rows with invalid recommendation"
+
+    def test_wallet_category_follow_scores_roles(self, db):
+        """is_specialist is boolean (true/false)."""
+        cur = db.cursor()
+        cur.execute("""
+            SELECT COUNT(*) FROM wallet_category_follow_scores
+            WHERE is_specialist NOT IN (true, false)
+        """)
+        invalid = cur.fetchone()[0]
+        assert invalid == 0
 ```
 
 ---
@@ -269,13 +398,13 @@ class TestPhase05FollowScore:
 
 | Test Suite | File | Existing | New | Total |
 |------------|------|----------|-----|-------|
-| Follow scoring unit | `test_follow_scoring.py` | 0 | 8 | 8 |
+| Follow scoring unit | `test_follow_scoring.py` | 0 | 12 (8 global + 4 per-category) | 12 |
 | Paper trading unit | `test_paper_trading.py` | 0 | 12 | 12 |
-| Follow API | `test_api/test_follow_endpoints.py` | 0 | 8 | 8 |
+| Follow API | `test_api/test_follow_endpoints.py` | 0 | 11 (8 CRUD + 3 per-category) | 11 |
 | Portfolio API | `test_api/test_portfolio_endpoints.py` | 0 | 7 | 7 |
-| Integration | `test_db_integrity.py` | 66 | 12 | 78 |
-| **Total Phase 5** | | **0** | **47** | **47** |
-| **Grand total** | | **176** | **47** | **~223** |
+| Integration | `test_db_integrity.py` | 66 | 19 (12 original + 7 per-category) | 85 |
+| **Total Phase 5** | | **0** | **61** | **61** |
+| **Grand total** | | **176** | **61** | **~237** |
 
 ---
 
@@ -283,11 +412,27 @@ class TestPhase05FollowScore:
 
 | Action | Path |
 |--------|------|
-| CREATE | `app/tests/test_follow_scoring.py` — 8 unit tests |
+| CREATE | `app/tests/test_follow_scoring.py` — 12 unit tests (8 global + 4 per-category) |
 | CREATE | `app/tests/test_paper_trading.py` — 12 unit tests |
-| CREATE | `app/tests/test_api/test_follow_endpoints.py` — 8 API tests |
+| CREATE | `app/tests/test_api/test_follow_endpoints.py` — 11 API tests (8 CRUD + 3 per-category) |
 | CREATE | `app/tests/test_api/test_portfolio_endpoints.py` — 7 API tests |
-| EDIT | `app/tests/test_db_integrity.py` — add 12 integration tests, update ROW_THRESHOLDS |
+| EDIT | `app/tests/test_db_integrity.py` — add 19 integration tests (12 original + 7 per-category), update ROW_THRESHOLDS |
+
+## Verification
+
+```bash
+# Run all Phase 5 tests
+python -m pytest app/tests/test_follow_scoring.py -v
+python -m pytest app/tests/test_paper_trading.py -v
+python -m pytest app/tests/test_api/test_follow_endpoints.py -v
+python -m pytest app/tests/test_api/test_portfolio_endpoints.py -v
+
+# Run full test suite (expect ~237 tests)
+python -m pytest app/tests/ -v
+
+# Run only integration tests
+python -m pytest app/tests/test_db_integrity.py -m integration -v
+```
 
 ---
 
