@@ -12,8 +12,6 @@ from app.models.schemas import (
 )
 from app.services.category_service import (
     analytic_to_category_summary,
-)
-from app.services.category_service import (
     get_wallet_categories as get_wallet_categories_data,
 )
 from app.services.wallet_service import (
@@ -46,10 +44,7 @@ async def wallet_profile(
     profile = WalletProfile.model_validate(wallet)
 
     if analytics is not None:
-        analytics_data = WalletAnalyticsData.model_validate(analytics)
-        if analytics.avg_holding_duration is not None:
-            analytics_data.avg_holding_duration = str(analytics.avg_holding_duration)
-        profile.analytics = analytics_data
+        profile.analytics = WalletAnalyticsData.model_validate(analytics)
 
     profile.current_positions = positions
     profile.categories = [
