@@ -1,0 +1,127 @@
+blocks:
+- all_upstream_blocks_executed: true
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - compute_follow_score
+  - compute_category_follow_scores
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: load_follow_metrics
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_loader
+  upstream_blocks: []
+  uuid: load_follow_metrics
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_follow_scores
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: compute_follow_score
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_follow_metrics
+  uuid: compute_follow_score
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - export_category_follow_scores
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: compute_category_follow_scores
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: transformer
+  upstream_blocks:
+  - load_follow_metrics
+  uuid: compute_category_follow_scores
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - trigger_follow_scoring
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: export_follow_scores
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - compute_follow_score
+  uuid: export_follow_scores
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks:
+  - trigger_follow_scoring
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: export_category_follow_scores
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - compute_category_follow_scores
+  uuid: export_category_follow_scores
+- all_upstream_blocks_executed: false
+  color: null
+  configuration: {}
+  downstream_blocks: []
+  executor_config: null
+  executor_type: local_python
+  has_callback: null
+  language: python
+  name: trigger_follow_scoring
+  retry_config: null
+  status: not_executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks:
+  - export_follow_scores
+  - export_category_follow_scores
+  uuid: trigger_follow_scoring
+cache_block_output_in_memory: false
+callbacks: []
+concurrency_config: {}
+conditionals: []
+created_at: null
+data_integration: null
+description: "Compute global and per-category follow scores for wallet recommendations"
+executor_config: {}
+executor_count: 1
+executor_type: null
+extensions: {}
+name: enrichment_follow_scoring
+notification_config: {}
+remote_variables_dir: null
+retry_config: {}
+run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
+tags: []
+type: python
+uuid: enrichment_follow_scoring
+variables_dir: /home/src/mage_data/default_repo
+widgets: []
