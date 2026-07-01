@@ -45,7 +45,7 @@
 - 4 new unit test files: `test_follow_scoring.py`, `test_paper_trading.py`
 - 2 new API test files: `test_api/test_follow_endpoints.py`, `test_api/test_portfolio_endpoints.py`
 - Enhanced integration tests in `test_db_integrity.py` (Phase 5 table coverage)
-- Total: 176 → **~240 tests**
+- Total: 176 → **267 tests**
 
 ### Infrastructure
 - `.dockerignore` expanded with `magic/`, `.venv/`, `plans/`, `.opencode/` patterns
