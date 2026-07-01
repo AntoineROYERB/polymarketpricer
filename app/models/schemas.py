@@ -1,8 +1,12 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
+from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+
+from app.utils.category import get_valid_categories
 
 
 class LeaderboardEntry(BaseModel):
@@ -59,6 +63,13 @@ class WalletAnalyticsData(BaseModel):
     experience_score: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
+
+    @field_validator("avg_holding_duration", mode="before")
+    @classmethod
+    def coerce_timedelta_to_str(cls, v: object) -> object:
+        if isinstance(v, timedelta):
+            return str(v)
+        return v
 
 
 class WalletEdgeSnapshot(BaseModel):
@@ -216,6 +227,195 @@ class MarketSummary(BaseModel):
 
 class MarketListResponse(BaseModel):
     data: list[MarketSummary]
+    limit: int
+    offset: int
+
+
+# ── Phase 5: Follow ─────────────────────────────────────────────────
+
+class FollowCreate(BaseModel):
+    label: Optional[str] = Field(default=None, max_length=200)
+    auto_copy_enabled: bool = False
+    copy_mode: Optional[Literal["proportional", "fixed"]] = None
+    copy_value: Decimal = Field(default=Decimal("0.05"), ge=0)
+    category_filter: Optional[list[str]] = None
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("category_filter")
+    @classmethod
+    def validate_category_filter(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        if v is None:
+            return v
+        valid = set(get_valid_categories())
+        for cat in v:
+            if cat.lower() not in valid:
+                raise ValueError(f"Invalid category '{cat}'. Valid: {sorted(valid)}")
+        return [cat.lower() for cat in v]
+
+
+class FollowUpdate(BaseModel):
+    label: Optional[str] = Field(default=None, max_length=200)
+    auto_copy_enabled: Optional[bool] = None
+    copy_mode: Optional[Literal["proportional", "fixed"]] = None
+    copy_value: Optional[Decimal] = Field(default=None, ge=0)
+    category_filter: Optional[list[str]] = None
+    active: Optional[bool] = None
+
+    @field_validator("category_filter")
+    @classmethod
+    def validate_category_filter(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        if v is None:
+            return v
+        valid = set(get_valid_categories())
+        for cat in v:
+            if cat.lower() not in valid:
+                raise ValueError(f"Invalid category '{cat}'. Valid: {sorted(valid)}")
+        return [cat.lower() for cat in v]
+
+
+class FollowResponse(BaseModel):
+    id: UUID
+    wallet: str
+    label: Optional[str] = None
+    active: bool
+    auto_copy_enabled: bool
+    copy_mode: Optional[str] = None
+    copy_value: Decimal
+    category_filter: Optional[list[str]] = None
+    followed_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FollowListResponse(BaseModel):
+    data: list[FollowResponse]
+    total: int
+
+
+class FollowRecommendation(BaseModel):
+    wallet: str
+    follow_score: Decimal
+    reasons: list[str]
+
+
+class FollowRecommendationResponse(BaseModel):
+    data: list[FollowRecommendation]
+    limit: int
+    offset: int
+
+
+# ── Phase 5: Paper Trading ──────────────────────────────────────────
+
+class PortfolioResponse(BaseModel):
+    id: Optional[UUID] = None
+    name: str = "Main"
+    initial_balance: Decimal = Decimal("10000")
+    current_balance: Decimal = Decimal("10000")
+    total_realized_pnl: Decimal = Decimal("0")
+    total_unrealized_pnl: Decimal = Decimal("0")
+    total_pnl: Decimal = Decimal("0")
+    total_roi: Optional[Decimal] = None
+    total_trades: int = 0
+    total_volume: Decimal = Decimal("0")
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class PaperPositionResponse(BaseModel):
+    id: UUID
+    market_id: str
+    outcome: str
+    side: str
+    status: str
+    shares: Decimal
+    avg_entry_price: Decimal
+    current_price: Optional[Decimal] = None
+    cost_basis: Decimal
+    realized_pnl: Decimal
+    unrealized_pnl: Optional[Decimal] = None
+    followed_wallet: str
+    opened_at: datetime
+    closed_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class PaperPositionListResponse(BaseModel):
+    data: list[PaperPositionResponse]
+    total: int
+
+
+class PaperTradeResponse(BaseModel):
+    id: UUID
+    market_id: str
+    outcome: str
+    side: str
+    price: Decimal
+    shares: Decimal
+    amount_usd: Decimal
+    followed_wallet: str
+    copy_mode: Optional[str] = None
+    copy_value_used: Optional[Decimal] = None
+    executed_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PaperTradeListResponse(BaseModel):
+    data: list[PaperTradeResponse]
+    limit: int
+    offset: int
+    total: int
+
+
+class PortfolioResetRequest(BaseModel):
+    initial_balance: Decimal = Field(default=Decimal("10000"), gt=0)
+
+
+class PortfolioResetResponse(BaseModel):
+    portfolio: PortfolioResponse
+    message: str
+
+
+# ── Phase 5: Per-Category Follow Scores ─────────────────────────────
+
+class CategoryFollowScoreItem(BaseModel):
+    category: str
+    follow_score: Decimal
+    recommendation: str  # FOLLOW / WATCH / IGNORE
+    roi_percentile: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    is_specialist: bool = False
+    volume_percentile: Optional[Decimal] = None
+    recency_days: Optional[int] = None
+    reasons: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class WalletCategoryFollowScoresResponse(BaseModel):
+    wallet: str
+    global_follow_score: Optional[Decimal] = None
+    category_scores: list[CategoryFollowScoreItem]
+
+
+class CategoryFollowLeaderboardEntry(BaseModel):
+    wallet: str
+    follow_score: Decimal
+    recommendation: str
+    roi_percentile: Optional[Decimal] = None
+    win_rate: Optional[Decimal] = None
+    is_specialist: bool = False
+    reasons: list[str] = []
+
+
+class CategoryFollowLeaderboardResponse(BaseModel):
+    category: str
+    data: list[CategoryFollowLeaderboardEntry]
     limit: int
     offset: int
 
