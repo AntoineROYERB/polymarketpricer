@@ -80,80 +80,84 @@ def make_mock_db() -> AsyncMock:
 
 
 class TestComputeCopyAmount:
-    def test_proportional_5_percent(self):
+    def test_proportional_5_percent(self) -> None:
         amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal("12000"))
         assert amount == Decimal("600")
 
-    def test_proportional_1_percent(self):
+    def test_proportional_1_percent(self) -> None:
         amount = _compute_copy_amount("proportional", Decimal("0.01"), Decimal("12000"))
         assert amount == Decimal("120")
 
-    def test_fixed_100(self):
+    def test_fixed_100(self) -> None:
         amount = _compute_copy_amount("fixed", Decimal("100"), Decimal("12000"))
         assert amount == Decimal("100")
 
-    def test_fixed_500(self):
+    def test_fixed_500(self) -> None:
         amount = _compute_copy_amount("fixed", Decimal("500"), Decimal("12000"))
         assert amount == Decimal("500")
 
-    def test_unknown_mode_returns_zero(self):
+    def test_unknown_mode_returns_zero(self) -> None:
         amount = _compute_copy_amount("unknown", Decimal("100"), Decimal("12000"))
         assert amount == Decimal("0")
 
-    def test_none_mode_returns_zero(self):
+    def test_none_mode_returns_zero(self) -> None:
         amount = _compute_copy_amount(None, Decimal("100"), Decimal("12000"))
         assert amount == Decimal("0")
 
-    def test_zero_position_size(self):
+    def test_zero_position_size(self) -> None:
         amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal("0"))
         assert amount == Decimal("0")
 
-    def test_large_value(self):
+    def test_large_value(self) -> None:
         amount = _compute_copy_amount("proportional", Decimal("1"), Decimal("1000000"))
         assert amount == Decimal("1000000")
 
 
 class TestExecuteCopyTradeSkipped:
     @pytest.mark.asyncio
-    async def test_category_filter_exclude(self):
+    async def test_category_filter_exclude(self) -> None:
         follow = make_follow(category_filter=["Politics", "Sports"])
         db = make_mock_db()
         alert = {"category": "Crypto", "position_size": 1000, "market_id": "m1"}
         result = await execute_copy_trade(db, alert, follow)
+        assert result is not None
         assert result["skipped"] is True
         assert "filtered out" in result["reason"]
 
     @pytest.mark.asyncio
-    async def test_zero_position_size(self):
+    async def test_zero_position_size(self) -> None:
         follow = make_follow()
         db = make_mock_db()
         alert = {"position_size": 0}
         result = await execute_copy_trade(db, alert, follow)
+        assert result is not None
         assert result["skipped"] is True
         assert "Zero position size" in result["reason"]
 
     @pytest.mark.asyncio
-    async def test_unknown_action(self):
+    async def test_unknown_action(self) -> None:
         follow = make_follow()
         db = make_mock_db()
         alert = {"position_size": 1000, "action": "UNKNOWN"}
         result = await execute_copy_trade(db, alert, follow)
+        assert result is not None
         assert result["skipped"] is True
 
     @pytest.mark.asyncio
-    async def test_category_filter_include_skipped_by_price(self):
+    async def test_category_filter_include_skipped_by_price(self) -> None:
         """When category matches filter, should proceed past filter (but skipped by price)."""
         follow = make_follow(category_filter=["Crypto"])
         db = make_mock_db()
         alert = {"category": "Crypto", "position_size": 1000, "market_id": "m1"}
         result = await execute_copy_trade(db, alert, follow)
+        assert result is not None
         assert result["skipped"] is True
         assert "price" in result["reason"].lower()
 
 
 class TestHandleMarketResolution:
     @pytest.mark.asyncio
-    async def test_no_open_positions(self):
+    async def test_no_open_positions(self) -> None:
         db = make_mock_db()
         await handle_market_resolution(db, "market123", "Yes")
         db.execute.assert_awaited_once()
@@ -162,7 +166,7 @@ class TestHandleMarketResolution:
 
 class TestUpdateUnrealizedPnl:
     @pytest.mark.asyncio
-    async def test_no_open_positions(self):
+    async def test_no_open_positions(self) -> None:
         db = make_mock_db()
         await update_unrealized_pnl(db)
         db.execute.assert_awaited_once()

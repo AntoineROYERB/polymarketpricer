@@ -56,7 +56,7 @@ def _format_action(action: str, price: float) -> str:
 
 async def get_follow_info_for_embed(
     db: AsyncSession, wallet: str
-) -> tuple[Optional[dict], Optional[dict], str]:
+) -> tuple[Optional[dict[str, Any]], Optional[dict[str, Any]], str]:
     """Look up if wallet is followed and compute copy suggestion."""
     result = await db.execute(
         select(WalletFollow).where(
@@ -94,7 +94,7 @@ async def get_follow_info_for_embed(
             parts.append(f"{m['category']} ({m['recommendation']}, {float(m['follow_score']):.2f})")
         category_str = " | ".join(parts)
 
-    copy_suggestion = None
+    copy_suggestion: dict[str, Any] | None = None
     if follow.auto_copy_enabled:
         copy_suggestion = {"auto_copy_enabled": True, "details": []}
         if follow.copy_mode == "proportional":
@@ -113,8 +113,8 @@ async def get_follow_info_for_embed(
 
 def build_discord_embed(
     alert: Alert,
-    follow_info: Optional[dict] = None,
-    copy_suggestion: Optional[dict] = None,
+    follow_info: Optional[dict[str, Any]] = None,
+    copy_suggestion: Optional[dict[str, Any]] = None,
     category_str: str = "",
 ) -> dict[str, Any]:
     color = DISCORD_EMBED_COLORS.get(str(alert.action), 0x95A5A6)

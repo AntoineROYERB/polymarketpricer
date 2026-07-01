@@ -1,3 +1,5 @@
+# mypy: disable-error-code="assignment"
+
 import re
 from decimal import Decimal
 from typing import Optional
