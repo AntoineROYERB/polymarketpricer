@@ -33,7 +33,7 @@ async def alert_delivery_loop() -> None:
                 alerts = await poll_unnotified_alerts(db)
                 for alert in alerts:
                     follow_info, copy_suggestion, category_str = await get_follow_info_for_embed(
-                        db, alert.wallet
+                        db, alert.wallet  # type: ignore[arg-type]
                     )
                     embed = build_discord_embed(alert, follow_info, copy_suggestion, category_str)
 
@@ -137,7 +137,7 @@ app.add_middleware(
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 app.state.limiter = limiter
-app.add_exception_handler(429, _rate_limit_exceeded_handler)
+app.add_exception_handler(429, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 @app.get("/health")

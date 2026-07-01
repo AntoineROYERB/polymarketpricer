@@ -37,8 +37,8 @@ class ConnectionManager:
     async def broadcast_alert(
         self,
         alert: Alert,
-        follow_info: Optional[dict] = None,
-        copy_suggestion: Optional[dict] = None,
+        follow_info: Optional[dict[str, Any]] = None,
+        copy_suggestion: Optional[dict[str, Any]] = None,
     ) -> None:
         payload: dict[str, Any] = {
             "type": "alert",

@@ -2,7 +2,7 @@
 
 import math
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +66,7 @@ async def compute_follow_score(
 
 async def get_follow_recommendations(
     db: AsyncSession, limit: int = 20, offset: int = 0
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Return top-N wallets by follow_score."""
     query = text("""
         SELECT wallet, follow_score
@@ -168,7 +168,7 @@ async def compute_category_follow_score(
 
 async def get_category_follow_leaderboard(
     db: AsyncSession, category: str, limit: int = 20, offset: int = 0
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Top-N wallets by follow_score in a specific category."""
     query = text("""
         SELECT wallet, follow_score, recommendation,
@@ -185,7 +185,7 @@ async def get_category_follow_leaderboard(
 
 async def get_wallet_category_scores(
     db: AsyncSession, wallet: str
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """All category follow scores for a wallet."""
     query = text("""
         SELECT * FROM wallet_category_follow_scores

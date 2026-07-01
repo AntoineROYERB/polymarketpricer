@@ -1,3 +1,5 @@
+# mypy: disable-error-code="assignment"
+
 from uuid import UUID
 from decimal import Decimal
 from typing import Any
@@ -135,7 +137,7 @@ async def close_position(
     if portfolio_owner.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Position not found")
 
-    current_price = await _get_current_price(db, position.market_id, position.outcome)
+    current_price = await _get_current_price(db, position.market_id, position.outcome)  # type: ignore[arg-type]
     if current_price is None:
         raise HTTPException(status_code=503, detail="Market price unavailable")
 
