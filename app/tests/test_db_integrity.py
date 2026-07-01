@@ -49,9 +49,15 @@ ROW_THRESHOLDS = {
     "category_rankings": 100,
     "wallet_pnl_snapshots": 100,
     "wallet_edge_snapshots": 50,
+    # Phase 5 tables (may be 0 if follow/pipeline not yet executed in seed data)
+    "wallet_follows": 0,
+    "paper_portfolios": 0,
+    "paper_positions": 0,
+    "paper_trades": 0,
+    "wallet_category_follow_scores": 0,
 }
 
-EMPTY_TABLES: set[str] = set()
+EMPTY_TABLES: set[str] = set()  # Phase 5 populates all these tables now
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))
@@ -561,3 +567,159 @@ def test_ranking_snapshots_edge_score_column(conn: Connection) -> None:
         )
     ).scalar() or 0
     assert result == 1, "edge_score column missing from ranking_snapshots"
+
+
+# ── Phase 5: Follow & Paper Trading ──────────────────────────────────
+
+
+class TestPhase05Follow:
+    """Integration tests for Phase 5 wallet_follows table."""
+
+    def test_wallet_follows_queryable(self, conn: Connection) -> None:
+        cur = conn.execute(text("SELECT COUNT(*) FROM wallet_follows"))
+        count = cur.scalar() or 0
+        assert count >= 0
+
+    def test_wallet_follows_fk_wallet(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_follows wf "
+            "LEFT JOIN wallets w ON w.wallet = wf.wallet "
+            "WHERE w.wallet IS NULL"
+        )).scalar() or 0
+        assert count == 0, f"Found {count} orphan wallet_follows rows"
+
+    def test_wallet_follows_not_null(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_follows "
+            "WHERE wallet IS NULL OR user_id IS NULL"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_follows_active_valid(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_follows "
+            "WHERE active NOT IN (true, false)"
+        )).scalar() or 0
+        assert count == 0
+
+
+class TestPhase05PaperTrading:
+    """Integration tests for Phase 5 paper_trading tables."""
+
+    def test_paper_portfolios_queryable(self, conn: Connection) -> None:
+        count = conn.execute(text("SELECT COUNT(*) FROM paper_portfolios")).scalar() or 0
+        assert count >= 0
+
+    def test_paper_positions_queryable(self, conn: Connection) -> None:
+        count = conn.execute(text("SELECT COUNT(*) FROM paper_positions")).scalar() or 0
+        assert count >= 0
+
+    def test_paper_trades_queryable(self, conn: Connection) -> None:
+        count = conn.execute(text("SELECT COUNT(*) FROM paper_trades")).scalar() or 0
+        assert count >= 0
+
+    def test_paper_positions_not_null(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM paper_positions "
+            "WHERE portfolio_id IS NULL OR market_id IS NULL "
+            "OR shares IS NULL OR avg_entry_price IS NULL"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_paper_positions_status_valid(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM paper_positions "
+            "WHERE status NOT IN ('OPEN', 'CLOSED', 'RESOLVED')"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_paper_portfolios_balance_non_negative(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM paper_portfolios WHERE current_balance < 0"
+        )).scalar() or 0
+        assert count == 0
+
+
+class TestPhase05FollowScore:
+    """Integration tests for follow_score on wallet_analytics."""
+
+    def test_follow_score_column_exists(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = 'wallet_analytics' "
+            "AND column_name = 'follow_score'"
+        )).scalar() or 0
+        assert count == 1
+
+    def test_follow_score_range(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_analytics "
+            "WHERE follow_score IS NOT NULL "
+            "AND (follow_score < 0 OR follow_score > 1)"
+        )).scalar() or 0
+        assert count == 0, f"Found {count} out-of-range follow_scores"
+
+    def test_category_follow_scores_column_exists(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_name = 'wallet_analytics' "
+            "AND column_name = 'category_follow_scores'"
+        )).scalar() or 0
+        assert count == 1
+
+
+class TestPhase05CategoryFollowScores:
+    """Integration tests for wallet_category_follow_scores table."""
+
+    def test_wallet_category_follow_scores_queryable(self, conn: Connection) -> None:
+        count = conn.execute(
+            text("SELECT COUNT(*) FROM wallet_category_follow_scores")
+        ).scalar() or 0
+        assert count >= 0
+
+    def test_wallet_category_follow_scores_fk_wallet(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores wcfs "
+            "LEFT JOIN wallets w ON w.wallet = wcfs.wallet "
+            "WHERE w.wallet IS NULL"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_category_follow_scores_fk_category(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores wcfs "
+            "LEFT JOIN categories c ON c.category = wcfs.category "
+            "WHERE c.category IS NULL"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_category_follow_scores_not_null(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores "
+            "WHERE wallet IS NULL OR category IS NULL "
+            "OR snapshot_date IS NULL "
+            "OR follow_score IS NULL "
+            "OR recommendation IS NULL"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_category_follow_scores_score_range(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores "
+            "WHERE follow_score < 0 OR follow_score > 1"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_category_follow_scores_valid_recommendation(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores "
+            "WHERE recommendation NOT IN ('FOLLOW', 'WATCH', 'IGNORE')"
+        )).scalar() or 0
+        assert count == 0
+
+    def test_wallet_category_follow_scores_is_specialist_bool(self, conn: Connection) -> None:
+        count = conn.execute(text(
+            "SELECT COUNT(*) FROM wallet_category_follow_scores "
+            "WHERE is_specialist NOT IN (true, false)"
+        )).scalar() or 0
+        assert count == 0
