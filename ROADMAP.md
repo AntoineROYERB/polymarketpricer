@@ -365,6 +365,8 @@ wallet_score = (
 
 # Phase 5 — Follow Recommendation Engine
 
+> ✅ **Phase 5 Complete — v0.5.0** (2026-07-01)
+
 ## Objective
 
 Recommend which traders are worth following.

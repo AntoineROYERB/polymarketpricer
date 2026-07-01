@@ -1,5 +1,57 @@
 # Changelog
 
+## v0.5.0 (2026-07-01)
+
+### Features
+- **Follow Recommendation Engine** (Phase 5): New scoring engine ranks wallets by follow-worthiness using edge, consistency, specialization, recency, and trade frequency
+- **Category Follow Scoring**: Per-category follow scores with dedicated leaderboard (`GET /api/v1/follow/recommendations/by-category/{category}`)
+- **Wallet Follow CRUD**: Follow/unfollow wallets with copy-trade configuration (`copy_mode`, `copy_value`, `category_filter`)
+- **Paper Trading Engine**: Simulated copy trades from followed wallets with proportional/fixed allocation modes
+- **Background Paper Trade Generation**: `paper_trade_generation_loop` polls alerts every 10s with `FOR UPDATE SKIP LOCKED` for exactly-once processing
+- **Market Resolution Handling**: Auto-close paper positions when markets resolve
+
+### Database
+- 4 new migrations (`018`–`021`): `wallet_follows`, `paper_portfolios`, `paper_positions`, `paper_trades`, `wallet_category_follow_scores`
+- Partial unique index on `wallet_follows(user_id, wallet) WHERE active = true` (allows re-follow after soft-delete)
+- `follow_score` column added to `wallet_analytics`
+- `CheckConstraint` on `current_balance >= 0` and `shares >= 0` for paper trading tables
+- `ON DELETE SET NULL` on `source_alert_id` foreign keys
+
+### ETL
+- New `enrichment_follow_scoring` pipeline: load → compute global + per-category follow scores → export to `wallet_category_follow_scores`
+- Orchestration updated: `trigger_follow_scoring` runs between `trigger_edge_scoring` and `trigger_verify`
+
+### API
+- `GET /api/v1/follow/recommendations` — top wallets by global follow score
+- `GET /api/v1/follow/recommendations/by-category/{category}` — per-category follow leaderboard
+- `GET /api/v1/follow/recommendations/{wallet}/by-category` — per-category scores for a wallet
+- `GET /api/v1/follow` — list followed wallets
+- `POST /api/v1/follow/{wallet}` — follow a wallet (with re-activation of soft-deleted follows)
+- `PATCH /api/v1/follow/{wallet}` — update follow config
+- `DELETE /api/v1/follow/{wallet}` — unfollow (soft delete)
+- `GET /api/v1/portfolio` — list paper portfolios
+- `GET /api/v1/portfolio/{id}` — portfolio detail with positions
+- `PATCH /api/v1/portfolio/positions/{position_id}/close` — close position
+- `POST /api/v1/portfolio/{id}/reset` — reset portfolio
+
+### Code Quality
+- **Shared scoring constants** (`scoring_constants.py`): all formula weights, thresholds, and parameters in one place to prevent drift between service layer, ETL, and tests
+- **Pure Decimal math**: category follow scoring uses `Decimal` throughout (no `float` → `Decimal` round-trip)
+- **Multi-follow safety**: `_execute_buy`/`_execute_sell` filter by `followed_wallet` to prevent position mixing
+- **Race condition hardening**: `FOR UPDATE` on all critical paper trade operations (buy, sell, market resolution, position close, portfolio reset)
+- **Input validation**: wallet address format, category_filter values, copy_value bounds, max follows limit
+
+### Tests
+- 4 new unit test files: `test_follow_scoring.py`, `test_paper_trading.py`
+- 2 new API test files: `test_api/test_follow_endpoints.py`, `test_api/test_portfolio_endpoints.py`
+- Enhanced integration tests in `test_db_integrity.py` (Phase 5 table coverage)
+- Total: 176 → **~240 tests**
+
+### Infrastructure
+- `.dockerignore` expanded with `magic/`, `.venv/`, `plans/`, `.opencode/` patterns
+
+---
+
 ## v0.4.1 (2026-06-28)
 
 ### Fixes
