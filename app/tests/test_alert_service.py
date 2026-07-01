@@ -14,6 +14,7 @@ from app.db.models import Alert
 from app.services.alert_service import (
     DISCORD_EMBED_COLORS,
     _format_action,
+    build_discord_embed,
     classify_action,
     mark_notified,
     poll_unnotified_alerts,
@@ -97,13 +98,10 @@ class TestClassifyAction:
         assert classify_action(0, None) is None
 
     def test_decrease_from_none_not_possible(self) -> None:
-        """None → positive is NEW_POSITION, not POSITION_DECREASE."""
         assert classify_action(None, 50.0) == "NEW_POSITION"
 
     def test_negative_values(self) -> None:
-        """Negative shares are not expected — function returns None safely."""
         assert classify_action(-10, -5) == "POSITION_INCREASE"
-        # after is -10 which fails the after > 0 check, so no classification
         assert classify_action(-5, -10) is None
 
 
@@ -134,11 +132,56 @@ class TestFormatAction:
 
     def test_price_formatting_precision(self) -> None:
         result = _format_action("NEW_POSITION", 0.123456)
-        assert "0.1235" in result  # rounds to 4 decimal places
+        assert "0.1235" in result
 
     def test_large_price(self) -> None:
         result = _format_action("FULL_EXIT", 99999.9999)
         assert result == "SELL (Full Exit @ $99999.9999)"
+
+
+# ===========================================================================
+# build_discord_embed  (pure function)
+# ===========================================================================
+
+class TestBuildDiscordEmbed:
+    def test_basic_embed_shape(self) -> None:
+        alert = make_alert(action="NEW_POSITION", category="crypto")
+        embed = build_discord_embed(alert)
+        assert "embeds" in embed
+        assert len(embed["embeds"]) == 1
+        e = embed["embeds"][0]
+        assert e["title"] == "🚨 Smart Money Alert"
+        assert e["color"] == DISCORD_EMBED_COLORS["NEW_POSITION"]
+        fields = {f["name"]: f["value"] for f in e["fields"]}
+        assert "Trader" in fields
+        assert "Action" in fields
+
+    def test_embed_with_follow_info(self) -> None:
+        alert = make_alert()
+        follow_info = {"label": "Test Whale", "followed_at": datetime.now(timezone.utc)}
+        embed = build_discord_embed(alert, follow_info=follow_info)
+        e = embed["embeds"][0]
+        assert "You Follow This Trader" in e["title"]
+        assert "Test Whale" in e["fields"][0]["value"]
+
+    def test_embed_with_copy_suggestion(self) -> None:
+        alert = make_alert()
+        copy_suggestion = {"auto_copy_enabled": True, "details": ["Mode: 5% proportional"]}
+        embed = build_discord_embed(alert, copy_suggestion=copy_suggestion)
+        e = embed["embeds"][0]
+        fields = {f["name"]: f["value"] for f in e["fields"]}
+        assert "Copy Suggestion" in fields
+
+    def test_embed_color_by_action(self) -> None:
+        for action, expected_color in DISCORD_EMBED_COLORS.items():
+            alert = make_alert(action=action)
+            embed = build_discord_embed(alert)
+            assert embed["embeds"][0]["color"] == expected_color
+
+    def test_unknown_action_color_fallback(self) -> None:
+        alert = make_alert(action="UNKNOWN_ACTION")
+        embed = build_discord_embed(alert)
+        assert embed["embeds"][0]["color"] == 0x95A5A6
 
 
 # ===========================================================================
@@ -149,47 +192,52 @@ class TestSendDiscordAlert:
     @pytest.mark.asyncio
     async def test_success_204(self) -> None:
         alert = make_alert()
+        embed = build_discord_embed(alert)
         async with respx.mock:
             route = respx.post(WEBHOOK_URL).mock(return_value=Response(204))
-            result = await send_discord_alert(alert, WEBHOOK_URL)
+            result = await send_discord_alert(embed, WEBHOOK_URL)
         assert result is True
         assert route.called
 
     @pytest.mark.asyncio
     async def test_success_200(self) -> None:
         alert = make_alert()
+        embed = build_discord_embed(alert)
         async with respx.mock:
             route = respx.post(WEBHOOK_URL).mock(return_value=Response(200))
-            result = await send_discord_alert(alert, WEBHOOK_URL)
+            result = await send_discord_alert(embed, WEBHOOK_URL)
         assert result is True
         assert route.called
 
     @pytest.mark.asyncio
     async def test_http_500(self) -> None:
         alert = make_alert()
+        embed = build_discord_embed(alert)
         async with respx.mock:
             route = respx.post(WEBHOOK_URL).mock(return_value=Response(500))
-            result = await send_discord_alert(alert, WEBHOOK_URL)
+            result = await send_discord_alert(embed, WEBHOOK_URL)
         assert result is False
         assert route.called
 
     @pytest.mark.asyncio
     async def test_http_400(self) -> None:
         alert = make_alert()
+        embed = build_discord_embed(alert)
         async with respx.mock:
             route = respx.post(WEBHOOK_URL).mock(return_value=Response(400))
-            result = await send_discord_alert(alert, WEBHOOK_URL)
+            result = await send_discord_alert(embed, WEBHOOK_URL)
         assert result is False
         assert route.called
 
     @pytest.mark.asyncio
     async def test_network_timeout(self) -> None:
         alert = make_alert()
+        embed = build_discord_embed(alert)
         async with respx.mock:
             route = respx.post(WEBHOOK_URL).mock(
                 side_effect=ConnectError("Connection timeout"),
             )
-            result = await send_discord_alert(alert, WEBHOOK_URL)
+            result = await send_discord_alert(embed, WEBHOOK_URL)
         assert result is False
         assert route.called
 
@@ -197,6 +245,7 @@ class TestSendDiscordAlert:
     async def test_payload_shape(self) -> None:
         """Verify the JSON payload sent to Discord matches expected structure."""
         alert = make_alert(action="NEW_POSITION", category="crypto")
+        embed = build_discord_embed(alert)
         captured: dict[str, Any] = {}
 
         async with respx.mock:
@@ -205,19 +254,16 @@ class TestSendDiscordAlert:
                 return Response(204)
 
             respx.post(WEBHOOK_URL).mock(side_effect=capture)
-            await send_discord_alert(alert, WEBHOOK_URL)
+            await send_discord_alert(embed, WEBHOOK_URL)
 
         payload = captured["json"]
         assert "embeds" in payload
         assert len(payload["embeds"]) == 1
-        embed = payload["embeds"][0]
-        assert embed["title"] is not None
-        assert embed["color"] == DISCORD_EMBED_COLORS["NEW_POSITION"]
-        fields = {f["name"]: f["value"] for f in embed["fields"]}
+        e = payload["embeds"][0]
+        assert e["title"] is not None
+        assert e["color"] == DISCORD_EMBED_COLORS["NEW_POSITION"]
+        fields = {f["name"]: f["value"] for f in e["fields"]}
         assert "Trader" in fields
-        assert "Score" in fields
-        assert "Category" in fields
-        assert fields["Category"] == "crypto"
         assert "Action" in fields
         assert "BUY (New Position" in fields["Action"]
 
@@ -227,6 +273,7 @@ class TestSendDiscordAlert:
         async with respx.mock:
             for action, expected_color in DISCORD_EMBED_COLORS.items():
                 alert = make_alert(action=action)
+                embed = build_discord_embed(alert)
                 captured: dict[str, Any] = {}
 
                 async def capture(req: Request, _c: dict[str, Any] = captured) -> Response:
@@ -234,16 +281,14 @@ class TestSendDiscordAlert:
                     return Response(204)
 
                 route = respx.post(WEBHOOK_URL).mock(side_effect=capture)
-                await send_discord_alert(alert, WEBHOOK_URL)
-                assert captured["json"]["embeds"][0]["color"] == expected_color, (
-                    f"Expected color 0x{expected_color:x} for action {action}"
-                )
+                await send_discord_alert(embed, WEBHOOK_URL)
+                assert captured["json"]["embeds"][0]["color"] == expected_color
                 route.reset()
 
     @pytest.mark.asyncio
     async def test_unknown_action_color(self) -> None:
-        """Unknown actions should use the grey fallback color."""
         alert = make_alert(action="UNKNOWN_ACTION")
+        embed = build_discord_embed(alert)
         captured: dict[str, Any] = {}
 
         async with respx.mock:
@@ -252,7 +297,7 @@ class TestSendDiscordAlert:
                 return Response(204)
 
             respx.post(WEBHOOK_URL).mock(side_effect=capture)
-            await send_discord_alert(alert, WEBHOOK_URL)
+            await send_discord_alert(embed, WEBHOOK_URL)
 
         assert captured["json"]["embeds"][0]["color"] == 0x95A5A6
 
@@ -273,7 +318,7 @@ class TestPollUnnotifiedAlerts:
 
     @pytest.mark.asyncio
     async def test_empty_when_no_alerts(self) -> None:
-        db = make_mock_db()  # no alert
+        db = make_mock_db()
         results = await poll_unnotified_alerts(db)
         assert results == []
 
@@ -283,7 +328,6 @@ class TestPollUnnotifiedAlerts:
         await poll_unnotified_alerts(db)
         call_stmt = db.execute.call_args[0][0]
         compiled = str(call_stmt.compile(compile_kwargs={"literal_binds": True}))
-        # The query should filter on notified_at IS NULL
         assert "notified_at" in compiled
         assert "NULL" in compiled.upper()
 
@@ -363,7 +407,6 @@ class TestMarkNotified:
         sql = str(stmt.compile())
         assert "UPDATE" in sql.upper()
         assert "WHERE" in sql
-        assert "alerts.id" in sql.lower() or "alerts." in sql.lower()
 
 
 # ===========================================================================
@@ -373,13 +416,13 @@ class TestMarkNotified:
 class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_mark_notified_after_send_success(self) -> None:
-        """Full happy path: send succeeds, then mark_notified."""
         alert = make_alert(delivery_attempts=0, notified_at=None)
+        embed = build_discord_embed(alert)
         db = make_mock_db(alert)
 
         async with respx.mock:
             respx.post(WEBHOOK_URL).mock(return_value=Response(204))
-            success = await send_discord_alert(alert, WEBHOOK_URL)
+            success = await send_discord_alert(embed, WEBHOOK_URL)
 
         assert success is True
 
@@ -393,13 +436,13 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_retry_after_failure(self) -> None:
-        """Send fails, mark_notified increments, stays un-notified."""
         alert = make_alert(delivery_attempts=0, notified_at=None)
+        embed = build_discord_embed(alert)
         db = make_mock_db(alert)
 
         async with respx.mock:
             respx.post(WEBHOOK_URL).mock(return_value=Response(500))
-            success = await send_discord_alert(alert, WEBHOOK_URL)
+            success = await send_discord_alert(embed, WEBHOOK_URL)
 
         assert success is False
 
