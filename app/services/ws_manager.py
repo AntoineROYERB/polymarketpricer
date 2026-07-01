@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from typing import Any, Optional
 
 from fastapi import WebSocket
 
@@ -33,8 +34,13 @@ class ConnectionManager:
         for conn in dead:
             self.disconnect(conn)
 
-    async def broadcast_alert(self, alert: Alert) -> None:
-        payload = {
+    async def broadcast_alert(
+        self,
+        alert: Alert,
+        follow_info: Optional[dict] = None,
+        copy_suggestion: Optional[dict] = None,
+    ) -> None:
+        payload: dict[str, Any] = {
             "type": "alert",
             "payload": {
                 "id": str(alert.id),
@@ -49,6 +55,13 @@ class ConnectionManager:
                 "detected_at": alert.detected_at.isoformat(),
             },
         }
+        if follow_info:
+            payload["payload"]["follow_info"] = {
+                "label": follow_info.get("label"),
+                "followed_at": follow_info["followed_at"].isoformat() if follow_info.get("followed_at") else None,
+            }
+        if copy_suggestion:
+            payload["payload"]["copy_suggestion"] = copy_suggestion
         await self._broadcast(lambda conn: conn.send_json(payload))
 
     async def send_heartbeat(self) -> None:

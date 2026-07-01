@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy import select, update
+from sqlalchemy import select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Alert
+from app.db.models import Alert, WalletFollow
 
 DISCORD_EMBED_COLORS = {
     "NEW_POSITION": 0x2ECC71,
@@ -52,29 +52,123 @@ def _format_action(action: str, price: float) -> str:
     return labels.get(action, action)
 
 
-def _build_discord_embed(alert: Alert) -> dict[str, Any]:
+async def get_follow_info_for_embed(
+    db: AsyncSession, wallet: str
+) -> tuple[Optional[dict], Optional[dict], str]:
+    """Look up if wallet is followed and compute copy suggestion."""
+    result = await db.execute(
+        select(WalletFollow).where(
+            WalletFollow.user_id == _USER_ID,
+            WalletFollow.wallet == wallet,
+            WalletFollow.active.is_(True),
+        )
+    )
+    follow = result.scalar_one_or_none()
+    if follow is None:
+        return None, None, ""
+
+    follow_info = {
+        "label": follow.label,
+        "followed_at": follow.followed_at,
+    }
+
+    category_str = ""
+    cat_result = await db.execute(
+        text("""
+            SELECT category, follow_score, recommendation
+            FROM wallet_category_follow_scores
+            WHERE wallet = :wallet
+              AND snapshot_date = CURRENT_DATE
+            ORDER BY follow_score DESC
+            LIMIT 2
+        """),
+        {"wallet": wallet},
+    )
+    cat_rows = cat_result.all()
+    if cat_rows:
+        parts = []
+        for r in cat_rows:
+            m = r._mapping
+            parts.append(f"{m['category']} ({m['recommendation']}, {float(m['follow_score']):.2f})")
+        category_str = " | ".join(parts)
+
+    copy_suggestion = None
+    if follow.auto_copy_enabled:
+        copy_suggestion = {"auto_copy_enabled": True, "details": []}
+        if follow.copy_mode == "proportional":
+            pct = float(follow.copy_value) * 100
+            copy_suggestion["details"].append(f"Mode: {pct:.1f}% proportional")
+        elif follow.copy_mode == "fixed":
+            copy_suggestion["details"].append(f"Mode: ${follow.copy_value} fixed")
+        if follow.category_filter:
+            cats = ", ".join(follow.category_filter)
+            copy_suggestion["details"].append(f"Filter: {cats}")
+        else:
+            copy_suggestion["details"].append("Filter: All categories")
+
+    return follow_info, copy_suggestion, category_str
+
+
+def build_discord_embed(
+    alert: Alert,
+    follow_info: Optional[dict] = None,
+    copy_suggestion: Optional[dict] = None,
+    category_str: str = "",
+) -> dict[str, Any]:
     color = DISCORD_EMBED_COLORS.get(str(alert.action), 0x95A5A6)
+
+    fields: list[dict[str, Any]] = []
+
+    if follow_info:
+        title = "🚀 Smart Money Alert — You Follow This Trader!"
+        trader_value = (
+            f"`{alert.wallet[:10]}...{alert.wallet[-4:]}` (Score: {alert.wallet_score})\n"
+            f"Label: {follow_info['label'] or 'N/A'}\n"
+            f"Following since: {follow_info['followed_at'].strftime('%Y-%m-%d')}"
+        )
+        if category_str:
+            trader_value += f"\n{category_str}"
+        fields.append({"name": "Trader", "value": trader_value, "inline": False})
+    else:
+        fields.append({
+            "name": "Trader",
+            "value": f"`{alert.wallet[:10]}...{alert.wallet[-4:]}` (Score: {alert.wallet_score})",
+            "inline": False,
+        })
+
+    fields.append({
+        "name": "Action",
+        "value": (
+            f"**{_format_action(str(alert.action), float(alert.price))}** — {alert.category}\n"
+            f"Market: {alert.market_question}\n"
+            f"Price: `${float(alert.price):.4f}` | Size: `${float(alert.position_size):,.2f}`"
+        ),
+        "inline": False,
+    })
+
+    if copy_suggestion:
+        auto_copy_status = "ON" if copy_suggestion["auto_copy_enabled"] else "OFF"
+        fields.append({
+            "name": "Copy Suggestion",
+            "value": (
+                f"Auto-copy: {auto_copy_status}\n"
+                f"{' | '.join(copy_suggestion['details'])}"
+            ),
+            "inline": False,
+        })
+
     return {
         "embeds": [{
-            "title": "🚨 Smart Money Alert",
+            "title": title if follow_info else "🚨 Smart Money Alert",
             "color": color,
-            "fields": [
-                {"name": "Trader", "value": f"`{alert.wallet[:10]}...{alert.wallet[-4:]}`", "inline": True},
-                {"name": "Score", "value": str(alert.wallet_score), "inline": True},
-                {"name": "Category", "value": alert.category, "inline": True},
-                {"name": "Action", "value": _format_action(str(alert.action), float(alert.price)), "inline": True},
-                {"name": "Market", "value": alert.market_question, "inline": False},
-                {"name": "Price", "value": f"${float(alert.price):.4f}", "inline": True},
-                {"name": "Position Size", "value": f"${float(alert.position_size):,.2f}", "inline": True},
-            ],
+            "fields": fields,
             "footer": {"text": "Polymarket Smart Money Tracker"},
             "timestamp": alert.detected_at.isoformat(),
         }]
     }
 
 
-async def send_discord_alert(alert: Alert, webhook_url: str) -> bool:
-    embed = _build_discord_embed(alert)
+async def send_discord_alert(embed: dict[str, Any], webhook_url: str) -> bool:
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             resp = await client.post(webhook_url, json=embed)
