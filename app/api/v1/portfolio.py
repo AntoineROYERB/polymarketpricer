@@ -13,7 +13,6 @@ from app.models.schemas import (
     PaperPositionResponse, PaperPositionListResponse,
     PaperTradeResponse, PaperTradeListResponse,
 )
-from app.models.enums import PositionStatus
 from app.services.paper_trading import _get_current_price
 
 _USER_ID = "default"  # placeholder until auth is implemented

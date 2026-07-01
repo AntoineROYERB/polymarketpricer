@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Alert, WalletFollow
 
+_USER_ID = "default"  # placeholder until auth is implemented
+
 DISCORD_EMBED_COLORS = {
     "NEW_POSITION": 0x2ECC71,
     "POSITION_INCREASE": 0x3498DB,

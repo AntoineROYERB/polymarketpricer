@@ -11,3 +11,12 @@ htmlcov/
 *.egg-info/
 .idea/
 .vscode/
+magic/
+.venv/
+.venv*/
+venv/
+.env/
+.opfilters/
+plans/
+scripts/
+.opencode/
