@@ -1,5 +1,6 @@
 import type {
   LeaderboardResponse,
+  CategoryLeaderboardResponse,
   WalletProfile,
   AlertListResponse,
   FollowListResponse,
@@ -32,9 +33,13 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  // Leaderboard
-  leaderboard: (category: string, limit = 50, offset = 0) =>
-    fetchJson<LeaderboardResponse>(`/leaderboard/${category}?limit=${limit}&offset=${offset}`),
+  // Leaderboard — root (no category, wallet_score ranking)
+  leaderboard: (limit = 100, offset = 0) =>
+    fetchJson<LeaderboardResponse>(`/leaderboard?limit=${limit}&offset=${offset}`),
+
+  // Leaderboard — by category
+  categoryLeaderboard: (category: string, limit = 50, offset = 0) =>
+    fetchJson<CategoryLeaderboardResponse>(`/leaderboard/${category}?limit=${limit}&offset=${offset}`),
 
   // Wallets
   walletProfile: (address: string) =>

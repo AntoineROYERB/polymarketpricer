@@ -1,40 +1,110 @@
-export interface LeaderEntry {
+export interface LeaderboardEntry {
+  rank: number;
   wallet: string;
-  category: string;
-  num_trades: number;
-  total_volume: number;
-  total_pnl: number;
+  score: number;
   roi: number;
   win_rate: number;
-  profit_factor: number;
-  is_specialist: boolean;
-  category_rank: number;
-  avg_position_size: number;
-  avg_holding_duration: string;
+  total_pnl: number;
+  num_trades: number;
+  consistency_score: number;
+  experience_score: number;
+  edge_score: number | null;
+  edge_consistency: number | null;
+  num_edge_trades: number | null;
 }
 
 export interface LeaderboardResponse {
-  data: LeaderEntry[];
+  data: LeaderboardEntry[];
   limit: number;
   offset: number;
+}
+
+export interface CategoryLeaderboardEntry {
+  rank: number;
+  wallet: string;
+  wallet_score: number | null;
+  roi: number | null;
+  win_rate: number | null;
+  total_pnl: number | null;
+  num_trades: number;
+  total_volume: number | null;
+  is_specialist: boolean;
+}
+
+export interface CategoryLeaderboardResponse {
   category: string;
+  data: CategoryLeaderboardEntry[];
+  limit: number;
+  offset: number;
 }
 
 export interface WalletProfile {
   wallet: string;
-  total_trades: number;
-  total_volume: number;
-  total_pnl: number;
-  roi: number;
-  win_rate: number;
-  profit_factor: number;
-  avg_position_size: number;
-  avg_holding_duration: string;
-  specialist_categories: string[];
-  total_realized_pnl: number;
-  total_unrealized_pnl: number;
-  num_resolved_positions: number;
+  main_wallet: string | null;
+  label: string | null;
+  is_tracked: boolean;
+  first_seen: string | null;
+  last_seen: string | null;
+  last_position_sync: string | null;
+  last_trade_sync: string | null;
+  analytics: WalletAnalyticsData | null;
+  current_positions: PositionSummary[];
+  rank: number | null;
+  categories: WalletCategorySummary[];
+  edge_metrics: EdgeMetrics | null;
+}
+
+export interface WalletAnalyticsData {
+  total_pnl: number | null;
+  roi: number | null;
+  win_rate: number | null;
+  num_trades: number | null;
+  total_volume: number | null;
+  avg_position_size: number | null;
+  sharpe_ratio: number | null;
+  profit_factor: number | null;
+  max_drawdown: number | null;
+  avg_holding_duration: string | null;
+  consistency_score: number | null;
+  experience_score: number | null;
+}
+
+export interface PositionSummary {
+  market_id: string;
+  question: string;
+  side: string | null;
+  status: string;
+  shares: number;
+  avg_entry_price: number;
+  entry_time: string | null;
+  exit_time: string | null;
+  realized_pnl: number | null;
+  unrealized_pnl: number | null;
+  total_pnl: number | null;
+}
+
+export interface WalletCategorySummary {
   category: string;
+  num_trades: number;
+  total_volume: number | null;
+  total_pnl: number | null;
+  roi: number | null;
+  win_rate: number | null;
+  profit_factor: number | null;
+  avg_position_size: number | null;
+  is_specialist: boolean;
+  category_rank: number | null;
+}
+
+export interface EdgeMetrics {
+  wallet: string;
+  snapshot_date: string | null;
+  avg_edge: number;
+  median_edge: number | null;
+  edge_consistency: number | null;
+  edge_volatility: number | null;
+  edge_score: number | null;
+  num_edge_trades: number;
 }
 
 export interface AlertItem {

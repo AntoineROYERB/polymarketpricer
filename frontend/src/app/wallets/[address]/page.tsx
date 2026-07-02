@@ -31,32 +31,35 @@ export default function WalletProfilePage() {
   const { data: profile, isLoading } = useWalletProfile(address);
   const { data: alerts } = useWalletAlerts(address);
 
+  const analytics = profile?.analytics;
+  const specialistCategories = profile?.categories?.filter((c) => c.is_specialist) ?? [];
+
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-heading text-text-primary font-mono">{address.slice(0, 10)}...{address.slice(-6)}</h1>
-          {profile?.specialist_categories && (
+          {specialistCategories.length > 0 && (
             <div className="flex gap-2 mt-2">
-              {profile.specialist_categories.map((cat) => (
-                <span key={cat} className="text-xs bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded">{cat}</span>
+              {specialistCategories.map((cat) => (
+                <span key={cat.category} className="text-xs bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded">{cat.category}</span>
               ))}
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-4 gap-4">
-          <MetricCard label="ROI" value={profile ? `${profile.roi.toFixed(1)}%` : "-"} loading={isLoading} />
-          <MetricCard label="Win Rate" value={profile ? `${(profile.win_rate * 100).toFixed(0)}%` : "-"} loading={isLoading} />
-          <MetricCard label="PnL" value={profile ? `$${profile.total_pnl.toLocaleString()}` : "-"} loading={isLoading} trend={profile?.total_pnl && profile.total_pnl >= 0 ? "up" : "down"} />
-          <MetricCard label="Volume" value={profile ? `$${profile.total_volume.toLocaleString()}` : "-"} loading={isLoading} />
+          <MetricCard label="ROI" value={analytics?.roi != null ? `${Number(analytics.roi).toFixed(1)}%` : "-"} loading={isLoading} />
+          <MetricCard label="Win Rate" value={analytics?.win_rate != null ? `${(Number(analytics.win_rate) * 100).toFixed(0)}%` : "-"} loading={isLoading} />
+          <MetricCard label="PnL" value={`$${(Number(analytics?.total_pnl) || 0).toLocaleString()}`} loading={isLoading} trend={Number(analytics?.total_pnl) >= 0 ? "up" : "down"} />
+          <MetricCard label="Volume" value={`$${(Number(analytics?.total_volume) || 0).toLocaleString()}`} loading={isLoading} />
         </div>
 
         <div className="grid grid-cols-4 gap-4">
-          <MetricCard label="Trades" value={profile?.total_trades ?? "-"} loading={isLoading} />
-          <MetricCard label="Profit Factor" value={profile?.profit_factor.toFixed(2) ?? "-"} loading={isLoading} />
-          <MetricCard label="Avg Position" value={profile ? `$${profile.avg_position_size.toFixed(0)}` : "-"} loading={isLoading} />
-          <MetricCard label="Avg Hold" value={profile?.avg_holding_duration ?? "-"} loading={isLoading} />
+          <MetricCard label="Trades" value={analytics?.num_trades ?? "-"} loading={isLoading} />
+          <MetricCard label="Profit Factor" value={analytics?.profit_factor?.toFixed(2) ?? "-"} loading={isLoading} />
+          <MetricCard label="Avg Position" value={analytics?.avg_position_size ? `$${Number(analytics.avg_position_size).toFixed(0)}` : "-"} loading={isLoading} />
+          <MetricCard label="Avg Hold" value={analytics?.avg_holding_duration ?? "-"} loading={isLoading} />
         </div>
 
         <div className="bg-surface border border-border rounded p-4">
