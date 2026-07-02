@@ -9,6 +9,7 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies.auth import optional_api_key
 from app.db.models import PaperPortfolio, PaperPosition, PaperTrade
 from app.models.schemas import (
     PortfolioResponse, PortfolioResetRequest, PortfolioResetResponse,
@@ -17,18 +18,17 @@ from app.models.schemas import (
 )
 from app.services.paper_trading import _get_current_price
 
-_USER_ID = "default"  # placeholder until auth is implemented
-
 router = APIRouter()
 
 
 @router.get("", response_model=PortfolioResponse)
 async def get_portfolio(
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> PortfolioResponse:
     """Get paper trading portfolio overview."""
     result = await db.execute(
-        select(PaperPortfolio).where(PaperPortfolio.user_id == _USER_ID)
+        select(PaperPortfolio).where(PaperPortfolio.user_id == user_id)
     )
     portfolio = result.scalar_one_or_none()
     if portfolio is None:
@@ -47,10 +47,11 @@ async def list_positions(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> PaperPositionListResponse:
     """List paper positions."""
     portfolio = await db.execute(
-        select(PaperPortfolio).where(PaperPortfolio.user_id == _USER_ID)
+        select(PaperPortfolio).where(PaperPortfolio.user_id == user_id)
     )
     pf = portfolio.scalar_one_or_none()
     if pf is None:
@@ -76,10 +77,11 @@ async def list_trades(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> PaperTradeListResponse:
     """List paper trade history."""
     portfolio = await db.execute(
-        select(PaperPortfolio).where(PaperPortfolio.user_id == _USER_ID)
+        select(PaperPortfolio).where(PaperPortfolio.user_id == user_id)
     )
     pf = portfolio.scalar_one_or_none()
     if pf is None:
@@ -114,6 +116,7 @@ async def list_trades(
 async def close_position(
     position_id: UUID,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> dict[str, Any]:
     """Manually close an open paper position at current market price."""
     result = await db.execute(
@@ -131,7 +134,7 @@ async def close_position(
     portfolio_owner = await db.execute(
         select(PaperPortfolio).where(
             PaperPortfolio.id == position.portfolio_id,
-            PaperPortfolio.user_id == _USER_ID,
+            PaperPortfolio.user_id == user_id,
         )
     )
     if portfolio_owner.scalar_one_or_none() is None:
@@ -153,7 +156,7 @@ async def close_position(
     portfolio_result = await db.execute(
         select(PaperPortfolio).where(
             PaperPortfolio.id == position.portfolio_id,
-            PaperPortfolio.user_id == _USER_ID,
+            PaperPortfolio.user_id == user_id,
         )
     )
     portfolio = portfolio_result.scalar_one()
@@ -180,17 +183,18 @@ async def close_position(
 async def reset_portfolio(
     body: PortfolioResetRequest = PortfolioResetRequest(),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> PortfolioResetResponse:
     """Reset portfolio — clear all positions/trades, set new balance."""
     portfolio_result = await db.execute(
         select(PaperPortfolio).where(
-            PaperPortfolio.user_id == _USER_ID,
+            PaperPortfolio.user_id == user_id,
         ).with_for_update()
     )
     portfolio = portfolio_result.scalar_one_or_none()
     if portfolio is None:
         portfolio = PaperPortfolio(
-            user_id=_USER_ID,
+            user_id=user_id,
             name="Main",
             initial_balance=body.initial_balance,
             current_balance=body.initial_balance,

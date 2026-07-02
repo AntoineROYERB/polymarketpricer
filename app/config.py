@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     discord_webhook_url: str = ""
     alert_poll_interval_seconds: int = 10
     cors_origins: list[str] = []
+    api_key: str = "devkey-change-me"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

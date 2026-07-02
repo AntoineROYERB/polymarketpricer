@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies.auth import optional_api_key
 from app.db.models import Wallet, WalletFollow, PaperPortfolio
 from app.models.schemas import (
     FollowCreate, FollowUpdate, FollowResponse, FollowListResponse,
@@ -26,7 +27,6 @@ from app.utils.category import validate_category_or_404
 
 router = APIRouter()
 
-_USER_ID = "default"  # placeholder until auth is implemented
 _MAX_FOLLOWS = 500
 _WALLET_RE = re.compile(r"^0x.+$")
 
@@ -135,10 +135,11 @@ async def list_follows(
     active: bool = Query(default=True),
     auto_copy: Optional[bool] = Query(default=None),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> FollowListResponse:
     """List wallets the user follows."""
     stmt = select(WalletFollow).where(
-        WalletFollow.user_id == _USER_ID,
+        WalletFollow.user_id == user_id,
         WalletFollow.active == active,
     )
     if auto_copy is not None:
@@ -158,6 +159,7 @@ async def follow_wallet(
     wallet: str,
     body: FollowCreate,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> FollowResponse:
     """Start following a wallet."""
     _validate_wallet(wallet)
@@ -169,7 +171,7 @@ async def follow_wallet(
     # Max-follows limit
     count_result = await db.execute(
         select(func.count()).select_from(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+            WalletFollow.user_id == user_id,
             WalletFollow.active.is_(True),
         )
     )
@@ -182,7 +184,7 @@ async def follow_wallet(
 
     existing = await db.execute(
         select(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+            WalletFollow.user_id == user_id,
             WalletFollow.wallet == wallet,
         ).order_by(WalletFollow.followed_at.desc())
     )
@@ -202,7 +204,7 @@ async def follow_wallet(
         follow.unfollowed_at = None
     else:
         follow = WalletFollow(
-            user_id=_USER_ID,
+            user_id=user_id,
             wallet=wallet,
             label=body.label,
             auto_copy_enabled=body.auto_copy_enabled or False,
@@ -214,11 +216,11 @@ async def follow_wallet(
 
     if body.auto_copy_enabled:
         portfolio = await db.execute(
-            select(PaperPortfolio).where(PaperPortfolio.user_id == _USER_ID)
+            select(PaperPortfolio).where(PaperPortfolio.user_id == user_id)
         )
         if portfolio.scalar_one_or_none() is None:
             new_portfolio = PaperPortfolio(
-                user_id=_USER_ID,
+                user_id=user_id,
                 name="Main",
                 initial_balance=Decimal("10000"),
                 current_balance=Decimal("10000"),
@@ -240,12 +242,13 @@ async def update_follow(
     wallet: str,
     body: FollowUpdate,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> FollowResponse:
     """Update follow configuration."""
     _validate_wallet(wallet)
     result = await db.execute(
         select(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+            WalletFollow.user_id == user_id,
             WalletFollow.wallet == wallet,
             WalletFollow.active.is_(True),
         )
@@ -268,12 +271,13 @@ async def update_follow(
 async def unfollow_wallet(
     wallet: str,
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(optional_api_key),
 ) -> None:
     """Unfollow a wallet (soft delete)."""
     _validate_wallet(wallet)
     result = await db.execute(
         select(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+            WalletFollow.user_id == user_id,
             WalletFollow.wallet == wallet,
             WalletFollow.active.is_(True),
         )
