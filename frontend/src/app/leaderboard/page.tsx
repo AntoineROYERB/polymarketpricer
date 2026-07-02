@@ -5,44 +5,64 @@ import { AppShell } from "@/components/layout/app-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { WalletAddress } from "@/components/shared/wallet-address";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
-import { useLeaderboard } from "@/hooks/use-leaderboard";
+import { useLeaderboard, useCategoryLeaderboard } from "@/hooks/use-leaderboard";
 import type { Column } from "@/components/shared/data-table";
-import type { LeaderEntry } from "@/types/api";
+import type { LeaderboardEntry, CategoryLeaderboardEntry } from "@/types/api";
 
-const CATEGORIES = ["All", "Politics", "Sports", "Crypto", "Science", "Pop Culture"];
+const CATEGORIES = ["All", "Politics", "Sports", "Crypto", "Economics", "Technology", "AI", "Geopolitics", "Entertainment"];
 
-const columns: Column<LeaderEntry>[] = [
-  { key: "wallet", label: "Wallet", render: (r) => <WalletAddress address={r.wallet} /> },
-  { key: "roi", label: "ROI", align: "right", sortable: true, render: (r) => `${r.roi.toFixed(1)}%` },
-  { key: "win_rate", label: "Win Rate", align: "right", sortable: true, render: (r) => `${(r.win_rate * 100).toFixed(0)}%` },
-  { key: "total_pnl", label: "PnL", align: "right", sortable: true, render: (r) => {
-    const val = r.total_pnl;
-    return <span className={val >= 0 ? "text-accent-emerald" : "text-accent-rose"}>${Math.abs(val).toLocaleString()}</span>;
-  }},
-  { key: "total_volume", label: "Volume", align: "right", sortable: true, render: (r) => `$${r.total_volume.toLocaleString()}` },
-  { key: "num_trades", label: "Trades", align: "right", sortable: true, render: (r) => r.num_trades },
-  { key: "profit_factor", label: "Profit Factor", align: "right", sortable: true, render: (r) => r.profit_factor.toFixed(2) },
-];
+type Row = (LeaderboardEntry | CategoryLeaderboardEntry) & { _score?: number };
 
 export default function LeaderboardPage() {
   const [category, setCategory] = useState("All");
   const [offset, setOffset] = useState(0);
-  const { data, isLoading } = useLeaderboard(category, 50, offset);
+  const { data: allData, isLoading: loadingAll } = useLeaderboard(100, category === "All" ? offset : 0);
+  const { data: catData, isLoading: loadingCat } = useCategoryLeaderboard(category, 50, category === "All" ? 0 : offset);
 
-  const topRoi = data?.data?.[0]?.roi ?? 0;
+  const isLoading = category === "All" ? loadingAll : loadingCat;
+  const rawData = category === "All" ? allData?.data : catData?.data;
+  const rows: Row[] = (rawData ?? []).map((r) => ({
+    ...r,
+    _score: "score" in r ? r.score : ("wallet_score" in r ? r.wallet_score : 0) ?? 0,
+  })) as Row[];
+
+  const columns: Column<Row>[] = [
+    { key: "rank", label: "#", align: "right", render: (r) => r.rank },
+    { key: "wallet", label: "Wallet", render: (r) => <WalletAddress address={r.wallet} /> },
+    { key: "score", label: "Score", align: "right", sortable: true, render: (r) => r._score?.toFixed(2) ?? "-" },
+    { key: "roi", label: "ROI", align: "right", sortable: true, render: (r) => r.roi !== null ? `${Number(r.roi).toFixed(1)}%` : "-" },
+    { key: "win_rate", label: "Win Rate", align: "right", sortable: true, render: (r) => r.win_rate !== null ? `${(Number(r.win_rate) * 100).toFixed(0)}%` : "-" },
+    { key: "total_pnl", label: "PnL", align: "right", sortable: true, render: (r) => {
+      const val = Number(r.total_pnl) || 0;
+      return <span className={val >= 0 ? "text-accent-emerald" : "text-accent-rose"}>${Math.abs(val).toLocaleString()}</span>;
+    }},
+    { key: "num_trades", label: "Trades", align: "right", sortable: true, render: (r) => r.num_trades },
+  ];
+
+  if (category !== "All") {
+    columns.push({
+      key: "total_volume", label: "Volume", align: "right", sortable: true,
+      render: (r) => {
+        const v = Number((r as CategoryLeaderboardEntry).total_volume) || 0;
+        return v > 0 ? `$${v.toLocaleString()}` : "-";
+      },
+    });
+  }
 
   return (
     <AppShell>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-heading text-text-primary">Leaderboard</h1>
-          <div className="flex items-center gap-2">
-            <AnimatedCounter value={topRoi} suffix="%" className="text-lg text-accent-amber" />
-            <span className="text-xs text-text-muted">top ROI</span>
-          </div>
+          {rows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <AnimatedCounter value={Number(rows[0].roi) || 0} suffix="%" className="text-lg text-accent-amber" />
+              <span className="text-xs text-text-muted">top ROI</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -60,10 +80,9 @@ export default function LeaderboardPage() {
 
         <DataTable
           columns={columns}
-          data={data?.data ?? []}
+          data={rows}
           loading={isLoading}
-          total={data?.data?.length}
-          limit={50}
+          limit={category === "All" ? 100 : 50}
           offset={offset}
           onOffsetChange={setOffset}
           keyExtractor={(r) => r.wallet}
