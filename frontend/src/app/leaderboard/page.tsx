@@ -23,7 +23,7 @@ export default function LeaderboardPage() {
   const rawData = category === "All" ? allData?.data : catData?.data;
   const rows: Row[] = (rawData ?? []).map((r) => ({
     ...r,
-    _score: "score" in r ? r.score : ("wallet_score" in r ? r.wallet_score : 0) ?? 0,
+    _score: Number("score" in r ? r.score : ("wallet_score" in r ? r.wallet_score : 0)) || 0,
   })) as Row[];
 
   const columns: Column<Row>[] = [

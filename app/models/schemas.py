@@ -1,5 +1,4 @@
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -12,15 +11,15 @@ from app.utils.category import get_valid_categories
 class LeaderboardEntry(BaseModel):
     rank: int
     wallet: str
-    score: Decimal
-    roi: Decimal
-    win_rate: Decimal
-    total_pnl: Decimal
+    score: float
+    roi: float
+    win_rate: float
+    total_pnl: float
     num_trades: int
-    consistency_score: Decimal
-    experience_score: Decimal
-    edge_score: Optional[Decimal] = None
-    edge_consistency: Optional[Decimal] = None
+    consistency_score: float
+    experience_score: float
+    edge_score: Optional[float] = None
+    edge_consistency: Optional[float] = None
     num_edge_trades: Optional[int] = None
 
     model_config = {"from_attributes": True}
@@ -37,30 +36,30 @@ class PositionSummary(BaseModel):
     question: str
     side: Optional[str] = None
     status: str = "OPEN"
-    shares: Decimal
-    avg_entry_price: Decimal
+    shares: float
+    avg_entry_price: float
     entry_time: Optional[datetime] = None
     exit_time: Optional[datetime] = None
-    realized_pnl: Optional[Decimal] = None
-    unrealized_pnl: Optional[Decimal] = None
-    total_pnl: Optional[Decimal] = None
+    realized_pnl: Optional[float] = None
+    unrealized_pnl: Optional[float] = None
+    total_pnl: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
 
 class WalletAnalyticsData(BaseModel):
-    total_pnl: Optional[Decimal] = None
-    roi: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
+    total_pnl: Optional[float] = None
+    roi: Optional[float] = None
+    win_rate: Optional[float] = None
     num_trades: Optional[int] = None
-    total_volume: Optional[Decimal] = None
-    avg_position_size: Optional[Decimal] = None
-    sharpe_ratio: Optional[Decimal] = None
-    profit_factor: Optional[Decimal] = None
-    max_drawdown: Optional[Decimal] = None
+    total_volume: Optional[float] = None
+    avg_position_size: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    profit_factor: Optional[float] = None
+    max_drawdown: Optional[float] = None
     avg_holding_duration: Optional[str] = None
-    consistency_score: Optional[Decimal] = None
-    experience_score: Optional[Decimal] = None
+    consistency_score: Optional[float] = None
+    experience_score: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -75,11 +74,11 @@ class WalletAnalyticsData(BaseModel):
 class WalletEdgeSnapshot(BaseModel):
     wallet: str
     snapshot_date: Optional[date] = None
-    avg_edge: Decimal
-    median_edge: Optional[Decimal] = None
-    edge_consistency: Optional[Decimal] = None
-    edge_volatility: Optional[Decimal] = None
-    edge_score: Optional[Decimal] = None
+    avg_edge: float
+    median_edge: Optional[float] = None
+    edge_consistency: Optional[float] = None
+    edge_volatility: Optional[float] = None
+    edge_score: Optional[float] = None
     num_edge_trades: int
     positive_edge_trades: Optional[int] = None
     negative_edge_trades: Optional[int] = None
@@ -90,9 +89,9 @@ class WalletEdgeSnapshot(BaseModel):
 
 class EdgeLeaderboardEntry(BaseModel):
     wallet: str
-    edge_score: Decimal
-    avg_edge: Decimal
-    edge_consistency: Optional[Decimal] = None
+    edge_score: float
+    avg_edge: float
+    edge_consistency: Optional[float] = None
     num_edge_trades: int
     rank: int
 
@@ -124,12 +123,12 @@ class WalletProfile(BaseModel):
 class CategoryLeaderboardEntry(BaseModel):
     rank: int
     wallet: str
-    wallet_score: Optional[Decimal] = None
-    roi: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
-    total_pnl: Optional[Decimal] = None
+    wallet_score: Optional[float] = None
+    roi: Optional[float] = None
+    win_rate: Optional[float] = None
+    total_pnl: Optional[float] = None
     num_trades: int = 0
-    total_volume: Optional[Decimal] = None
+    total_volume: Optional[float] = None
     is_specialist: bool = False
 
     model_config = {"from_attributes": True}
@@ -145,12 +144,12 @@ class CategoryLeaderboardResponse(BaseModel):
 class WalletCategorySummary(BaseModel):
     category: str
     num_trades: int = 0
-    total_volume: Optional[Decimal] = None
-    total_pnl: Optional[Decimal] = None
-    roi: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
-    profit_factor: Optional[Decimal] = None
-    avg_position_size: Optional[Decimal] = None
+    total_volume: Optional[float] = None
+    total_pnl: Optional[float] = None
+    roi: Optional[float] = None
+    win_rate: Optional[float] = None
+    profit_factor: Optional[float] = None
+    avg_position_size: Optional[float] = None
     is_specialist: bool = False
     category_rank: Optional[int] = None
 
@@ -166,16 +165,16 @@ class CategoryDetailResponse(BaseModel):
     wallet: str
     category: str
     num_trades: int = 0
-    total_volume: Optional[Decimal] = None
-    total_cost_basis: Optional[Decimal] = None
-    total_pnl: Optional[Decimal] = None
-    total_realized_pnl: Optional[Decimal] = None
-    total_unrealized_pnl: Optional[Decimal] = None
-    roi: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
+    total_volume: Optional[float] = None
+    total_cost_basis: Optional[float] = None
+    total_pnl: Optional[float] = None
+    total_realized_pnl: Optional[float] = None
+    total_unrealized_pnl: Optional[float] = None
+    roi: Optional[float] = None
+    win_rate: Optional[float] = None
     num_resolved_positions: int = 0
-    profit_factor: Optional[Decimal] = None
-    avg_position_size: Optional[Decimal] = None
+    profit_factor: Optional[float] = None
+    avg_position_size: Optional[float] = None
     avg_holding_duration: Optional[str] = None
     is_specialist: bool = False
     category_rank: Optional[int] = None
@@ -194,9 +193,9 @@ class AlertItem(BaseModel):
     market_id: str
     market_question: str
     action: str
-    price: Decimal
-    position_size: Decimal
-    wallet_score: Decimal
+    price: float
+    position_size: float
+    wallet_score: float
     category: str
     detected_at: datetime
     notified_at: Optional[datetime] = None
@@ -215,8 +214,8 @@ class MarketSummary(BaseModel):
     question: str
     category: Optional[str] = None
     event_slug: Optional[str] = None
-    volume_usd: Optional[Decimal] = None
-    liquidity_usd: Optional[Decimal] = None
+    volume_usd: Optional[float] = None
+    liquidity_usd: Optional[float] = None
     close_time: Optional[datetime] = None
     created_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
@@ -237,7 +236,7 @@ class FollowCreate(BaseModel):
     label: Optional[str] = Field(default=None, max_length=200)
     auto_copy_enabled: bool = False
     copy_mode: Optional[Literal["proportional", "fixed"]] = None
-    copy_value: Decimal = Field(default=Decimal("0.05"), ge=0)
+    copy_value: float = Field(default=0.05, ge=0)
     category_filter: Optional[list[str]] = None
 
     model_config = {"from_attributes": True}
@@ -258,7 +257,7 @@ class FollowUpdate(BaseModel):
     label: Optional[str] = Field(default=None, max_length=200)
     auto_copy_enabled: Optional[bool] = None
     copy_mode: Optional[Literal["proportional", "fixed"]] = None
-    copy_value: Optional[Decimal] = Field(default=None, ge=0)
+    copy_value: Optional[float] = Field(default=None, ge=0)
     category_filter: Optional[list[str]] = None
     active: Optional[bool] = None
 
@@ -281,7 +280,7 @@ class FollowResponse(BaseModel):
     active: bool
     auto_copy_enabled: bool
     copy_mode: Optional[str] = None
-    copy_value: Decimal
+    copy_value: float
     category_filter: Optional[list[str]] = None
     followed_at: datetime
     updated_at: datetime
@@ -296,7 +295,7 @@ class FollowListResponse(BaseModel):
 
 class FollowRecommendation(BaseModel):
     wallet: str
-    follow_score: Decimal
+    follow_score: float
     reasons: list[str]
 
 
@@ -311,14 +310,14 @@ class FollowRecommendationResponse(BaseModel):
 class PortfolioResponse(BaseModel):
     id: Optional[UUID] = None
     name: str = "Main"
-    initial_balance: Decimal = Decimal("10000")
-    current_balance: Decimal = Decimal("10000")
-    total_realized_pnl: Decimal = Decimal("0")
-    total_unrealized_pnl: Decimal = Decimal("0")
-    total_pnl: Decimal = Decimal("0")
-    total_roi: Optional[Decimal] = None
+    initial_balance: float = 10000.0
+    current_balance: float = 10000.0
+    total_realized_pnl: float = 0.0
+    total_unrealized_pnl: float = 0.0
+    total_pnl: float = 0.0
+    total_roi: Optional[float] = None
     total_trades: int = 0
-    total_volume: Decimal = Decimal("0")
+    total_volume: float = 0.0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -331,12 +330,12 @@ class PaperPositionResponse(BaseModel):
     outcome: str
     side: str
     status: str
-    shares: Decimal
-    avg_entry_price: Decimal
-    current_price: Optional[Decimal] = None
-    cost_basis: Decimal
-    realized_pnl: Decimal
-    unrealized_pnl: Optional[Decimal] = None
+    shares: float
+    avg_entry_price: float
+    current_price: Optional[float] = None
+    cost_basis: float
+    realized_pnl: float
+    unrealized_pnl: Optional[float] = None
     followed_wallet: str
     opened_at: datetime
     closed_at: Optional[datetime] = None
@@ -354,12 +353,12 @@ class PaperTradeResponse(BaseModel):
     market_id: str
     outcome: str
     side: str
-    price: Decimal
-    shares: Decimal
-    amount_usd: Decimal
+    price: float
+    shares: float
+    amount_usd: float
     followed_wallet: str
     copy_mode: Optional[str] = None
-    copy_value_used: Optional[Decimal] = None
+    copy_value_used: Optional[float] = None
     executed_at: datetime
 
     model_config = {"from_attributes": True}
@@ -373,7 +372,7 @@ class PaperTradeListResponse(BaseModel):
 
 
 class PortfolioResetRequest(BaseModel):
-    initial_balance: Decimal = Field(default=Decimal("10000"), gt=0)
+    initial_balance: float = Field(default=10000.0, gt=0)
 
 
 class PortfolioResetResponse(BaseModel):
@@ -385,12 +384,12 @@ class PortfolioResetResponse(BaseModel):
 
 class CategoryFollowScoreItem(BaseModel):
     category: str
-    follow_score: Decimal
+    follow_score: float
     recommendation: str  # FOLLOW / WATCH / IGNORE
-    roi_percentile: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
+    roi_percentile: Optional[float] = None
+    win_rate: Optional[float] = None
     is_specialist: bool = False
-    volume_percentile: Optional[Decimal] = None
+    volume_percentile: Optional[float] = None
     recency_days: Optional[int] = None
     reasons: list[str] = []
 
@@ -399,16 +398,16 @@ class CategoryFollowScoreItem(BaseModel):
 
 class WalletCategoryFollowScoresResponse(BaseModel):
     wallet: str
-    global_follow_score: Optional[Decimal] = None
+    global_follow_score: Optional[float] = None
     category_scores: list[CategoryFollowScoreItem]
 
 
 class CategoryFollowLeaderboardEntry(BaseModel):
     wallet: str
-    follow_score: Decimal
+    follow_score: float
     recommendation: str
-    roi_percentile: Optional[Decimal] = None
-    win_rate: Optional[Decimal] = None
+    roi_percentile: Optional[float] = None
+    win_rate: Optional[float] = None
     is_specialist: bool = False
     reasons: list[str] = []
 

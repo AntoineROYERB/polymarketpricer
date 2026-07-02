@@ -65,7 +65,7 @@ class TestEdgeLeaderboard:
         assert len(body["data"]) == 1
         entry = body["data"][0]
         assert entry["wallet"] == "0xwallet1"
-        assert entry["edge_score"] == "0.95"
+        assert entry["edge_score"] == 0.95
         assert entry["rank"] == 1
 
     async def test_edge_leaderboard_pagination(self, client: AsyncClient) -> None:

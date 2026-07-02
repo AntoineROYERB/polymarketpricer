@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,7 +75,7 @@ async def wallet_edge(
     if snapshot is None:
         return WalletEdgeSnapshotSchema(
             wallet=address,
-            avg_edge=Decimal("0"),
+            avg_edge=0.0,
             num_edge_trades=0,
         )
 

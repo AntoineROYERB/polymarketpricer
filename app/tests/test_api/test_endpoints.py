@@ -119,7 +119,7 @@ async def test_get_wallet_profile_success(client: AsyncClient) -> None:
         assert response.status_code == 200
         data = response.json()
         assert data["wallet"] == "0x1234"
-        assert data["analytics"]["total_pnl"] == "50000.0"
-        assert data["analytics"]["roi"] == "0.25"
+        assert data["analytics"]["total_pnl"] == 50000.0
+        assert data["analytics"]["roi"] == 0.25
         assert data["analytics"]["num_trades"] == 120
         assert data["current_positions"] == []
