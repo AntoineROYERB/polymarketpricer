@@ -1,315 +1,98 @@
 # polymarketpricer
 
-Multi-pipeline ETL system that feeds Polymarket data into PostgreSQL, served by a FastAPI backend.
+Multi-pipeline ETL system: Polymarket data → PostgreSQL → FastAPI backend.
+Phase 5 (Follow Recommendation Engine, Paper Trading) is in progress.
 
-## Quick Reference
+## Essential commands
 
 ```bash
-# Start everything
+# Start services
 docker compose up -d
 
-# Run migrations
+# Run migrations (must use `exec`)
 docker compose exec app alembic upgrade head
 
-# Run all ETL pipelines
-./scripts/run-all-pipelines.sh
-
-# Run full ETL cycle via orchestration pipeline
-docker compose exec mage mage run /home/src/default_repo orchestration
-
-# Restore from seed (avoids pipelines)
-docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.gz
-docker compose exec app alembic upgrade head
-```
-
-## Environment Configuration
-
-The project uses a two-file `.env` system:
-
-| File | Tracked by git | Purpose |
-|------|---------------|---------|
-| `.env.sample` | **Yes** | Template with placeholder values and explanatory comments. Copy this to `.env`. |
-| `.env` | **No** (`.gitignore`) | Actual secrets and config. Per-developer, never committed. |
-
-```bash
-# First time setup
-cp .env.sample .env
-# Then edit .env with your actual values
-```
-
-### Variables overview
-
-| Variable | Required? | Default | Used by | Description |
-|----------|-----------|---------|---------|-------------|
-| `DATABASE_URL` | ✅ | — | `app/`, `mage/` | Asyncpg connection string (use `localhost` for local dev, `postgres` inside Docker) |
-| `POSTGRES_DB` | ✅ | `polymarket` | `postgres` service | Database name |
-| `POSTGRES_USER` | ✅ | `app` | `postgres` service | Database user |
-| `POSTGRES_PASSWORD` | ✅ | `devpassword` | `postgres` service | Database password |
-| `DISCORD_WEBHOOK_URL` | ❌ (alerts off) | empty | `app/` | Discord webhook for smart money alerts |
-| `ALERT_POLL_INTERVAL_SECONDS` | ❌ | `10` | `app/` | Background poll interval for new alerts |
-| `MAGE_MEM_LIMIT` | ❌ | none (no limit) | `mage` service | Docker memory limit (e.g. `4g`, `8g`) |
-| `TARGET_WALLET_COUNT` | ❌ | `1000` | `mage/` | Target wallets to discover |
-| `FULL_SYNC` | ❌ | `false` | `mage/` | Set to `true` to force full sync (bypass incremental) |
-| `VERIFY_MIN_*` | ❌ | see `.env.sample` | `mage/` | Row count thresholds for ETL verification |
-
-> **`DATABASE_URL` inside Docker Compose:** The `docker-compose.yml` hardcodes `postgresql+asyncpg://app:devpassword@postgres:5432/polymarket` for the `mage` and `app` services (using the Docker network hostname `postgres`). The `.env` value is used when running the app or Mage scripts outside Docker (with `localhost`).
-
-## ETL Pipelines
-
-```mermaid
-flowchart LR
-    ingestion_market_discovery --> ingestion_wallet_discovery
-    ingestion_wallet_discovery --> ingestion_position_sync
-    ingestion_position_sync --> ingestion_pnl
-    ingestion_pnl --> ingestion_trade_history
-    ingestion_trade_history --> enrichment_analytics_computation
-    enrichment_analytics_computation --> enrichment_ranking_computation
-    enrichment_ranking_computation --> category_analytics
-    category_analytics --> enrichment_edge_scoring
-    enrichment_edge_scoring --> smart_money_detection
-    smart_money_detection --> verify_etl_output
-```
-
-11 Mage AI pipelines under `magic/default_repo/pipelines/`:
-
-| Pipeline | Loads | Transforms | Exports |
-|---|---|---|---|---|
-| `ingestion_market_discovery` | Gamma `/markets/keyset` | Merge active+resolved, parse outcomes | `events`, `markets`, `outcomes` |
-| `ingestion_wallet_discovery` | Data API `/trades` → discover proxy wallets | Gamma `/users/{addr}` resolve | `wallets` |
-| `ingestion_position_sync` | Data API `/positions?user=` | Diff vs previous positions | `positions`, `position_history` |
-| `ingestion_pnl` | Data API `/activity` (cursor pagination) | Cash-flow PnL formula, category breakdown | `wallet_pnl_snapshots` |
-| `ingestion_trade_history` | Data API `/trades?user=` | Dedup by trade id | `trades` |
-| `enrichment_analytics_computation` | PG queries (recent activity) | PnL, ROI, Sharpe, win rate | `wallet_analytics` |
-| `enrichment_ranking_computation` | PG queries (analytics) | Weighted score, top-100 lists | `ranking_snapshots` |
-| `category_analytics` | PG queries (markets + categories) | Per-category PnL, ROI, win rate, specialist flag | `category_analytics`, `category_rankings` |
-| `enrichment_edge_scoring` | PG queries (resolved trades + outcomes) | FIFO buy/sell matching, edge per trade, min-max normalization | `wallet_edge_snapshots` |
-| `smart_money_detection` | PG queries (position changes, scores, rules) | Classify actions, apply score/size/liquidity thresholds | `alerts` |
-| `verify_etl_output` | PG integrity checks | — | — |
-
-Run a single pipeline:
-
-```bash
+# Run a single ETL pipeline (non-obvious path)
 docker compose exec mage mage run /home/src/default_repo ingestion_market_discovery
 
-# Run full ETL cycle via orchestration pipeline
-docker compose exec mage mage run /home/src/default_repo orchestration
-```
+# Run all pipelines sequentially
+./scripts/run-all-pipelines.sh
 
-## Database Seed Dump
-
-To avoid re-running pipelines after a fresh `docker compose up`, the repo includes a
-pre-computed seed at `docker/initdb/seed.sql.gz` tracked via **Git LFS**.
-
-### Requirements
-
-- **Git LFS**: every developer must run once:
-  ```bash
-  git lfs install          # one-time per machine
-  git lfs pull             # after clone to get the actual dump file
-  ```
-
-### Restore from Seed
-
-```bash
-# Fresh start (destroys named volume)
-docker compose down -v
-docker compose up -d          # Postgres auto-loads seed.sql.gz on init
-docker compose exec app alembic upgrade head
-
-# OR into an existing volume
+# Pipe seed into postgres container
 docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.gz
-docker compose exec app alembic upgrade head
+
+# Test suites
+python -m pytest app/tests/test_api/ -v              # mock-based, no DB needed
+python -m pytest app/tests/test_db_integrity.py -m integration -v  # needs postgres running
+python -m pytest app/tests/ -v                        # all tests
+
+# Pre-commit checks (also run by ruff pre-commit hook)
+ruff check app/
+mypy app/
 ```
 
-### Refresh Seed
+## Architecture
 
-Run after pipeline executions to capture fresh data:
+**Three Docker services**: `postgres` (16-alpine, port 5432), `mage` (ETL, port 6789), `app` (FastAPI, port 8000).
 
-```bash
-./scripts/refresh-seed.sh     # dumps → docker/initdb/seed.sql.gz
-git add docker/initdb/seed.sql.gz
-git commit -m "chore: refresh seed dump"
-```
+**11 sequential ETL pipelines** under `magic/default_repo/pipelines/`:
 
-Refresh when:
-- After running ETL pipelines
-- After alembic schema migrations
-- Before a release / PR merge
-- When the seed is > 7 days old
+`market_discovery → wallet_discovery → position_sync → pnl → trade_history → analytics_computation → ranking_computation → category_analytics → edge_scoring → smart_money_detection → verify_etl_output`
 
-### Troubleshooting
+The `verify_etl_output` pipeline is a dry-run integrity check — it does not modify data.
 
-| Symptom | Fix |
-|---|---|
-| `seed.sql.gz` is a tiny text file | `git lfs pull` |
-| `relation does not exist` | Run `alembic upgrade head` first |
-| FK violation on restore | Seed is stale — refresh it |
-| `column does not exist` | Schema mismatch — run migrations first |
+Orchestration pipeline runs all 11 in order. New pipelines must be added to the orchestration pipeline too.
 
-## Git LFS
+**FastAPI routes** live in `app/api/v1/` and are aggregated in `app/api/router.py`. Rate limit: 60 req/min default (slowapi). CORS allows `GET` only.
 
-`docker/initdb/seed.sql.gz` is tracked via Git LFS. The `.gitattributes` file in the
-repo root declares the pattern. All contributors must have `git-lfs` installed.
+**Background loops** in `app/main.py`:
+- Alert delivery: polls `ALERT_POLL_INTERVAL_SECONDS` (default 10s), broadcasts via WebSocket + optional Discord
+- Paper trade generation: polls every 10s, uses `FOR UPDATE SKIP LOCKED` for exactly-once processing
+- WebSocket heartbeat: every 30s (at `/api/v1/alerts/ws`)
 
-## Category Classification
+**Category classifier** lives in `magic/default_repo/utils/category_classifier.py` (not in `app/`). Three-tier fallback: raw API map → event inheritance → keyword rules. 8 target categories.
 
-Markets are classified into 8 target categories using a 3-tier classifier:
+**21 Alembic migrations** under `alembic/versions/`. Always run `alembic upgrade head` after restoring seed or pulling new migrations.
 
-| Tier | Method | Description |
-|------|--------|-------------|
-| 1 | Raw API map | Direct mapping from API's `category` field to target category |
-| 2 | Event inheritance | Inherits category from parent event when available |
-| 3 | Keyword rules | 300+ keywords matched against market question text |
+## Testing guide
 
-Categories: `politics`, `crypto`, `sports`, `economics`, `technology`, `ai`, `geopolitics`, `entertainment`
+Three tiers with different prerequisites:
 
-Classifier source: `magic/default_repo/utils/category_classifier.py`
+| Suite | Command | Needs DB? | Notes |
+|-------|---------|-----------|-------|
+| API mock tests | `python -m pytest app/tests/test_api/ -v` | No | Uses ASGITransport with mocked session |
+| Service unit tests | `python -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py app/tests/test_edge_scoring.py -v` | No | Pure function + mocked service tests |
+| Integration tests | `python -m pytest app/tests/test_db_integrity.py -m integration -v` | Yes (postgres running) | Uses sync psycopg2 connection; derives sync URL from async `DATABASE_URL` by replacing driver prefix |
 
-## Testing
+**Key config in pyproject.toml**: `asyncio_mode = "auto"`, `testpaths = ["app/tests"]`, integration marker defined. Ruff line-length 100. mypy strict with SQLAlchemy plugin.
 
-The project has four test suites:
+## Code quality
 
-### Unit / API Tests (47 tests)
+Pre-commit hooks (`.pre-commit-config.yaml`): ruff (lint + fix), ruff-format, mypy (strict), trailing-whitespace, end-of-file-fixer.
 
-Mock-based tests that verify endpoint behaviour without a real database:
+Run these before committing: `ruff check app/ && mypy app/ && python -m pytest app/tests/test_api/ -v`
 
-```bash
-python3 -m pytest app/tests/test_api/ -v
-```
+CI workflow (`.github/workflows/ci.yml`) runs three jobs: `lint` (ruff, mypy, bandit, safety), `api-tests`, `integration-tests` (restores seed, runs migrations, then tests).
 
-| File | Tests | What it validates |
-|---|---|---|---|
-| `test_endpoints.py` | 10 | Phase 1 endpoints (leaderboard, wallets, markets, health) |
-| `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
-| `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
-| `test_edge_endpoints.py` | 6 | Phase 4 edge endpoints (leaderboard empty/with-data/pagination, wallet edge 200/404) |
-| `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
+## Environment gotchas
 
-### Service / Unit Tests (63 tests)
+- **`DATABASE_URL` differs inside vs outside Docker**: docker-compose.yml hardcodes `postgresql+asyncpg://app:devpassword@postgres:5432/polymarket` (hostname `postgres`). The `.env` value uses `localhost` for local dev.
+- **Git LFS**: `docker/initdb/seed.sql.gz` is tracked via LFS. Run `git lfs pull` after clone.
+- **Seed restore order**: seed data → then `alembic upgrade head` (never the reverse).
+- **Integration tests use sync psycopg2**: derive sync URL by replacing `postgresql+asyncpg://` → `postgresql+psycopg2://`.
 
-Pure function and mocked-service tests:
+## Reference docs
 
-```bash
-python3 -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py -v
-```
+Detailed documentation lives alongside code:
 
-| File | Tests | What it validates |
-|---|---|---|---|
-| `test_alert_service.py` | 39 | `classify_action`, `_format_action`, `send_discord_alert`, `poll_unnotified_alerts`, `mark_notified`, edge cases |
-| `test_ws_manager.py` | 14 | Connection lifecycle, broadcast, heartbeat, dead connection cleanup |
-| `test_edge_scoring.py` | 10 | Edge computation (FIFO matching, normalization, empty/zero edge cases) |
-
-### Integration Tests (real database)
-
-`app/tests/test_db_integrity.py` connects to the actual PostgreSQL instance and validates
-ETL pipeline output. Requires `docker compose up -d` (postgres service running).
-
-```bash
-# Run only integration tests
-python3 -m pytest app/tests/test_db_integrity.py -m integration -v
-
-# Run all tests (176 total)
-python3 -m pytest app/tests/ -v
-```
-
-What the 66 integration tests check:
-
-| Category | Tests | What it validates |
-|---|---|---|
-| Row counts | 12 | Each populated table meets a minimum row threshold |
-| Referential integrity | 9 | No orphaned foreign keys across all FK relationships (incl. `wallet_pnl_snapshots`) |
-| Not-null constraints | 8 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics, pnl_snapshot keys) have no NULLs |
-| Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
-| PnL snapshot quality | 2 | `total_pnl = realized + unrealized`, PnL ≤ 100× cost basis |
-| Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
-| Cross-table consistency | 5 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets`, pnl_snapshot FK valid |
-| ROI range (relaxed) | 1 | Category analytics ROI within [-100000, 500000] |
-| **Alerts (Phase 3)** | **8** | Alerts table queryable, alert_rules global default, FK (wallet, market), NOT NULL (8 cols), score range [0,100], position_size > 0, valid action enums |
-| **PnL snapshot** | 3 | Consistency, bounds, plus 1 combined with row counts |
-| **Edge Scoring (Phase 4)** | **9** | Edge snapshots queryable, FK, NOT NULL (4 cols), edge_score in [0,1], edge_consistency in [0,1], edge_volatility ≥ 0, avg_edge bounds, edge_score column in wallet_analytics, edge_score column in ranking_snapshots |
-
-**Note:** Integration tests use a synchronous `psycopg2` connection (not asyncpg) to avoid
-concurrency issues with parametrized test functions. The sync URL is derived from
-the async `DATABASE_URL` config by replacing the driver prefix.
-
-## Project Layout
-
-```
-.
-├── .env                       # Local config (gitignored — copy from .env.sample)
-├── .env.sample                # Template with placeholder values
-├── docker-compose.yml         # PostgreSQL + Mage + app
-├── Dockerfile                 # FastAPI app image
-├── requirements.txt
-├── pyproject.toml
-├── .gitattributes             # LFS: seed.sql.gz
-├── .pre-commit-config.yaml
-│
-├── app/                       # FastAPI backend
-│   ├── main.py
-│   ├── api/                   # Routes
-│   ├── db/                    # AsyncEngine + models
-│   ├── services/              # Business logic
-│   ├── models/                # Pydantic schemas
-│   └── tests/                 # Test suites
-│       ├── __init__.py
-│       ├── conftest.py            # Shared mock fixtures
-│       ├── test_alert_service.py  # 39 alert service tests
-│       ├── test_category_classifier.py# 10 classifier unit tests
-│       ├── test_ws_manager.py     # 14 WebSocket manager tests
-│       ├── test_api/              # Mock-based API tests
-│       │   ├── __init__.py
-│       │   ├── test_endpoints.py          # 9 endpoint tests
-│       │   ├── test_alert_endpoints.py # 13 Phase 3 alert endpoint tests
-│       │   └── test_category_endpoints.py # 8 Phase 2 endpoint tests
-│       └── test_db_integrity.py   # 56 integration tests
-│
-├── alembic/                   # DB migrations
-│   └── versions/
-│       ├── 001_initial.py
-│       ├── 002_category_analytics.py
-│       ├── 003_add_mapped_category.py
-│       ├── 004_add_categories_table.py
-│       ├── 005_smart_money_alerts.py
-│       ├── 006_drop_outcome_id_fks.py
-│       └── 007_add_wallet_pnl_snapshots.py
-│
-├── docker/
-│   └── initdb/
-│       ├── .gitkeep
-│       └── seed.sql.gz           # LFS-tracked dump
-│
-├── magic/                      # Mage AI
-│   ├── Dockerfile
-│   └── default_repo/
-│       ├── pipelines/         # 12 pipeline dirs
-│       ├── data_loaders/      # 15 loaders
-│       ├── transformers/      # 7 transformers
-│       └── data_exporters/    # 10 exporters
-│
-├── scripts/
-│   ├── run-all-pipelines.sh   # Bash wrapper → orchestration pipeline
-│   ├── backfill_categories.py
-│   ├── backfill_pnl.py        # One-shot PnL computation from /activity
-│   └── refresh-seed.sh        # pg_dump → docker/initdb/seed.sql.gz
-│
-└── plans/
-    ├── db-seed-dump.md
-    ├── phase-01/
-    │   ├── 01-database-redesign.md
-    │   ├── 02-etl-pipelines.md
-    │   ├── 03-events-population.md
-    │   ├── 04-wallet-filtering.md
-    │   ├── 05-mvp-leaderboard.md
-    │   ├── 06-ci-cd-setup.md
-    │   ├── 07-trade-history-fix.md
-    │   ├── 08-pipeline-orchestration-and-verification.md
-    │   └── 09-signoff.md
-    └── phase-02/
-        ├── 01-database-schema.md
-        ├── 02-category-mapping.md
-        ├── 03-etl-pipeline.md
-        ├── 04-api-endpoints.md
-        ├── 05-testing.md
-        └── 06-signoff.md
-```
+| File | Covers |
+|------|--------|
+| `docs/ARCHITECTURE.md` | System diagram, data flow |
+| `docs/API.md` | All REST + WebSocket endpoints |
+| `docs/ALERTS.md` | Alert pipeline, Discord setup |
+| `docs/DATABASE.md` | Schema, category classification, migrations |
+| `docs/DEVELOPMENT.md` | Local setup, testing, code quality |
+| `.opencode/opencode.jsonc` | OpenCode agent configurations |
+| `.opencode/agents/qa-engineer.md` | QA review agent instructions |
+| `.opencode/commands/commit.md` | Commit command (runs pre-commit checks) |
+| `.opencode/plans/` | Phase specifications for coding agents |
