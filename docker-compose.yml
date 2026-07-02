@@ -35,6 +35,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://app:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/polymarket
       DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL}"
       ALERT_POLL_INTERVAL_SECONDS: ${ALERT_POLL_INTERVAL_SECONDS:-10}
+      API_KEY: ${API_KEY:-devkey-change-me}
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
