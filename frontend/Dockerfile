@@ -1,4 +1,6 @@
 FROM node:20-alpine AS builder
+ARG API_PROXY_URL
+ENV API_PROXY_URL=${API_PROXY_URL}
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
