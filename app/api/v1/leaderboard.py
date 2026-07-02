@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -72,24 +71,24 @@ async def consistent(
     return [_to_entry(e) for e in entries]
 
 
-def _safe_decimal(row: Any, attr: str) -> Decimal:
+def _safe_float(row: Any, attr: str) -> float:
     val = to_decimal(getattr(row, attr, None))
-    return val if val is not None else Decimal("0")
+    return float(val) if val is not None else 0.0
 
 
 def _to_entry(e: Any) -> LeaderboardEntry:
     return LeaderboardEntry(
         rank=getattr(e, "rank", 0),
         wallet=e.wallet,
-        score=_safe_decimal(e, "wallet_score"),
-        roi=_safe_decimal(e, "roi"),
-        win_rate=_safe_decimal(e, "win_rate"),
-        total_pnl=_safe_decimal(e, "total_pnl"),
+        score=_safe_float(e, "wallet_score"),
+        roi=_safe_float(e, "roi"),
+        win_rate=_safe_float(e, "win_rate"),
+        total_pnl=_safe_float(e, "total_pnl"),
         num_trades=e.num_trades or 0,
-        consistency_score=_safe_decimal(e, "consistency_score"),
-        experience_score=_safe_decimal(e, "experience_score"),
-        edge_score=_safe_decimal(e, "edge_score") or None,
-        edge_consistency=_safe_decimal(e, "edge_consistency") or None,
+        consistency_score=_safe_float(e, "consistency_score"),
+        experience_score=_safe_float(e, "experience_score"),
+        edge_score=_safe_float(e, "edge_score") or None,
+        edge_consistency=_safe_float(e, "edge_consistency") or None,
         num_edge_trades=getattr(e, "num_edge_trades", 0) or 0,
     )
 
@@ -118,9 +117,9 @@ async def edge_leaderboard(
     data = [
         EdgeLeaderboardEntry(
             wallet=str(r.wallet),
-            edge_score=to_decimal(r.edge_score),
-            avg_edge=to_decimal(r.avg_edge),
-            edge_consistency=to_decimal(r.edge_consistency) if r.edge_consistency else None,
+            edge_score=float(to_decimal(r.edge_score)),
+            avg_edge=float(to_decimal(r.avg_edge)),
+            edge_consistency=float(to_decimal(r.edge_consistency)) if r.edge_consistency else None,
             num_edge_trades=int(r.num_edge_trades),
             rank=offset + idx + 1,
         )
@@ -137,12 +136,12 @@ def _build_leaderboard_entry(
     return CategoryLeaderboardEntry(
         rank=row.rank,
         wallet=row.wallet,
-        wallet_score=_safe_decimal(row, "wallet_score"),
-        roi=_safe_decimal(row, "roi"),
-        win_rate=_safe_decimal(row, "win_rate"),
-        total_pnl=_safe_decimal(row, "total_pnl"),
+        wallet_score=_safe_float(row, "wallet_score"),
+        roi=_safe_float(row, "roi"),
+        win_rate=_safe_float(row, "win_rate"),
+        total_pnl=_safe_float(row, "total_pnl"),
         num_trades=row.num_trades or 0,
-        total_volume=_safe_decimal(row, "total_volume"),
+        total_volume=_safe_float(row, "total_volume"),
         is_specialist=is_specialist,
     )
 

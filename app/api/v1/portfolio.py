@@ -33,10 +33,10 @@ async def get_portfolio(
     portfolio = result.scalar_one_or_none()
     if portfolio is None:
         return PortfolioResponse(
-            id=None, name="Main", initial_balance=Decimal("10000"),
-            current_balance=Decimal("10000"), total_realized_pnl=Decimal("0"),
-            total_unrealized_pnl=Decimal("0"), total_pnl=Decimal("0"),
-            total_roi=Decimal("0"), total_trades=0, total_volume=Decimal("0"),
+            id=None, name="Main", initial_balance=10000.0,
+            current_balance=10000.0, total_realized_pnl=0.0,
+            total_unrealized_pnl=0.0, total_pnl=0.0,
+            total_roi=0.0, total_trades=0, total_volume=0.0,
         )
     return PortfolioResponse.model_validate(portfolio)
 
