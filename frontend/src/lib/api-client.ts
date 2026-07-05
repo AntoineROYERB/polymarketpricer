@@ -1,6 +1,8 @@
 import type {
+  LeaderboardEntry,
   LeaderboardResponse,
   CategoryLeaderboardResponse,
+  EdgeLeaderboardResponse,
   WalletProfile,
   AlertListResponse,
   FollowListResponse,
@@ -10,6 +12,7 @@ import type {
   PaperPositionListResponse,
   PaperTradeListResponse,
   PortfolioResetResponse,
+  MarketDetailResponse,
 } from "@/types/api";
 
 const API_URL = "/api/v1";
@@ -37,9 +40,22 @@ export const api = {
   leaderboard: (limit = 100, offset = 0) =>
     fetchJson<LeaderboardResponse>(`/leaderboard?limit=${limit}&offset=${offset}`),
 
+  leaderboardEmerging: (limit = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/emerging?limit=${limit}`),
+
+  leaderboardConsistent: (limit = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/consistent?limit=${limit}`),
+
+  leaderboardEdge: (limit = 50, offset = 0) =>
+    fetchJson<EdgeLeaderboardResponse>(`/leaderboard/edge?limit=${limit}&offset=${offset}`),
+
   // Leaderboard — by category
   categoryLeaderboard: (category: string, limit = 50, offset = 0) =>
     fetchJson<CategoryLeaderboardResponse>(`/leaderboard/${category}?limit=${limit}&offset=${offset}`),
+
+  // Markets
+  marketDetail: (marketId: string) =>
+    fetchJson<MarketDetailResponse>(`/markets/${marketId}`),
 
   // Wallets
   walletProfile: (address: string) =>
