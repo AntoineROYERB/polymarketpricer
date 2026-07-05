@@ -1,5 +1,56 @@
 # Changelog
 
+## v0.6.0 (2026-07-05)
+
+### Features
+- **Production Dashboard** (Phase 6): Next.js 16 dark-mode Bloomberg-style trading dashboard with 8 pages
+- **API Key Authentication**: `require_api_key` / `optional_api_key` dependency replacing `_USER_ID` placeholder; WebSocket auth via `api_key` query parameter
+- **Market Detail Endpoint**: `GET /api/v1/markets/{id}` with outcomes, bullish/bearish sentiment, and active traders
+- **WebSocket Auth**: Optional `api_key` query param on `/api/v1/alerts/ws` (closes with 4001 on mismatch)
+
+### Frontend
+- **Next.js 16 + TypeScript + Tailwind v4 + shadcn/ui** scaffold with Edge Terminal design system
+- **Dark Bloomberg-style theme**: Fraunces/JetBrains Mono/DM Sans, amber/emerald/rose accents
+- **Typed API client** (`api-client.ts`) with auth headers and error handling
+- **Auth context** (`auth.tsx`): localStorage-based API key with protected routes and login page
+- **Layout**: `AppShell` + collapsible `Sidebar` (8 nav items) + `Header` (search, WS indicator, logout)
+- **Shared components**: `DataTable` (sortable/paginated/skeleton), `MetricCard`, `WalletAddress` (truncate + copy), `AnimatedCounter`
+- **Charts**: `BarChart`, `SentimentBar`, `Sparkline` for category and metric visualization
+- **Leaderboard page**: 5 tabs (Main/Emerging/Consistent/Edge/By Category), top-3 highlight cards, paginated table with sortable columns
+- **Wallet Profile page**: follow/unfollow, category bar chart, edge metrics, tabbed data (alerts/positions/edge)
+- **Smart Money Feed page**: live WebSocket toggle, category/min_score/wallet filters, live connection badge
+- **Market View page**: outcomes grid, active traders table, buy/sell sentiment bar
+- **Follow Management page**: edit modal (label, copy mode, category filter), unfollow confirmation, recommendations tab
+- **Portfolio page**: open positions table, trade history, close position dialog, reset portfolio dialog
+- **Reusable hooks**: `useLeaderboard`, `useWebSocket`, `useAlerts`, `useFollowList`, `usePortfolio` with React Query mutations
+
+### Backend
+- `GET /api/v1/markets/{id}` — market detail with `OutcomeResponse`, `ActiveTraderEntry`, sentiment ratio
+- `alert_websocket` — accepts optional `api_key` query parameter for authenticated connections
+- `AlertItem.id` type changed from `str` to `UUID` for consistency
+- CORS origins include `127.0.0.1` and `localhost:3000`
+
+### Infrastructure
+- **Frontend Dockerfile**: Multi-stage build (node:20-alpine) with standalone Next.js server
+- **Docker Compose**: `frontend` service on port 3000 with `NEXT_PUBLIC_API_URL` env
+- **CI**: New `frontend-checks` job (npm ci → lint → build) in GitHub Actions
+- **Next.js rewrites**: API proxy (`/api/v1/*` → backend) to eliminate CORS in production
+- Mage Docker image pinned to `0.9.79` (was `0.9.84`)
+
+### Code Quality
+- `Decimal` serialized as `float` in JSON to prevent frontend rendering crashes
+- Frontend types (`api.ts`) fully aligned with backend schemas
+- Frontend ESLint + `npm run build` pass cleanly
+- Backend: 58 API tests, 164 total unit/API tests, 91 integration tests — all passing
+- `ruff check app/` and `mypy app/` clean
+
+### Tests
+- 7 new auth tests (`test_api/test_auth.py`): CORS preflight, missing/invalid/valid API key, protected endpoint access
+- 19 new frontend tests (`vitest`): api-client, wallet-address, metric-card, data-table
+- Total: 267 → **274+ tests** (164 unit/API + 91 integration + 7 auth + 19 frontend)
+
+---
+
 ## v0.5.0 (2026-07-01)
 
 ### Features

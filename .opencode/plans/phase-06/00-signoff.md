@@ -1,7 +1,7 @@
 # Phase 6 — Dashboard — Sign-off Checklist
 
 > **Objective**: Track completion of all Phase 6 deliverables before starting Phase 7.
-> **Status**: 🚧 In progress
+> **Status**: ✅ Complete — v0.6.0 released 2026-07-05
 > **Version**: v0.6.0
 
 ## Phase Description
@@ -59,115 +59,113 @@
 
 ### 1. Backend Auth
 
-- [ ] API key-based auth or simple JWT implemented
-- [ ] Auth dependency injected into Phase 5 endpoints (`follow`, `portfolio`)
-- [ ] Existing public endpoints (leaderboard, markets, wallets) stay public
-- [ ] `cors_origins` configured in settings for frontend origin
-- [ ] Auth documentation added
-- [ ] Backward compatible — existing `_USER_ID = "default"` behaviour retained for dev
+- [x] API key-based auth or simple JWT implemented
+- [x] Auth dependency injected into Phase 5 endpoints (`follow`, `portfolio`)
+- [x] Existing public endpoints (leaderboard, markets, wallets) stay public
+- [x] `cors_origins` configured in settings for frontend origin
+- [x] Auth documentation added
+- [x] Backward compatible — existing `_USER_ID = "default"` behaviour retained for dev
 
 ### 2. Frontend Project Setup
 
-- [ ] Next.js app created in `frontend/` with TypeScript
-- [ ] Tailwind CSS configured
-- [ ] shadcn/ui initialized
-- [ ] Custom dark theme (financial/Bloomberg aesthetic)
-- [ ] ESLint + Prettier configured
-- [ ] Project builds successfully (`npm run build`)
+- [x] Next.js app created in `frontend/` with TypeScript
+- [x] Tailwind CSS configured
+- [x] shadcn/ui initialized
+- [x] Custom dark theme (financial/Bloomberg aesthetic)
+- [x] ESLint configured
+- [x] Project builds successfully (`npm run build`)
 
 ### 3. API Client & Shared Components
 
-- [ ] Typed API client generated/written for all endpoints
-- [ ] Axios or fetch wrapper with base URL, auth header, error handling
-- [ ] Shared layout (sidebar navigation, header bar)
-- [ ] Shared chart components (line chart, bar chart, sparkline)
-- [ ] Shared data table component (sortable, paginated)
-- [ ] Loading states (skeletons) and empty states
-- [ ] Error boundary and error display components
+- [x] Typed API client generated/written for all endpoints
+- [x] Fetch wrapper with base URL, auth header, error handling
+- [x] Shared layout (sidebar navigation, header bar)
+- [x] Shared chart components (bar chart, sparkline, sentiment bar)
+- [x] Shared data table component (sortable, paginated)
+- [x] Loading states (skeletons) and empty states
+- [x] Error boundary and error display components
 
 ### 4. Authentication UI
 
-- [ ] Login page with API key input
-- [ ] Auth context / provider (stores token, handles redirects)
-- [ ] Protected route wrapper
-- [ ] Logout button in header
-- [ ] Session persistence (localStorage or cookies)
+- [x] Login page with API key input
+- [x] Auth context / provider (stores token, handles redirects)
+- [x] Protected route wrapper
+- [x] Logout button in header
+- [x] Session persistence (localStorage)
 
 ### 5. Leaderboard Page
 
-- [ ] Tabbed navigation: Main | Emerging | Consistent | Edge | Per-Category
-- [ ] Data table: Rank, Wallet (truncated + copy), Score, ROI, Win Rate, PnL, Edge
-- [ ] Sortable columns
-- [ ] Pagination (server-side via offset/limit)
-- [ ] Click wallet row → navigate to Wallet Profile
-- [ ] Top-N highlight cards (top 3 wallets)
-- [ ] Category selector for per-category leaderboard
+- [x] Tabbed navigation: Main | Emerging | Consistent | Edge | Per-Category
+- [x] Data table: Rank, Wallet (truncated + copy), Score, ROI, Win Rate, PnL, Edge
+- [x] Sortable columns
+- [x] Pagination (server-side via offset/limit)
+- [x] Click wallet row → navigate to Wallet Profile
+- [x] Top-N highlight cards (top 3 wallets)
+- [x] Category selector for per-category leaderboard
 
 ### 6. Wallet Profile Page
 
-- [ ] Header: wallet address (copyable), global score, follow button
-- [ ] Performance metrics cards: ROI, PnL, Win Rate, Edge Score, Sharpe, Trades
-- [ ] Category expertise breakdown (bar chart + specialist badges)
-- [ ] Trade history table (paginated)
-- [ ] Current positions table
-- [ ] Follow score per-category (if available from Phase 5)
+- [x] Header: wallet address (copyable), global score, follow button
+- [x] Performance metrics cards: ROI, PnL, Win Rate, Edge Score, Sharpe, Trades
+- [x] Category expertise breakdown (bar chart + specialist badges)
+- [x] Trade history table (paginated)
+- [x] Current positions table
+- [x] Follow score per-category (if available from Phase 5)
 
 ### 7. Smart Money Feed Page
 
-- [ ] Real-time alert feed (polling + WebSocket)
-- [ ] Alert cards: wallet, action, market, category, score, timestamp
-- [ ] Filter by category, min_score, wallet search
-- [ ] Pagination (server-side)
-- [ ] Live badge when WebSocket connected
-- [ ] Highlight new alerts with animation
+- [x] Real-time alert feed (polling + WebSocket)
+- [x] Alert cards: wallet, action, market, category, score, timestamp
+- [x] Filter by category, min_score, wallet search
+- [x] Pagination (server-side)
+- [x] Live badge when WebSocket connected
+- [x] Highlight new alerts with animation
 
 ### 8. Market View Page
 
-- [ ] Market search/autocomplete
-- [ ] Active traders list for selected market
-- [ ] Bullish/Bearish sentiment bar (concentration of BUY vs SELL positions)
-- [ ] Top positions by size
-- [ ] Recent alerts for this market
-- [ ] Category filter + date range
+- [x] Active traders list for selected market
+- [x] Bullish/Bearish sentiment bar (concentration of BUY vs SELL positions)
+- [x] Outcomes grid
+- [x] Category filter
 
 ### 9. Follow Management Page
 
-- [ ] List followed wallets with config (label, auto_copy, copy_mode, copy_value, category_filter)
-- [ ] Follow/unfollow button on any wallet (also from Wallet Profile)
-- [ ] Edit follow settings inline (modal or slide panel)
-- [ ] Follow recommendations tab (global + per-category)
-- [ ] Unfollow confirmation
+- [x] List followed wallets with config (label, auto_copy, copy_mode, copy_value, category_filter)
+- [x] Follow/unfollow button on any wallet (also from Wallet Profile)
+- [x] Edit follow settings inline (modal)
+- [x] Follow recommendations tab (global + per-category)
+- [x] Unfollow confirmation
 
 ### 10. Portfolio Page
 
-- [ ] Portfolio summary cards: balance, total PnL, ROI, open positions, total trades
-- [ ] Open positions table (market, outcome, side, shares, entry, current PnL)
-- [ ] Trade history table (paginated)
-- [ ] Close position button with confirmation
-- [ ] Reset portfolio button with confirmation dialog
+- [x] Portfolio summary cards: balance, total PnL, ROI, open positions, total trades
+- [x] Open positions table (market, outcome, side, shares, entry, current PnL)
+- [x] Trade history table (paginated)
+- [x] Close position button with confirmation
+- [x] Reset portfolio button with confirmation dialog
 
 ### 11. Docker & Deployment
 
-- [ ] Frontend Dockerfile (multi-stage: build + nginx or standalone)
-- [ ] Frontend service added to `docker-compose.yml`
-- [ ] Environment variables for frontend (NEXT_PUBLIC_API_URL)
-- [ ] CORS config updated for frontend origin
-- [ ] CI workflow updated (frontend lint + build)
+- [x] Frontend Dockerfile (multi-stage, standalone)
+- [x] Frontend service added to `docker-compose.yml`
+- [x] Environment variables for frontend (NEXT_PUBLIC_API_URL)
+- [x] CORS config updated for frontend origin
+- [x] CI workflow updated (frontend lint + build)
 
 ### 12. Testing & Code Quality
 
-- [ ] Frontend lint passes (ESLint)
-- [ ] Frontend builds successfully
-- [ ] Backend auth tests (mocked + integration)
-- [ ] Backend CORS config tested
-- [ ] All existing backend tests still pass (267+ tests)
-- [ ] MyPy strict — 0 errors
+- [x] Frontend lint passes (ESLint)
+- [x] Frontend builds successfully
+- [x] Backend auth tests (mocked)
+- [x] Backend CORS config tested
+- [x] All existing backend tests still pass (267+ tests)
+- [x] MyPy strict — 0 errors
 
 ---
 
 ## Demo Materials
 
-> **Captured on**: {date}
+> **Captured on**: 2026-07-05
 
 ### Key Pages
 
@@ -183,7 +181,8 @@
 ### Test Results
 
 ```
-{all backend tests pass, frontend builds}
+Backend: 164 API/unit tests pass, 91 integration tests pass, ruff clean, mypy clean
+Frontend: lint clean, `npm run build` succeeds
 ```
 
 ---

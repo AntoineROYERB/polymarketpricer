@@ -93,8 +93,12 @@ async def alert_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
 @router.websocket("/ws")
 async def alert_websocket(
     websocket: WebSocket,
+    api_key: str | None = Query(default=None),
 ) -> None:
     """Real-time smart money alert stream via WebSocket."""
+    if api_key and api_key != settings.api_key:
+        await websocket.close(code=4001)
+        return
     origin = websocket.headers.get("origin", "")
     if origin and settings.cors_origins and origin not in settings.cors_origins:
         await websocket.close(code=4001)

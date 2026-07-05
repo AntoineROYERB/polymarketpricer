@@ -173,16 +173,16 @@ export interface PortfolioResponse {
 export interface PaperPositionResponse {
   id: string;
   market_id: string;
-  market_question: string;
   outcome: string;
   side: string;
+  status: string;
   shares: number;
-  entry_price: number;
-  current_price: number;
+  avg_entry_price: number;
+  current_price: number | null;
   cost_basis: number;
   realized_pnl: number;
-  unrealized_pnl: number;
-  status: string;
+  unrealized_pnl: number | null;
+  followed_wallet: string;
   opened_at: string;
   closed_at: string | null;
 }
@@ -195,12 +195,14 @@ export interface PaperPositionListResponse {
 export interface PaperTradeResponse {
   id: string;
   market_id: string;
-  market_question: string;
+  outcome: string;
   side: string;
   shares: number;
   price: number;
   amount_usd: number;
-  pnl: number;
+  followed_wallet: string;
+  copy_mode: string | null;
+  copy_value_used: number | null;
   executed_at: string;
 }
 
@@ -215,3 +217,73 @@ export interface PortfolioResetResponse {
   portfolio: PortfolioResponse;
   message: string;
 }
+
+// ── Phase 6: Market Detail ───────────────────────────────────────────
+
+export interface OutcomeResponse {
+  id: string;
+  label: string;
+  price: number | null;
+  winner: boolean | null;
+}
+
+export interface ActiveTraderEntry {
+  wallet: string;
+  side: string | null;
+  position_size: number | null;
+  price: number | null;
+  total_pnl: number | null;
+}
+
+export interface MarketDetailResponse {
+  id: string;
+  question: string;
+  category: string | null;
+  event_slug: string | null;
+  condition_id: string | null;
+  volume_usd: number | null;
+  liquidity_usd: number | null;
+  close_time: string | null;
+  created_at: string | null;
+  resolved_at: string | null;
+  winning_outcome: string | null;
+  outcomes: OutcomeResponse[];
+  buy_percent: number;
+  active_traders: ActiveTraderEntry[];
+}
+
+// ── Phase 6: Edge / Emerging / Consistent Leaderboard ────────────────
+
+export interface EdgeLeaderboardEntry {
+  wallet: string;
+  edge_score: number;
+  avg_edge: number;
+  edge_consistency: number | null;
+  num_edge_trades: number;
+  rank: number;
+}
+
+export interface EdgeLeaderboardResponse {
+  data: EdgeLeaderboardEntry[];
+  limit: number;
+  offset: number;
+}
+
+export interface LeaderboardRow {
+  rank: number;
+  wallet: string;
+  score?: number;
+  wallet_score?: number | null;
+  roi?: number | null;
+  win_rate?: number | null;
+  total_pnl?: number | null;
+  num_trades?: number;
+  total_volume?: number | null;
+  edge_score?: number | null;
+  avg_edge?: number;
+  edge_consistency?: number | null;
+  num_edge_trades?: number | null;
+  is_specialist?: boolean;
+}
+
+export type LeaderboardTabType = "main" | "emerging" | "consistent" | "edge" | "category";

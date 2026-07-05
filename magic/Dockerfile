@@ -1,4 +1,4 @@
-FROM mageai/mageai:0.9.84
+FROM mageai/mageai:0.9.79
 
 COPY default_repo /home/src/default_repo
 

@@ -409,86 +409,50 @@ Recommend which traders are worth following.
 
 ---
 
-# Phase 6 — Dashboard
+# Phase 6 — Dashboard ✅
 
-## Frontend
-
-- Next.js
-- TypeScript
-- Tailwind
-- shadcn/ui
-
----
+All items complete.
 
 ## Backend
 
-- Python
-- FastAPI
-- PostgreSQL
-- Redis
+| Item | Status |
+|------|--------|
+| `GET /markets/{id}` market detail endpoint (outcomes, sentiment, active traders) | ✅ |
+| WebSocket auth via `api_key` query parameter | ✅ |
+| CORS origins configured for `localhost:3000` | ✅ |
+| Auth dependency (`require_api_key` / `optional_api_key`) | ✅ |
 
----
+## Frontend
 
-## Data Pipelines
-
-Choose one:
-
-- Mage AI
-- Airflow
-
----
+| Item | Status |
+|------|--------|
+| Next.js 16 + TypeScript + Tailwind v4 + shadcn/ui scaffold | ✅ |
+| Dark Bloomberg-style theme (`globals.css`, Fraunces/JetBrains Mono/DM Sans) | ✅ |
+| Typed API client (`api-client.ts`) with auth headers | ✅ |
+| Auth context (`auth.tsx`, localStorage-based API key) | ✅ |
+| Layout: AppShell, Sidebar (collapsible nav), Header (search + WS indicator) | ✅ |
+| Shared: DataTable (sortable/paginated/skeleton), MetricCard, WalletAddress, AnimatedCounter | ✅ |
+| Charts: BarChart, SentimentBar, Sparkline | ✅ |
+| Hooks: useLeaderboard, useWebSocket, useAlerts, useFollowList, usePortfolio (+ mutations) | ✅ |
+| **Leaderboard page**: tabs (Main/Emerging/Consistent/Edge/Category), top-3 highlight cards, paginated table | ✅ |
+| **Wallet Profile page**: follow/unfollow, category chart, edge metrics, tabbed data (alerts/positions/edge) | ✅ |
+| **Smart Money Feed page**: live WS toggle, category/min_score/wallet filters, live badge | ✅ |
+| **Market View page**: real data from `GET /markets/{id}`, outcomes grid, active traders table, sentiment bar | ✅ |
+| **Follow Management page**: edit modal, unfollow confirmation, follow button on recs, auth gate | ✅ |
+| **Portfolio page**: close position dialog, reset portfolio dialog, PnL % column | ✅ |
+| Login page | ✅ |
+| Frontend tests: 19 tests (api-client, wallet-address, metric-card, data-table) | ✅ |
 
 ## Infrastructure
 
-- Docker
-- GitHub Actions
-- Railway / Fly.io / AWS
-
----
-
-## Dashboard Pages
-
-### Leaderboard
-
-Display:
-
-- Rank
-- Wallet
-- Score
-- ROI
-- Win Rate
-- PnL
-
----
-
-### Wallet Profile
-
-Display:
-
-- Performance
-- Trade History
-- Category Expertise
-- Current Positions
-
----
-
-### Smart Money Feed
-
-Display:
-
-- Recent high-signal trades
-- New positions
-- Market activity
-
----
-
-### Market View
-
-Display:
-
-- Active top traders
-- Bullish/Bearish sentiment
-- Concentration of positions
+| Item | Status |
+|------|--------|
+| `frontend/Dockerfile` (multi-stage, standalone) | ✅ |
+| `docker-compose.yml` frontend service | ✅ |
+| `next.config.ts` API proxy rewrite to backend | ✅ |
+| CI workflow: `frontend-checks` job (npm ci → lint → build) | ✅ |
+| Lint/typecheck: `ruff check`, `mypy`, `npm run lint`, `npm run build` all pass | ✅ |
+| API test suite: 58 passing tests | ✅ |
 
 ---
 
