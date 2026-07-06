@@ -4,18 +4,25 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 function getWsUrl() {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}/api/v1/alerts/ws`;
+  let url = `${proto}//${window.location.host}/api/v1/alerts/ws`;
+  const key = localStorage.getItem("pm-api-key");
+  if (key) {
+    url += `?api_key=${encodeURIComponent(key)}`;
+  }
+  return url;
 }
 
 export interface WsAlert {
   id: string;
   wallet: string;
+  market_id: string;
   market_question: string;
   action: string;
   category: string;
   price: number;
   position_size: number;
   wallet_score: number;
+  detected_at: string;
 }
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
@@ -24,6 +31,7 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const [alerts, setAlerts] = useState<WsAlert[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -38,7 +46,10 @@ export function useWebSocket() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === "alert") {
-          setAlerts((prev) => [data.alert as WsAlert, ...prev].slice(0, 100));
+          const payload = data.payload ?? data.alert;
+          if (payload) {
+            setAlerts((prev) => [payload as WsAlert, ...prev].slice(0, 200));
+          }
         }
       } catch {
         // ignore parse errors
@@ -56,6 +67,10 @@ export function useWebSocket() {
   }, []);
 
   const disconnect = useCallback(() => {
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
     wsRef.current?.close();
     wsRef.current = null;
     setStatus("disconnected");
@@ -63,6 +78,7 @@ export function useWebSocket() {
 
   useEffect(() => {
     return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };
   }, []);
