@@ -188,7 +188,7 @@ class CategoryItem(BaseModel):
 
 
 class AlertItem(BaseModel):
-    id: str
+    id: UUID
     wallet: str
     market_id: str
     market_question: str
@@ -228,6 +228,42 @@ class MarketListResponse(BaseModel):
     data: list[MarketSummary]
     limit: int
     offset: int
+
+
+class OutcomeResponse(BaseModel):
+    id: str
+    label: str
+    price: Optional[float] = None
+    winner: Optional[bool] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ActiveTraderEntry(BaseModel):
+    wallet: str
+    side: Optional[str] = None
+    position_size: Optional[float] = None
+    price: Optional[float] = None
+    total_pnl: Optional[float] = None
+
+
+class MarketDetailResponse(BaseModel):
+    id: str
+    question: str
+    category: Optional[str] = None
+    event_slug: Optional[str] = None
+    condition_id: Optional[str] = None
+    volume_usd: Optional[float] = None
+    liquidity_usd: Optional[float] = None
+    close_time: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    winning_outcome: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+    outcomes: list[OutcomeResponse] = []
+    buy_percent: float = 50.0
+    active_traders: list[ActiveTraderEntry] = []
 
 
 # ── Phase 5: Follow ─────────────────────────────────────────────────
