@@ -35,7 +35,7 @@ async def get_wallet_positions(
     address: str,
 ) -> list[PositionSummary]:
     stmt = (
-        select(Position, Market.question)
+        select(Position, Market.question, Market.event_slug, Market.condition_id)
         .join(Market, Position.market_id == Market.id)
         .where(Position.wallet == address)
     )
@@ -45,6 +45,8 @@ async def get_wallet_positions(
         PositionSummary(
             market_id=p.market_id,
             question=q,
+            event_slug=es,
+            condition_id=ci,
             side=p.side.value if p.side else None,
             status=p.status.value if p.status else "OPEN",
             shares=p.shares,
@@ -55,7 +57,7 @@ async def get_wallet_positions(
             unrealized_pnl=p.unrealized_pnl,
             total_pnl=p.total_pnl,
         )
-        for p, q in rows
+        for p, q, es, ci in rows
     ]
 
 

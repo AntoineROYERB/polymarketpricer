@@ -77,6 +77,16 @@ export default function MarketViewPage() {
             {market.category && (
               <span className="text-xs bg-surface-hover px-2 py-0.5 rounded text-text-secondary">{market.category}</span>
             )}
+            {market.event_slug && (
+              <a
+                href={`https://polymarket.com/event/${market.event_slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-accent-amber hover:underline ml-auto"
+              >
+                View on Polymarket ↗
+              </a>
+            )}
           </div>
           <div className="flex gap-4 mt-2 text-xs text-text-muted font-mono">
             <span>ID: {market.id.slice(0, 8)}...</span>
