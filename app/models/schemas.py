@@ -34,6 +34,8 @@ class LeaderboardResponse(BaseModel):
 class PositionSummary(BaseModel):
     market_id: str
     question: str
+    event_slug: Optional[str] = None
+    condition_id: Optional[str] = None
     side: Optional[str] = None
     status: str = "OPEN"
     shares: float
@@ -192,6 +194,8 @@ class AlertItem(BaseModel):
     wallet: str
     market_id: str
     market_question: str
+    event_slug: Optional[str] = None
+    condition_id: Optional[str] = None
     action: str
     price: float
     position_size: float
@@ -363,6 +367,8 @@ class PortfolioResponse(BaseModel):
 class PaperPositionResponse(BaseModel):
     id: UUID
     market_id: str
+    event_slug: Optional[str] = None
+    condition_id: Optional[str] = None
     outcome: str
     side: str
     status: str
@@ -387,6 +393,8 @@ class PaperPositionListResponse(BaseModel):
 class PaperTradeResponse(BaseModel):
     id: UUID
     market_id: str
+    event_slug: Optional[str] = None
+    condition_id: Optional[str] = None
     outcome: str
     side: str
     price: float

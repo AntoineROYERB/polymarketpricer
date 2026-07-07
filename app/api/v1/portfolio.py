@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.api.dependencies.auth import optional_api_key
-from app.db.models import PaperPortfolio, PaperPosition, PaperTrade
+from app.db.models import Market, PaperPortfolio, PaperPosition, PaperTrade
 from app.models.schemas import (
     PortfolioResponse, PortfolioResetRequest, PortfolioResetResponse,
     PaperPositionResponse, PaperPositionListResponse,
@@ -57,18 +57,26 @@ async def list_positions(
     if pf is None:
         return PaperPositionListResponse(data=[], total=0)
 
-    stmt = select(PaperPosition).where(
-        PaperPosition.portfolio_id == pf.id,
+    stmt = (
+        select(PaperPosition, Market.event_slug, Market.condition_id)
+        .join(Market, PaperPosition.market_id == Market.id, isouter=True)
+        .where(PaperPosition.portfolio_id == pf.id)
     )
     if status_filter.upper() != "ALL":
         stmt = stmt.where(PaperPosition.status == status_filter.upper())
     stmt = stmt.order_by(PaperPosition.opened_at.desc()).offset(offset).limit(limit)
 
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = result.all()
+    data = []
+    for r, es, ci in rows:
+        item = PaperPositionResponse.model_validate(r)
+        item.event_slug = es
+        item.condition_id = ci
+        data.append(item)
     return PaperPositionListResponse(
-        data=[PaperPositionResponse.model_validate(r) for r in rows],
-        total=len(rows),
+        data=data,
+        total=len(data),
     )
 
 
@@ -95,17 +103,24 @@ async def list_trades(
     total = count_result.scalar() or 0
 
     stmt = (
-        select(PaperTrade)
+        select(PaperTrade, Market.event_slug, Market.condition_id)
+        .join(Market, PaperTrade.market_id == Market.id, isouter=True)
         .where(PaperTrade.portfolio_id == pf.id)
         .order_by(PaperTrade.executed_at.desc())
         .offset(offset)
         .limit(limit)
     )
     result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = result.all()
+    data = []
+    for r, es, ci in rows:
+        item = PaperTradeResponse.model_validate(r)
+        item.event_slug = es
+        item.condition_id = ci
+        data.append(item)
 
     return PaperTradeListResponse(
-        data=[PaperTradeResponse.model_validate(r) for r in rows],
+        data=data,
         limit=limit,
         offset=offset,
         total=total,
