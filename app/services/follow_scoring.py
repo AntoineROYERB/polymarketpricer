@@ -72,7 +72,7 @@ async def get_follow_recommendations(
         SELECT wallet, follow_score
         FROM wallet_analytics
         WHERE follow_score IS NOT NULL
-          AND snapshot_date = CURRENT_DATE
+          AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_analytics)
         ORDER BY follow_score DESC
         LIMIT :limit OFFSET :offset
     """)
@@ -123,7 +123,8 @@ async def compute_category_follow_score(
             SELECT wallet,
                    PERCENT_RANK() OVER (ORDER BY roi DESC) as percentile
             FROM category_analytics
-            WHERE category = :category AND snapshot_date = CURRENT_DATE
+            WHERE category = :category
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM category_analytics)
         """),
         {"category": category},
     )
@@ -175,7 +176,7 @@ async def get_category_follow_leaderboard(
                roi_percentile, win_rate, is_specialist, reasons
         FROM wallet_category_follow_scores
         WHERE category = :category
-          AND snapshot_date = CURRENT_DATE
+          AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_category_follow_scores)
         ORDER BY follow_score DESC
         LIMIT :limit OFFSET :offset
     """)
@@ -190,7 +191,7 @@ async def get_wallet_category_scores(
     query = text("""
         SELECT * FROM wallet_category_follow_scores
         WHERE wallet = :wallet
-          AND snapshot_date = CURRENT_DATE
+          AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_category_follow_scores)
         ORDER BY follow_score DESC
     """)
     result = await db.execute(query, {"wallet": wallet})
@@ -208,19 +209,24 @@ async def _get_edge_score(db: AsyncSession, wallet: str) -> Optional[Decimal]:
         {"wallet": wallet},
     )
     row = result.one_or_none()
-    return Decimal(str(row._mapping["edge_score"])) if row and row._mapping.get("edge_score") else None
+    if row and row._mapping.get("edge_score") is not None:
+        return Decimal(str(row._mapping["edge_score"]))
+    return None
 
 
 async def _get_consistency_score(db: AsyncSession, wallet: str) -> Optional[Decimal]:
     result = await db.execute(
         text("""
             SELECT consistency_score FROM wallet_analytics
-            WHERE wallet = :wallet AND snapshot_date = CURRENT_DATE
+            WHERE wallet = :wallet
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_analytics)
         """),
         {"wallet": wallet},
     )
     row = result.one_or_none()
-    return Decimal(str(row._mapping["consistency_score"])) if row and row._mapping.get("consistency_score") else None
+    if row and row._mapping.get("consistency_score") is not None:
+        return Decimal(str(row._mapping["consistency_score"]))
+    return None
 
 
 async def _get_category_specialization(
@@ -233,7 +239,7 @@ async def _get_category_specialization(
             FROM category_analytics
             WHERE wallet = :wallet
               AND is_specialist = true
-              AND snapshot_date = CURRENT_DATE
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM category_analytics)
         """),
         {"wallet": wallet},
     )
@@ -255,7 +261,7 @@ async def _get_category_specialization(
 async def _get_recency_score(db: AsyncSession, wallet: str) -> Decimal:
     result = await db.execute(
         text("""
-            SELECT EXTRACT(DAY FROM (CURRENT_DATE - MAX(timestamp::date))) as days_since
+            SELECT (CURRENT_DATE - MAX(timestamp::date)) as days_since
             FROM trades WHERE wallet = :wallet
         """),
         {"wallet": wallet},
@@ -270,7 +276,7 @@ async def _get_trade_frequency_score(db: AsyncSession, wallet: str) -> Decimal:
     result = await db.execute(
         text("""
             SELECT COUNT(*) as total_trades,
-                   EXTRACT(DAY FROM (CURRENT_DATE - MIN(timestamp::date))) / 30.0 as months_active
+                   (CURRENT_DATE - MIN(timestamp::date)) / 30.0 as months_active
             FROM trades WHERE wallet = :wallet
         """),
         {"wallet": wallet},
@@ -295,7 +301,8 @@ async def _get_volume_percentile(db: AsyncSession, wallet: str, category: str) -
                 SELECT wallet,
                        PERCENT_RANK() OVER (ORDER BY total_volume DESC) as percentile
                 FROM category_analytics
-                WHERE category = :category AND snapshot_date = CURRENT_DATE
+                WHERE category = :category
+                  AND snapshot_date = (SELECT MAX(snapshot_date) FROM category_analytics)
             ) sub
             WHERE sub.wallet = :wallet
         """),
@@ -308,7 +315,7 @@ async def _get_volume_percentile(db: AsyncSession, wallet: str, category: str) -
 async def _get_category_recency(db: AsyncSession, wallet: str, category: str) -> Decimal:
     result = await db.execute(
         text("""
-            SELECT EXTRACT(DAY FROM (CURRENT_DATE - MAX(t.timestamp::date))) as days_since
+            SELECT (CURRENT_DATE - MAX(t.timestamp::date)) as days_since
             FROM trades t
             JOIN markets m ON m.id = t.market_id
             WHERE t.wallet = :wallet

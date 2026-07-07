@@ -130,8 +130,9 @@ def _compute_normalization_range(wallet_data: dict[str, WalletEdgeAgg]) -> tuple
         return 0.0, 1.0
     min_edge = min(all_edge_values)
     max_edge = max(all_edge_values)
-    edge_range = max_edge - min_edge if max_edge != min_edge else 1.0
-    return min_edge, edge_range
+    if max_edge == min_edge:
+        return 0.0, 0.0  # edge_range=0 signals all wallets get edge_score=0.5
+    return min_edge, max_edge - min_edge
 
 
 def _build_snapshot_rows(
@@ -147,7 +148,7 @@ def _build_snapshot_rows(
         med_edge = stat_median(float_edges) if len(float_edges) > 1 else float_edges[0]
         vol = stat_stdev(float_edges) if len(float_edges) > 1 else None
         consistency = agg.positives / len(float_edges)
-        edge_score = (avg_edge - min_edge) / edge_range
+        edge_score = 0.5 if edge_range == 0 else (avg_edge - min_edge) / edge_range
 
         rows.append({
             "wallet": wallet,
