@@ -12,6 +12,29 @@ import type { FollowResponse, FollowRecommendation } from "@/types/api";
 
 type Tab = "followed" | "recommended";
 
+const SCORE_COMPONENTS = [
+  { prefix: "Edge", label: "Edge", color: "text-accent-amber bg-accent-amber/10 border-accent-amber/20" },
+  { prefix: "Consistency", label: "Consistency", color: "text-accent-emerald bg-accent-emerald/10 border-accent-emerald/20" },
+  { prefix: "Specialist", label: "Specialization", color: "text-accent-blue bg-accent-blue/10 border-accent-blue/20" },
+] as const;
+
+function reasonChip(reason: string) {
+  const match = SCORE_COMPONENTS.find((c) => reason.startsWith(c.prefix));
+  if (match) {
+    return (
+      <span key={reason} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${match.color} font-medium`}>
+        {reason}
+      </span>
+    );
+  }
+  // Fallback for "Insufficient data" or other free-text reasons
+  return (
+    <span key={reason} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] border border-border text-text-muted bg-surface">
+      {reason}
+    </span>
+  );
+}
+
 function EditModal({
   follow,
   onClose,
@@ -90,7 +113,7 @@ function EditModal({
             onClick={() => {
               updateFollow.mutate(
                 { wallet: follow.wallet, label: label || undefined, auto_copy_enabled: autoCopy, copy_mode: copyMode as "proportional" | "fixed", copy_value: Number(copyValue) },
-                { onSuccess: onClose },
+                { onSuccess: onClose, onError: (err) => alert(err.message) },
               );
             }}
             disabled={updateFollow.isPending}
@@ -145,6 +168,7 @@ export default function FollowPage() {
   const unfollowWallet = useUnfollowWallet();
   const [editingWallet, setEditingWallet] = useState<string | null>(null);
   const [unfollowWalletAddr, setUnfollowWalletAddr] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return (
@@ -195,12 +219,17 @@ export default function FollowPage() {
   const recColumns: Column<FollowRecommendation>[] = [
     { key: "wallet", label: "Wallet", render: (r) => <WalletAddress address={r.wallet} /> },
     { key: "follow_score", label: "Score", align: "right", render: (r) => r.follow_score.toFixed(2) },
-    { key: "reasons", label: "Reasons", render: (r) => (
-      <span className="text-xs text-text-secondary truncate block max-w-xs">{r.reasons.join(", ")}</span>
+    { key: "reasons", label: "Breakdown", render: (r) => (
+      <div className="flex flex-wrap gap-1 max-w-xs">
+        {r.reasons.length > 0 ? r.reasons.map(reasonChip) : <span className="text-[10px] text-text-muted">—</span>}
+      </div>
     )},
     { key: "actions", label: "", render: (r) => (
       <button
-        onClick={() => followWallet.mutate({ wallet: r.wallet })}
+        onClick={() => {
+          setError(null);
+          followWallet.mutate({ wallet: r.wallet });
+        }}
         disabled={followWallet.isPending}
         className="text-xs text-accent-amber hover:underline disabled:opacity-30"
       >
@@ -213,6 +242,26 @@ export default function FollowPage() {
     <AppShell>
       <div className="space-y-6">
         <h1 className="text-xl font-heading text-text-primary">Follow Management</h1>
+
+        <div className="bg-accent-blue/10 border border-accent-blue/20 rounded-lg px-4 py-3 space-y-1.5">
+          <p className="text-xs text-accent-blue font-medium">How the Follow Score is calculated</p>
+          <p className="text-[11px] text-text-secondary leading-relaxed">
+            <span className="font-mono">follow_score = 0.30×edge + 0.20×consistency + 0.20×specialization + 0.15×recency + 0.15×frequency</span>
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-text-muted">
+            <span><span className="text-accent-amber font-medium">Edge</span> — avg trade profitability vs market</span>
+            <span><span className="text-accent-emerald font-medium">Consistency</span> — % of trades with positive edge</span>
+            <span><span className="text-accent-blue font-medium">Specialization</span> — being a top trader in key categories</span>
+            <span><span className="text-text-secondary font-medium">Recency</span> — recently active wallets get a boost</span>
+            <span><span className="text-text-secondary font-medium">Frequency</span> — more trades &uarr; higher score</span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-accent-rose/10 border border-accent-rose/30 rounded px-4 py-2 text-xs text-accent-rose">
+            {error}
+          </div>
+        )}
 
         <div className="flex gap-1">
           <button
@@ -265,7 +314,10 @@ export default function FollowPage() {
         <ConfirmUnfollowModal
           wallet={unfollowWalletAddr}
           onConfirm={() => {
-            unfollowWallet.mutate(unfollowWalletAddr);
+            setError(null);
+            unfollowWallet.mutate(unfollowWalletAddr, {
+              onError: (err) => setError(err.message),
+            });
             setUnfollowWalletAddr(null);
           }}
           onClose={() => setUnfollowWalletAddr(null)}
