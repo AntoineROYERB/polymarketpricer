@@ -80,7 +80,7 @@ async def get_follow_info_for_embed(
             SELECT category, follow_score, recommendation
             FROM wallet_category_follow_scores
             WHERE wallet = :wallet
-              AND snapshot_date = CURRENT_DATE
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_category_follow_scores)
             ORDER BY follow_score DESC
             LIMIT 2
         """),
