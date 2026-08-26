@@ -2,6 +2,9 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+import httpx
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +15,7 @@ from sqlalchemy import select, text
 from app.api.router import api_router
 from app.config import settings
 from app.db.engine import async_session
-from app.db.models import WalletFollow
+from app.db.models_follow import WalletFollow
 from app.services.alert_service import (
     build_discord_embed,
     get_follow_info_for_embed,
@@ -20,7 +23,11 @@ from app.services.alert_service import (
     poll_unnotified_alerts,
     send_discord_alert,
 )
-from app.services.paper_trading import execute_copy_trade
+from app.services.paper_trading import (
+    execute_copy_trade,
+    handle_market_resolution,
+    update_unrealized_pnl,
+)
 from app.services.ws_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -75,7 +82,7 @@ async def paper_trade_generation_loop() -> None:
                           AND a.detected_at >= NOW() - INTERVAL '1 hour'
                         ORDER BY a.detected_at
                         LIMIT 20
-                        FOR UPDATE SKIP LOCKED
+                        FOR UPDATE OF a SKIP LOCKED
                     """)
                 )
                 rows = result.all()
@@ -101,6 +108,79 @@ async def paper_trade_generation_loop() -> None:
         await asyncio.sleep(10)
 
 
+async def monitor_pipeline_failures_loop() -> None:
+    """Poll pipeline_run_log every 5 min and alert Discord on failures."""
+    last_check = datetime.now(timezone.utc)
+    while True:
+        await asyncio.sleep(300)
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    text("""
+                        SELECT pipeline_name, status, updated_at
+                        FROM pipeline_run_log
+                        WHERE status != 'success'
+                          AND updated_at > :last_check
+                        ORDER BY updated_at
+                    """),
+                    {"last_check": last_check},
+                )
+                failures = result.all()
+                if not failures:
+                    continue
+
+                lines = [
+                    f"**{m['pipeline_name']}** — `{m['status']}` ({m['updated_at'].isoformat()})"
+                    for row in failures
+                    if (m := row._mapping)
+                ]
+                payload = {"content": "🚨 **ETL Pipeline Failure**\n" + "\n".join(lines)}
+
+                if settings.discord_webhook_url:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.post(settings.discord_webhook_url, json=payload)
+                        if resp.status_code not in (200, 204):
+                            logger.warning("Discord webhook returned %s", resp.status_code)
+
+                last_check = datetime.now(timezone.utc)
+        except Exception:
+            logger.exception("Pipeline monitor error")
+
+
+async def paper_pnl_update_loop() -> None:
+    """Update unrealized PnL for all open paper positions."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with async_session() as db:
+                await update_unrealized_pnl(db)
+        except Exception:
+            logger.exception("Paper PnL update error")
+
+
+async def paper_market_resolution_loop() -> None:
+    """Auto-close paper positions on resolved markets."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    text("""
+                        SELECT DISTINCT m.id, m.winning_outcome
+                        FROM markets m
+                        JOIN paper_positions pp ON pp.market_id = m.id
+                        WHERE m.winning_outcome IS NOT NULL
+                          AND pp.status = 'OPEN'
+                    """)
+                )
+                for row in result.all():
+                    await handle_market_resolution(
+                        db, row._mapping["id"], row._mapping["winning_outcome"]
+                    )
+        except Exception:
+            logger.exception("Paper market resolution error")
+
+
 async def _heartbeat_loop() -> None:
     while True:
         await asyncio.sleep(30)
@@ -112,10 +192,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     delivery_task = asyncio.create_task(alert_delivery_loop())
     heartbeat_task = asyncio.create_task(_heartbeat_loop())
     paper_trade_task = asyncio.create_task(paper_trade_generation_loop())
+    paper_pnl_task = asyncio.create_task(paper_pnl_update_loop())
+    paper_resolution_task = asyncio.create_task(paper_market_resolution_loop())
+    monitor_task = asyncio.create_task(monitor_pipeline_failures_loop())
     yield
     delivery_task.cancel()
     heartbeat_task.cancel()
     paper_trade_task.cancel()
+    paper_pnl_task.cancel()
+    paper_resolution_task.cancel()
+    monitor_task.cancel()
 
 
 app = FastAPI(

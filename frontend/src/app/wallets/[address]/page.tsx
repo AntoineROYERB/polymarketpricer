@@ -16,7 +16,14 @@ import type { AlertItem, WalletCategorySummary } from "@/types/api";
 const alertColumns: Column<AlertItem>[] = [
   { key: "detected_at", label: "Time", align: "right", render: (r) => new Date(r.detected_at).toLocaleString() },
   { key: "market_question", label: "Market", render: (r) => (
-    <span className="truncate block max-w-xs">{r.market_question}</span>
+    <a
+      href={r.event_slug ? `https://polymarket.com/event/${r.event_slug}` : "#"}
+      target={r.event_slug ? "_blank" : undefined}
+      rel={r.event_slug ? "noopener noreferrer" : undefined}
+      className="hover:text-accent-amber transition-colors block"
+    >
+      <span className="truncate block max-w-xs">{r.market_question}</span>
+    </a>
   )},
   { key: "action", label: "Action", render: (r) => {
     const isBuy = r.action.includes("NEW") || r.action.includes("INCREASE");
@@ -42,6 +49,7 @@ export default function WalletProfilePage() {
   const followWallet = useFollowWallet();
   const unfollowWallet = useUnfollowWallet();
   const [dataTab, setDataTab] = useState<DataTab>("alerts");
+  const [error, setError] = useState<string | null>(null);
 
   const analytics = profile?.analytics;
   const specialistCategories = profile?.categories?.filter((c) => c.is_specialist) ?? [];
@@ -54,10 +62,15 @@ export default function WalletProfilePage() {
 
   const handleFollow = () => {
     if (!isAuthenticated) { router.push("/login"); return; }
+    setError(null);
     if (isFollowed) {
-      unfollowWallet.mutate(address);
+      unfollowWallet.mutate(address, {
+        onError: (err) => setError(err.message),
+      });
     } else {
-      followWallet.mutate({ wallet: address });
+      followWallet.mutate({ wallet: address }, {
+        onError: (err) => setError(err.message),
+      });
     }
   };
 
@@ -67,6 +80,11 @@ export default function WalletProfilePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-heading text-text-primary font-mono">{address.slice(0, 10)}...{address.slice(-6)}</h1>
+            {error && (
+              <div className="mt-2 bg-accent-rose/10 border border-accent-rose/30 rounded px-3 py-1.5 text-xs text-accent-rose">
+                {error}
+              </div>
+            )}
             {specialistCategories.length > 0 && (
               <div className="flex gap-2 mt-2">
                 {specialistCategories.map((cat) => (
@@ -172,9 +190,14 @@ export default function WalletProfilePage() {
           <DataTable
             columns={[
               { key: "market_id", label: "Market", render: (r) => (
-                <button onClick={() => router.push(`/markets/${r.market_id}`)} className="hover:text-accent-amber transition-colors text-left">
+                <a
+                  href={r.event_slug ? `https://polymarket.com/event/${r.event_slug}` : `/markets/${r.market_id}`}
+                  target={r.event_slug ? "_blank" : undefined}
+                  rel={r.event_slug ? "noopener noreferrer" : undefined}
+                  className="hover:text-accent-amber transition-colors text-left block"
+                >
                   <span className="truncate block max-w-xs">{r.question ?? r.market_id}</span>
-                </button>
+                </a>
               )},
               { key: "side", label: "Side", render: (r) => (
                 <span className={r.side === "BUY" ? "text-accent-emerald" : r.side === "SELL" ? "text-accent-rose" : ""}>

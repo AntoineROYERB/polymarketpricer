@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 
 const STORAGE_KEY = "pm-api-key";
 
@@ -19,7 +19,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [apiKey, setApiKeyState] = useState<string | null>(() => readKey());
+  const [apiKey, setApiKeyState] = useState<string | null>(null);
+
+  useEffect(() => {
+    setApiKeyState(readKey());
+  }, []);
 
   const setApiKey = useCallback((key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
