@@ -5,7 +5,8 @@ import httpx
 from sqlalchemy import select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Alert, WalletFollow
+from app.db.models import Alert
+from app.db.models_follow import WalletFollow
 
 _USER_ID = "default"  # placeholder until auth is implemented
 

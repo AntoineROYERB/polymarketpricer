@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import PaperPortfolio, WalletFollow
+from app.db.models_follow import PaperPortfolio, WalletFollow
 from app.services.paper_trading import (
     _compute_copy_amount,
     execute_copy_trade,

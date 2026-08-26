@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import (
+from app.db.models_follow import (
     WalletFollow, PaperPortfolio, PaperPosition, PaperTrade,
 )
 

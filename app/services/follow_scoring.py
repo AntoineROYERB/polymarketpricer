@@ -13,19 +13,10 @@ from app.services.scoring_constants import (
     SPECIALIZATION_WEIGHT,
     RECENCY_WEIGHT,
     FREQUENCY_WEIGHT,
-    CAT_EDGE_WEIGHT,
-    CAT_ROI_PERCENTILE_WEIGHT,
-    CAT_WIN_RATE_WEIGHT,
-    CAT_SPECIALIST_BONUS_WEIGHT,
-    CAT_VOLUME_PERCENTILE_WEIGHT,
-    CAT_RECENCY_WEIGHT,
-    SPECIALIST_BONUS,
-    NON_SPECIALIST_BONUS,
     MAX_SPECIALIST_CATEGORIES,
     RECENCY_HALF_LIFE_DAYS,
     FREQ_SLOPE,
     FREQ_MIDPOINT,
-    get_recommendation,
 )
 
 
@@ -88,83 +79,6 @@ async def get_follow_recommendations(
             "reasons": reasons,
         })
     return recommendations
-
-
-async def compute_category_follow_score(
-    db: AsyncSession, wallet: str, category: str
-) -> tuple[Decimal, str, list[str]]:
-    """Compute per-category follow_score. Returns (score, recommendation, reasons)."""
-    reasons = []
-
-    edge = await _get_edge_score(db, wallet)
-
-    cat_result = await db.execute(
-        text("""
-            SELECT roi, win_rate, num_trades, total_volume, is_specialist
-            FROM category_analytics
-            WHERE wallet = :wallet AND category = :category
-            ORDER BY snapshot_date DESC
-            LIMIT 1
-        """),
-        {"wallet": wallet, "category": category},
-    )
-    cat_row = cat_result.one_or_none()
-
-    if cat_row is None or (cat_row._mapping["num_trades"] or 0) == 0:
-        return Decimal("0"), "IGNORE", ["No activity in this category"]
-
-    win_rate = Decimal(str(cat_row._mapping["win_rate"] or 0))
-    num_trades = int(cat_row._mapping["num_trades"] or 0)
-    is_specialist = bool(cat_row._mapping["is_specialist"])
-
-    # Compute ROI percentile across ALL wallets in this category
-    percentile_result = await db.execute(
-        text("""
-            SELECT wallet,
-                   PERCENT_RANK() OVER (ORDER BY roi DESC) as percentile
-            FROM category_analytics
-            WHERE category = :category
-              AND snapshot_date = (SELECT MAX(snapshot_date) FROM category_analytics)
-        """),
-        {"category": category},
-    )
-    all_rows = percentile_result.all()
-    roi_percentile = Decimal("0.5")
-    for r in all_rows:
-        if r._mapping["wallet"] == wallet:
-            roi_percentile = Decimal(str(r._mapping["percentile"]))
-            break
-
-    # Compute volume percentile across ALL wallets in this category
-    volume_percentile = await _get_volume_percentile(db, wallet, category)
-
-    specialist_bonus = SPECIALIST_BONUS if is_specialist else NON_SPECIALIST_BONUS
-    recency = await _get_category_recency(db, wallet, category)
-
-    score = (
-        CAT_EDGE_WEIGHT * (edge or Decimal("0"))
-        + CAT_ROI_PERCENTILE_WEIGHT * Decimal(str(roi_percentile))
-        + CAT_WIN_RATE_WEIGHT * win_rate
-        + CAT_SPECIALIST_BONUS_WEIGHT * specialist_bonus
-        + CAT_VOLUME_PERCENTILE_WEIGHT * (volume_percentile or Decimal("0"))
-        + CAT_RECENCY_WEIGHT * (recency or Decimal("0"))
-    )
-    score = max(Decimal("0"), min(Decimal("1"), score))
-
-    if roi_percentile > Decimal("0.90"):
-        reasons.append(f"Top 10% ROI in {category}")
-    if is_specialist:
-        reasons.append(f"{category} specialist ({num_trades} trades)")
-    if win_rate > 0.65:
-        reasons.append(f"Win rate {win_rate:.0%} in {category}")
-    if edge and edge > Decimal("0.50"):
-        reasons.append(f"Positive global edge ({edge:.2f})")
-    if num_trades < 15:
-        reasons.append(f"Only {num_trades} trades — limited history")
-
-    recommendation = get_recommendation(score)
-
-    return score, recommendation, reasons
 
 
 async def get_category_follow_leaderboard(
@@ -292,38 +206,4 @@ async def _get_trade_frequency_score(db: AsyncSession, wallet: str) -> Decimal:
     return Decimal(str(round(score, 6)))
 
 
-async def _get_volume_percentile(db: AsyncSession, wallet: str, category: str) -> Decimal:
-    """Compute volume percentile for a wallet within a category."""
-    result = await db.execute(
-        text("""
-            SELECT percentile
-            FROM (
-                SELECT wallet,
-                       PERCENT_RANK() OVER (ORDER BY total_volume DESC) as percentile
-                FROM category_analytics
-                WHERE category = :category
-                  AND snapshot_date = (SELECT MAX(snapshot_date) FROM category_analytics)
-            ) sub
-            WHERE sub.wallet = :wallet
-        """),
-        {"category": category, "wallet": wallet},
-    )
-    row = result.one_or_none()
-    return Decimal(str(row._mapping["percentile"])) if row else Decimal("0.5")
 
-
-async def _get_category_recency(db: AsyncSession, wallet: str, category: str) -> Decimal:
-    result = await db.execute(
-        text("""
-            SELECT (CURRENT_DATE - MAX(t.timestamp::date)) as days_since
-            FROM trades t
-            JOIN markets m ON m.id = t.market_id
-            WHERE t.wallet = :wallet
-              AND (m.mapped_category = :category OR m.category = :category)
-        """),
-        {"wallet": wallet, "category": category},
-    )
-    row = result.one_or_none()
-    days_since = float(row._mapping["days_since"]) if row and row._mapping.get("days_since") else 999
-    score = math.exp(-days_since / RECENCY_HALF_LIFE_DAYS)
-    return Decimal(str(round(score, 6)))

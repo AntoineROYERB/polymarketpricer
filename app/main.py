@@ -15,7 +15,7 @@ from sqlalchemy import select, text
 from app.api.router import api_router
 from app.config import settings
 from app.db.engine import async_session
-from app.db.models import WalletFollow
+from app.db.models_follow import WalletFollow
 from app.services.alert_service import (
     build_discord_embed,
     get_follow_info_for_embed,
@@ -23,7 +23,11 @@ from app.services.alert_service import (
     poll_unnotified_alerts,
     send_discord_alert,
 )
-from app.services.paper_trading import execute_copy_trade
+from app.services.paper_trading import (
+    execute_copy_trade,
+    handle_market_resolution,
+    update_unrealized_pnl,
+)
 from app.services.ws_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -143,6 +147,40 @@ async def monitor_pipeline_failures_loop() -> None:
             logger.exception("Pipeline monitor error")
 
 
+async def paper_pnl_update_loop() -> None:
+    """Update unrealized PnL for all open paper positions."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with async_session() as db:
+                await update_unrealized_pnl(db)
+        except Exception:
+            logger.exception("Paper PnL update error")
+
+
+async def paper_market_resolution_loop() -> None:
+    """Auto-close paper positions on resolved markets."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    text("""
+                        SELECT DISTINCT m.id, m.winning_outcome
+                        FROM markets m
+                        JOIN paper_positions pp ON pp.market_id = m.id
+                        WHERE m.winning_outcome IS NOT NULL
+                          AND pp.status = 'OPEN'
+                    """)
+                )
+                for row in result.all():
+                    await handle_market_resolution(
+                        db, row._mapping["id"], row._mapping["winning_outcome"]
+                    )
+        except Exception:
+            logger.exception("Paper market resolution error")
+
+
 async def _heartbeat_loop() -> None:
     while True:
         await asyncio.sleep(30)
@@ -154,11 +192,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     delivery_task = asyncio.create_task(alert_delivery_loop())
     heartbeat_task = asyncio.create_task(_heartbeat_loop())
     paper_trade_task = asyncio.create_task(paper_trade_generation_loop())
+    paper_pnl_task = asyncio.create_task(paper_pnl_update_loop())
+    paper_resolution_task = asyncio.create_task(paper_market_resolution_loop())
     monitor_task = asyncio.create_task(monitor_pipeline_failures_loop())
     yield
     delivery_task.cancel()
     heartbeat_task.cancel()
     paper_trade_task.cancel()
+    paper_pnl_task.cancel()
+    paper_resolution_task.cancel()
     monitor_task.cancel()
 
 
