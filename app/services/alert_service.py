@@ -8,8 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Alert
 from app.db.models_follow import WalletFollow
 
-_USER_ID = "default"  # placeholder until auth is implemented
-
 DISCORD_EMBED_COLORS = {
     "NEW_POSITION": 0x2ECC71,
     "POSITION_INCREASE": 0x3498DB,
@@ -58,13 +56,15 @@ def _format_action(action: str, price: float) -> str:
 async def get_follow_info_for_embed(
     db: AsyncSession, wallet: str
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str]:
-    """Look up if wallet is followed and compute copy suggestion."""
+    """Look up if wallet is followed (by any user_id) and compute copy suggestion."""
     result = await db.execute(
-        select(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+        select(WalletFollow)
+        .where(
             WalletFollow.wallet == wallet,
             WalletFollow.active.is_(True),
         )
+        .order_by(WalletFollow.followed_at.desc())
+        .limit(1)
     )
     follow = result.scalar_one_or_none()
     if follow is None:
