@@ -52,6 +52,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql+asyncpg://app:app@localhost:5432/polymarket
+      API_KEY: test-key
     steps:
       - uses: actions/checkout@v6
         with:
