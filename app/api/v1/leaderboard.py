@@ -28,7 +28,7 @@ router = APIRouter()
     "",
     response_model=LeaderboardResponse,
     summary="Leaderboard",
-    description="Top 100 traders ranked by composite wallet score. Score = 0.40×edge_score + 0.20×consistency_score + 0.20×normalized_roi + 0.10×experience_score + 0.10×normalized_sharpe.",
+    description="Top 100 traders ranked by composite wallet score. Score = 0.40x edge_score + 0.20x consistency_score + 0.20x normalized_roi + 0.10x experience_score + 0.10x normalized_sharpe.",
 )
 async def leaderboard(
     limit: int = Query(default=100, ge=1, le=500),

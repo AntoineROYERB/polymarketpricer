@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import func as sa_func
@@ -11,6 +11,7 @@ from app.config import settings
 from app.db.models import Alert, Market, Wallet
 from app.models.schemas import AlertItem, AlertListResponse
 from app.services.ws_manager import manager
+
 router = APIRouter()
 
 
@@ -23,9 +24,9 @@ router = APIRouter()
 async def list_alerts(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    category: Optional[str] = None,
-    min_score: Optional[Decimal] = None,
-    wallet: Optional[str] = None,
+    category: str | None = None,
+    min_score: Decimal | None = None,
+    wallet: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> AlertListResponse:
     stmt = (
@@ -153,8 +154,8 @@ async def wallet_alerts(
 
 def _alert_to_item(
     a: Alert,
-    event_slug: Optional[str] = None,
-    condition_id: Optional[str] = None,
+    event_slug: str | None = None,
+    condition_id: str | None = None,
 ) -> AlertItem:
     item = AlertItem.model_validate(a)
     item.event_slug = event_slug

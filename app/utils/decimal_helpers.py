@@ -1,7 +1,7 @@
 """Shared Decimal conversion helpers."""
 
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 
 def to_decimal(val: Any) -> Decimal:
@@ -11,7 +11,7 @@ def to_decimal(val: Any) -> Decimal:
     return Decimal(str(val))
 
 
-def to_optional_decimal(val: Any) -> Optional[Decimal]:
+def to_optional_decimal(val: Any) -> Decimal | None:
     """Convert a value to Decimal, returning None if None."""
     if val is None:
         return None

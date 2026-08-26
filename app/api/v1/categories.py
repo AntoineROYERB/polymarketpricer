@@ -12,9 +12,13 @@ from app.services.category_service import (
     analytic_to_category_detail,
     analytic_to_category_summary,
     get_category_labels,
-    get_wallet_categories as get_wallet_categories_data,
-    get_wallet_category_detail as get_wallet_category_detail_data,
     wallet_exists,
+)
+from app.services.category_service import (
+    get_wallet_categories as get_wallet_categories_data,
+)
+from app.services.category_service import (
+    get_wallet_category_detail as get_wallet_category_detail_data,
 )
 from app.utils.category import validate_category_or_404
 

@@ -2,25 +2,30 @@
 
 import re
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.api.dependencies.auth import optional_api_key
 from app.db.models import Wallet
-from app.db.models_follow import WalletFollow, PaperPortfolio
+from app.db.models_follow import PaperPortfolio, WalletFollow
 from app.models.schemas_follow import (
-    FollowCreate, FollowUpdate, FollowResponse, FollowListResponse,
-    FollowRecommendation, FollowRecommendationResponse,
-    CategoryFollowLeaderboardEntry, CategoryFollowLeaderboardResponse,
-    CategoryFollowScoreItem, WalletCategoryFollowScoresResponse,
+    CategoryFollowLeaderboardEntry,
+    CategoryFollowLeaderboardResponse,
+    CategoryFollowScoreItem,
+    FollowCreate,
+    FollowListResponse,
+    FollowRecommendation,
+    FollowRecommendationResponse,
+    FollowResponse,
+    FollowUpdate,
+    WalletCategoryFollowScoresResponse,
 )
 from app.services.follow_scoring import (
-    get_follow_recommendations,
     get_category_follow_leaderboard,
+    get_follow_recommendations,
     get_wallet_category_scores,
 )
 from app.services.wallet_service import get_wallet_profile
@@ -134,7 +139,7 @@ async def wallet_recommendations_by_category(
 @router.get("", response_model=FollowListResponse)
 async def list_follows(
     active: bool = Query(default=True),
-    auto_copy: Optional[bool] = Query(default=None),
+    auto_copy: bool | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(optional_api_key),
 ) -> FollowListResponse:
@@ -223,13 +228,13 @@ async def follow_wallet(
             new_portfolio = PaperPortfolio(
                 user_id=user_id,
                 name="Main",
-                initial_balance=Decimal("10000"),
-                current_balance=Decimal("10000"),
-                total_realized_pnl=Decimal("0"),
-                total_unrealized_pnl=Decimal("0"),
-                total_pnl=Decimal("0"),
+                initial_balance=Decimal(10000),
+                current_balance=Decimal(10000),
+                total_realized_pnl=Decimal(0),
+                total_unrealized_pnl=Decimal(0),
+                total_pnl=Decimal(0),
                 total_trades=0,
-                total_volume=Decimal("0"),
+                total_volume=Decimal(0),
             )
             db.add(new_portfolio)
 

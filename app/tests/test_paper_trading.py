@@ -41,14 +41,14 @@ def make_portfolio(**overrides: Any) -> PaperPortfolio:
         "id": uuid4(),
         "user_id": "default",
         "name": "Main",
-        "initial_balance": Decimal("10000"),
-        "current_balance": Decimal("10000"),
-        "total_realized_pnl": Decimal("0"),
-        "total_unrealized_pnl": Decimal("0"),
-        "total_pnl": Decimal("0"),
+        "initial_balance": Decimal(10000),
+        "current_balance": Decimal(10000),
+        "total_realized_pnl": Decimal(0),
+        "total_unrealized_pnl": Decimal(0),
+        "total_pnl": Decimal(0),
         "total_roi": None,
         "total_trades": 0,
-        "total_volume": Decimal("0"),
+        "total_volume": Decimal(0),
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
@@ -81,36 +81,36 @@ def make_mock_db() -> AsyncMock:
 
 class TestComputeCopyAmount:
     def test_proportional_5_percent(self) -> None:
-        amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal("12000"))
-        assert amount == Decimal("600")
+        amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal(12000))
+        assert amount == Decimal(600)
 
     def test_proportional_1_percent(self) -> None:
-        amount = _compute_copy_amount("proportional", Decimal("0.01"), Decimal("12000"))
-        assert amount == Decimal("120")
+        amount = _compute_copy_amount("proportional", Decimal("0.01"), Decimal(12000))
+        assert amount == Decimal(120)
 
     def test_fixed_100(self) -> None:
-        amount = _compute_copy_amount("fixed", Decimal("100"), Decimal("12000"))
-        assert amount == Decimal("100")
+        amount = _compute_copy_amount("fixed", Decimal(100), Decimal(12000))
+        assert amount == Decimal(100)
 
     def test_fixed_500(self) -> None:
-        amount = _compute_copy_amount("fixed", Decimal("500"), Decimal("12000"))
-        assert amount == Decimal("500")
+        amount = _compute_copy_amount("fixed", Decimal(500), Decimal(12000))
+        assert amount == Decimal(500)
 
     def test_unknown_mode_returns_zero(self) -> None:
-        amount = _compute_copy_amount("unknown", Decimal("100"), Decimal("12000"))
-        assert amount == Decimal("0")
+        amount = _compute_copy_amount("unknown", Decimal(100), Decimal(12000))
+        assert amount == Decimal(0)
 
     def test_none_mode_returns_zero(self) -> None:
-        amount = _compute_copy_amount(None, Decimal("100"), Decimal("12000"))
-        assert amount == Decimal("0")
+        amount = _compute_copy_amount(None, Decimal(100), Decimal(12000))
+        assert amount == Decimal(0)
 
     def test_zero_position_size(self) -> None:
-        amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal("0"))
-        assert amount == Decimal("0")
+        amount = _compute_copy_amount("proportional", Decimal("0.05"), Decimal(0))
+        assert amount == Decimal(0)
 
     def test_large_value(self) -> None:
-        amount = _compute_copy_amount("proportional", Decimal("1"), Decimal("1000000"))
-        assert amount == Decimal("1000000")
+        amount = _compute_copy_amount("proportional", Decimal(1), Decimal(1000000))
+        assert amount == Decimal(1000000)
 
 
 class TestExecuteCopyTradeSkipped:

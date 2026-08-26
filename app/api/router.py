@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
+from app.api.v1.alerts import router as alerts_router
 from app.api.v1.categories import router as categories_router
+from app.api.v1.follow import router as follow_router
 from app.api.v1.leaderboard import router as leaderboard_router
 from app.api.v1.markets import router as markets_router
-from app.api.v1.wallets import router as wallets_router
-from app.api.v1.alerts import router as alerts_router
-from app.api.v1.follow import router as follow_router
 from app.api.v1.portfolio import router as portfolio_router
+from app.api.v1.wallets import router as wallets_router
 
 api_router = APIRouter()
 
