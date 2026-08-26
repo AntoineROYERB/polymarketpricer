@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
-from app.api.dependencies.auth import optional_api_key
+from app.api.dependencies.auth import require_api_key
 from app.db.models import Market
 from app.db.models_follow import PaperPortfolio, PaperPosition, PaperTrade
 from app.models.schemas_follow import (
@@ -29,7 +29,7 @@ router = APIRouter()
 @router.get("", response_model=PortfolioResponse)
 async def get_portfolio(
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> PortfolioResponse:
     """Get paper trading portfolio overview."""
     result = await db.execute(
@@ -52,7 +52,7 @@ async def list_positions(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> PaperPositionListResponse:
     """List paper positions."""
     portfolio = await db.execute(
@@ -90,7 +90,7 @@ async def list_trades(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> PaperTradeListResponse:
     """List paper trade history."""
     portfolio = await db.execute(
@@ -136,7 +136,7 @@ async def list_trades(
 async def close_position(
     position_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> dict[str, Any]:
     """Manually close an open paper position at current market price."""
     result = await db.execute(
@@ -203,7 +203,7 @@ async def close_position(
 async def reset_portfolio(
     body: PortfolioResetRequest | None = None,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> PortfolioResetResponse:
     """Reset portfolio — clear all positions/trades, set new balance."""
     body = body or PortfolioResetRequest()

@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
-from app.api.dependencies.auth import optional_api_key
+from app.api.dependencies.auth import require_api_key
 from app.db.models import Wallet
 from app.db.models_follow import PaperPortfolio, WalletFollow
 from app.models.schemas_follow import (
@@ -141,7 +141,7 @@ async def list_follows(
     active: bool = Query(default=True),
     auto_copy: bool | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> FollowListResponse:
     """List wallets the user follows."""
     stmt = select(WalletFollow).where(
@@ -165,7 +165,7 @@ async def follow_wallet(
     wallet: str,
     body: FollowCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> FollowResponse:
     """Start following a wallet."""
     _validate_wallet(wallet)
@@ -248,7 +248,7 @@ async def update_follow(
     wallet: str,
     body: FollowUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> FollowResponse:
     """Update follow configuration."""
     _validate_wallet(wallet)
@@ -277,7 +277,7 @@ async def update_follow(
 async def unfollow_wallet(
     wallet: str,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(optional_api_key),
+    user_id: str = Depends(require_api_key),
 ) -> None:
     """Unfollow a wallet (soft delete)."""
     _validate_wallet(wallet)
