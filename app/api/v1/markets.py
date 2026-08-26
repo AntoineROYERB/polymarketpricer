@@ -13,6 +13,8 @@ from app.models.schemas import (
     MarketSummary,
     OutcomeResponse,
 )
+from app.utils.category import validate_category
+from app.utils.decimal_helpers import to_decimal
 
 router = APIRouter()
 
@@ -29,8 +31,6 @@ async def markets(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> MarketListResponse:
-    from app.utils.category import validate_category
-
     stmt = select(Market)
     if category is not None:
         norm_category = validate_category(category)
@@ -90,8 +90,6 @@ async def market_detail(
     sell_total = sell_count.scalar() or 0
     total_alerts = buy_total + sell_total
     buy_percent = round((buy_total / total_alerts) * 100, 1) if total_alerts > 0 else 50.0
-
-    from app.utils.decimal_helpers import to_decimal
 
     trader_rows = await db.execute(
         select(

@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.api.dependencies.auth import optional_api_key
-from app.db.models import Market, PaperPortfolio, PaperPosition, PaperTrade
-from app.models.schemas import (
+from app.db.models import Market
+from app.db.models_follow import PaperPortfolio, PaperPosition, PaperTrade
+from app.models.schemas_follow import (
     PortfolioResponse, PortfolioResetRequest, PortfolioResetResponse,
     PaperPositionResponse, PaperPositionListResponse,
     PaperTradeResponse, PaperTradeListResponse,

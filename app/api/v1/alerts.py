@@ -112,7 +112,7 @@ async def alert_websocket(
         while True:
             data = await websocket.receive_json()
             if data.get("type") == "pong":
-                pass
+                continue
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
