@@ -59,7 +59,14 @@ export default function PortfolioPage() {
 
   const positionColumns: Column<PaperPositionResponse>[] = [
     { key: "market_id", label: "Market", render: (r) => (
-      <span className="truncate block max-w-xs">{r.market_id}</span>
+      <a
+        href={r.event_slug ? `https://polymarket.com/event/${r.event_slug}` : "#"}
+        target={r.event_slug ? "_blank" : undefined}
+        rel={r.event_slug ? "noopener noreferrer" : undefined}
+        className="hover:text-accent-amber transition-colors block"
+      >
+        <span className="truncate block max-w-xs">{r.market_id}</span>
+      </a>
     )},
     { key: "side", label: "Side", render: (r) => (
       <span className={r.side === "BUY" ? "text-accent-emerald" : "text-accent-rose"}>{r.side}</span>
@@ -96,7 +103,14 @@ export default function PortfolioPage() {
   const tradeColumns: Column<PaperTradeResponse>[] = [
     { key: "executed_at", label: "Date", align: "right", render: (r) => new Date(r.executed_at).toLocaleDateString() },
     { key: "market_id", label: "Market", render: (r) => (
-      <span className="truncate block max-w-xs">{r.market_id}</span>
+      <a
+        href={r.event_slug ? `https://polymarket.com/event/${r.event_slug}` : "#"}
+        target={r.event_slug ? "_blank" : undefined}
+        rel={r.event_slug ? "noopener noreferrer" : undefined}
+        className="hover:text-accent-amber transition-colors block"
+      >
+        <span className="truncate block max-w-xs">{r.market_id}</span>
+      </a>
     )},
     { key: "side", label: "Side", render: (r) => (
       <span className={r.side === "BUY" ? "text-accent-emerald" : "text-accent-rose"}>{r.side}</span>

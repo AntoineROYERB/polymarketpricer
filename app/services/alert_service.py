@@ -5,7 +5,8 @@ import httpx
 from sqlalchemy import select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Alert, WalletFollow
+from app.db.models import Alert
+from app.db.models_follow import WalletFollow
 
 _USER_ID = "default"  # placeholder until auth is implemented
 
@@ -80,7 +81,7 @@ async def get_follow_info_for_embed(
             SELECT category, follow_score, recommendation
             FROM wallet_category_follow_scores
             WHERE wallet = :wallet
-              AND snapshot_date = CURRENT_DATE
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM wallet_category_follow_scores)
             ORDER BY follow_score DESC
             LIMIT 2
         """),

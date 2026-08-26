@@ -47,6 +47,9 @@ export function useFollowWallet() {
       qc.invalidateQueries({ queryKey: ["follows"] });
       qc.invalidateQueries({ queryKey: ["follow-recommendations"] });
     },
+    onError: (err) => {
+      console.error("Follow failed:", err);
+    },
   });
 }
 
@@ -68,6 +71,9 @@ export function useUnfollowWallet() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["follows"] });
       qc.invalidateQueries({ queryKey: ["follow-recommendations"] });
+    },
+    onError: (err) => {
+      console.error("Unfollow failed:", err);
     },
   });
 }

@@ -1,8 +1,5 @@
 if 'data_exporter' not in globals():
     from mage_ai.data_preparation.decorators import data_exporter
-if 'test' not in globals():
-    from mage_ai.data_preparation.decorators import test
-
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine, text
@@ -218,6 +215,3 @@ def export_data(data, **kwargs) -> None:
         engine.dispose()
 
 
-@test
-def test_output(*args) -> None:
-    pass

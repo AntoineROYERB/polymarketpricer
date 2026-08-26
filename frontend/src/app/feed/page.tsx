@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { WalletAddress } from "@/components/shared/wallet-address";
@@ -13,14 +12,18 @@ import type { AlertItem } from "@/types/api";
 const CATEGORIES = ["All", "Politics", "Sports", "Crypto", "Economics", "Technology", "AI", "Geopolitics", "Entertainment"];
 
 export default function FeedPage() {
-  const router = useRouter();
   const columns: Column<AlertItem>[] = [
     { key: "detected_at", label: "Time", align: "right", render: (r) => new Date(r.detected_at).toLocaleString() },
     { key: "wallet", label: "Wallet", render: (r) => <WalletAddress address={r.wallet} /> },
     { key: "market_question", label: "Market", render: (r) => (
-      <button onClick={() => r.market_id && router.push(`/markets/${r.market_id}`)} className="hover:text-accent-amber transition-colors text-left">
+      <a
+        href={r.event_slug ? `https://polymarket.com/event/${r.event_slug}` : `/markets/${r.market_id}`}
+        target={r.event_slug ? "_blank" : undefined}
+        rel={r.event_slug ? "noopener noreferrer" : undefined}
+        className="hover:text-accent-amber transition-colors text-left block"
+      >
         <span className="text-text-primary max-w-xs truncate block">{r.market_question}</span>
-      </button>
+      </a>
     )},
     { key: "action", label: "Action", render: (r) => {
       const isBuy = r.action.includes("NEW") || r.action.includes("INCREASE");
@@ -65,6 +68,8 @@ export default function FeedPage() {
       wallet: wsa.wallet,
       market_id: wsa.market_id,
       market_question: wsa.market_question,
+      event_slug: null as string | null,
+      condition_id: null as string | null,
       action: wsa.action,
       category: wsa.category,
       price: wsa.price,

@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.api.dependencies.auth import optional_api_key
-from app.db.models import Wallet, WalletFollow, PaperPortfolio
-from app.models.schemas import (
+from app.db.models import Wallet
+from app.db.models_follow import WalletFollow, PaperPortfolio
+from app.models.schemas_follow import (
     FollowCreate, FollowUpdate, FollowResponse, FollowListResponse,
     FollowRecommendation, FollowRecommendationResponse,
     CategoryFollowLeaderboardEntry, CategoryFollowLeaderboardResponse,

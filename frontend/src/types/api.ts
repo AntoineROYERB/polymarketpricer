@@ -72,6 +72,8 @@ export interface WalletAnalyticsData {
 export interface PositionSummary {
   market_id: string;
   question: string;
+  event_slug: string | null;
+  condition_id: string | null;
   side: string | null;
   status: string;
   shares: number;
@@ -112,6 +114,8 @@ export interface AlertItem {
   wallet: string;
   market_id: string;
   market_question: string;
+  event_slug: string | null;
+  condition_id: string | null;
   action: string;
   category: string;
   price: number;
@@ -173,6 +177,8 @@ export interface PortfolioResponse {
 export interface PaperPositionResponse {
   id: string;
   market_id: string;
+  event_slug: string | null;
+  condition_id: string | null;
   outcome: string;
   side: string;
   status: string;
@@ -195,6 +201,8 @@ export interface PaperPositionListResponse {
 export interface PaperTradeResponse {
   id: string;
   market_id: string;
+  event_slug: string | null;
+  condition_id: string | null;
   outcome: string;
   side: string;
   shares: number;

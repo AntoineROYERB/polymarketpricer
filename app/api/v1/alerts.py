@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
 from app.config import settings
-from app.db.models import Alert, Wallet
+from app.db.models import Alert, Market, Wallet
 from app.models.schemas import AlertItem, AlertListResponse
 from app.services.ws_manager import manager
 router = APIRouter()
@@ -28,7 +28,11 @@ async def list_alerts(
     wallet: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ) -> AlertListResponse:
-    stmt = select(Alert).order_by(Alert.detected_at.desc())
+    stmt = (
+        select(Alert, Market.event_slug, Market.condition_id)
+        .join(Market, Alert.market_id == Market.id, isouter=True)
+        .order_by(Alert.detected_at.desc())
+    )
 
     if category:
         stmt = stmt.where(Alert.category.ilike(category))
@@ -39,10 +43,10 @@ async def list_alerts(
 
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
-    alerts = result.scalars().all()
+    rows = result.all()
 
     return AlertListResponse(
-        data=[_alert_to_item(a) for a in alerts],
+        data=[_alert_to_item(a, es, ci) for a, es, ci in rows],
         limit=limit,
         offset=offset,
     )
@@ -108,7 +112,7 @@ async def alert_websocket(
         while True:
             data = await websocket.receive_json()
             if data.get("type") == "pong":
-                pass
+                continue
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
@@ -130,21 +134,29 @@ async def wallet_alerts(
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     stmt = (
-        select(Alert)
+        select(Alert, Market.event_slug, Market.condition_id)
+        .join(Market, Alert.market_id == Market.id, isouter=True)
         .where(Alert.wallet == wallet)
         .order_by(Alert.detected_at.desc())
         .offset(offset)
         .limit(limit)
     )
     result = await db.execute(stmt)
-    alerts = result.scalars().all()
+    rows = result.all()
 
     return AlertListResponse(
-        data=[_alert_to_item(a) for a in alerts],
+        data=[_alert_to_item(a, es, ci) for a, es, ci in rows],
         limit=limit,
         offset=offset,
     )
 
 
-def _alert_to_item(a: Alert) -> AlertItem:
-    return AlertItem.model_validate(a)
+def _alert_to_item(
+    a: Alert,
+    event_slug: Optional[str] = None,
+    condition_id: Optional[str] = None,
+) -> AlertItem:
+    item = AlertItem.model_validate(a)
+    item.event_slug = event_slug
+    item.condition_id = condition_id
+    return item
