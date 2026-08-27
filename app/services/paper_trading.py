@@ -3,14 +3,17 @@
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, func, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models_follow import (
-    WalletFollow, PaperPortfolio, PaperPosition, PaperTrade,
+    PaperPortfolio,
+    PaperPosition,
+    PaperTrade,
+    WalletFollow,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,7 +23,7 @@ async def execute_copy_trade(
     db: AsyncSession,
     alert: dict[str, Any],
     follow: WalletFollow,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Execute a paper copy trade based on an alert and follow config."""
     if follow.category_filter:
         alert_category = alert.get("category", "")
@@ -49,7 +52,7 @@ async def execute_copy_trade(
     side = "BUY" if action in ("NEW_POSITION", "POSITION_INCREASE", "TRADE_BUY") else "SELL"
 
     if side == "BUY":
-        shares = copy_amount / price if price > 0 else Decimal("0")
+        shares = copy_amount / price if price > 0 else Decimal(0)
         return await _execute_buy(db, portfolio, follow, alert, market_id, price, shares, copy_amount)
     elif side == "SELL":
         shares = Decimal(str(alert.get("shares", 0)))
@@ -183,7 +186,7 @@ async def _execute_sell(
         position.status = "CLOSED"
         position.closed_at = func.now()
         position.realized_pnl += realized_pnl
-        position.shares = Decimal("0")
+        position.shares = Decimal(0)
     else:
         position.shares -= sell_shares
         position.realized_pnl += realized_pnl
@@ -215,21 +218,21 @@ async def _execute_sell(
 
 
 def _compute_copy_amount(
-    copy_mode: Optional[str],
+    copy_mode: str | None,
     copy_value: Decimal,
     position_size: Decimal,
 ) -> Decimal:
     if copy_mode == "proportional":
-        return position_size * max(copy_value, Decimal("0"))
+        return position_size * max(copy_value, Decimal(0))
     elif copy_mode == "fixed":
-        return max(copy_value, Decimal("0"))
+        return max(copy_value, Decimal(0))
     logger.warning("Unknown copy_mode '%s', returning 0", copy_mode)
-    return Decimal("0")
+    return Decimal(0)
 
 
 async def _get_current_price(
     db: AsyncSession, market_id: str, outcome_label: str
-) -> Optional[Decimal]:
+) -> Decimal | None:
     result = await db.execute(
         text("""
             SELECT price FROM outcomes
@@ -260,13 +263,13 @@ async def _get_or_create_portfolio(
         portfolio = PaperPortfolio(
             user_id=user_id,
             name="Main",
-            initial_balance=Decimal("10000"),
-            current_balance=Decimal("10000"),
-            total_realized_pnl=Decimal("0"),
-            total_unrealized_pnl=Decimal("0"),
-            total_pnl=Decimal("0"),
+            initial_balance=Decimal(10000),
+            current_balance=Decimal(10000),
+            total_realized_pnl=Decimal(0),
+            total_unrealized_pnl=Decimal(0),
+            total_pnl=Decimal(0),
             total_trades=0,
-            total_volume=Decimal("0"),
+            total_volume=Decimal(0),
         )
         db.add(portfolio)
         await db.commit()
@@ -290,7 +293,7 @@ async def update_unrealized_pnl(db: AsyncSession) -> None:
     portfolio_totals: dict[UUID, Decimal] = {}
     for pos in positions:
         port_id: UUID = pos.portfolio_id
-        portfolio_totals[port_id] = portfolio_totals.get(port_id, Decimal("0")) + (pos.unrealized_pnl or Decimal("0"))
+        portfolio_totals[port_id] = portfolio_totals.get(port_id, Decimal(0)) + (pos.unrealized_pnl or Decimal(0))
 
     for port_id, unrealized in portfolio_totals.items():
         portfolio_result = await db.execute(
@@ -322,7 +325,7 @@ async def handle_market_resolution(
         pos.closed_at = func.now()
         pos.current_price = resolution_price
         pnl = (resolution_price - pos.avg_entry_price) * pos.shares
-        pos.unrealized_pnl = Decimal("0")
+        pos.unrealized_pnl = Decimal(0)
         pos.realized_pnl += pnl
 
         await db.execute(

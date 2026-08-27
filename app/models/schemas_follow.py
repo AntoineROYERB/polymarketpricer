@@ -1,25 +1,24 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Literal
 
 from app.utils.category import get_valid_categories
 
 
 class FollowCreate(BaseModel):
-    label: Optional[str] = Field(default=None, max_length=200)
+    label: str | None = Field(default=None, max_length=200)
     auto_copy_enabled: bool = False
-    copy_mode: Optional[Literal["proportional", "fixed"]] = None
+    copy_mode: Literal["proportional", "fixed"] | None = None
     copy_value: float = Field(default=0.05, ge=0)
-    category_filter: Optional[list[str]] = None
+    category_filter: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
     @field_validator("category_filter")
     @classmethod
-    def validate_category_filter(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+    def validate_category_filter(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return v
         valid = set(get_valid_categories())
@@ -30,16 +29,16 @@ class FollowCreate(BaseModel):
 
 
 class FollowUpdate(BaseModel):
-    label: Optional[str] = Field(default=None, max_length=200)
-    auto_copy_enabled: Optional[bool] = None
-    copy_mode: Optional[Literal["proportional", "fixed"]] = None
-    copy_value: Optional[float] = Field(default=None, ge=0)
-    category_filter: Optional[list[str]] = None
-    active: Optional[bool] = None
+    label: str | None = Field(default=None, max_length=200)
+    auto_copy_enabled: bool | None = None
+    copy_mode: Literal["proportional", "fixed"] | None = None
+    copy_value: float | None = Field(default=None, ge=0)
+    category_filter: list[str] | None = None
+    active: bool | None = None
 
     @field_validator("category_filter")
     @classmethod
-    def validate_category_filter(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+    def validate_category_filter(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return v
         valid = set(get_valid_categories())
@@ -52,12 +51,12 @@ class FollowUpdate(BaseModel):
 class FollowResponse(BaseModel):
     id: UUID
     wallet: str
-    label: Optional[str] = None
+    label: str | None = None
     active: bool
     auto_copy_enabled: bool
-    copy_mode: Optional[str] = None
+    copy_mode: str | None = None
     copy_value: float
-    category_filter: Optional[list[str]] = None
+    category_filter: list[str] | None = None
     followed_at: datetime
     updated_at: datetime
 
@@ -82,18 +81,18 @@ class FollowRecommendationResponse(BaseModel):
 
 
 class PortfolioResponse(BaseModel):
-    id: Optional[UUID] = None
+    id: UUID | None = None
     name: str = "Main"
     initial_balance: float = 10000.0
     current_balance: float = 10000.0
     total_realized_pnl: float = 0.0
     total_unrealized_pnl: float = 0.0
     total_pnl: float = 0.0
-    total_roi: Optional[float] = None
+    total_roi: float | None = None
     total_trades: int = 0
     total_volume: float = 0.0
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -101,20 +100,20 @@ class PortfolioResponse(BaseModel):
 class PaperPositionResponse(BaseModel):
     id: UUID
     market_id: str
-    event_slug: Optional[str] = None
-    condition_id: Optional[str] = None
+    event_slug: str | None = None
+    condition_id: str | None = None
     outcome: str
     side: str
     status: str
     shares: float
     avg_entry_price: float
-    current_price: Optional[float] = None
+    current_price: float | None = None
     cost_basis: float
     realized_pnl: float
-    unrealized_pnl: Optional[float] = None
+    unrealized_pnl: float | None = None
     followed_wallet: str
     opened_at: datetime
-    closed_at: Optional[datetime] = None
+    closed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -127,16 +126,16 @@ class PaperPositionListResponse(BaseModel):
 class PaperTradeResponse(BaseModel):
     id: UUID
     market_id: str
-    event_slug: Optional[str] = None
-    condition_id: Optional[str] = None
+    event_slug: str | None = None
+    condition_id: str | None = None
     outcome: str
     side: str
     price: float
     shares: float
     amount_usd: float
     followed_wallet: str
-    copy_mode: Optional[str] = None
-    copy_value_used: Optional[float] = None
+    copy_mode: str | None = None
+    copy_value_used: float | None = None
     executed_at: datetime
 
     model_config = {"from_attributes": True}
@@ -162,11 +161,11 @@ class CategoryFollowScoreItem(BaseModel):
     category: str
     follow_score: float
     recommendation: str
-    roi_percentile: Optional[float] = None
-    win_rate: Optional[float] = None
+    roi_percentile: float | None = None
+    win_rate: float | None = None
     is_specialist: bool = False
-    volume_percentile: Optional[float] = None
-    recency_days: Optional[int] = None
+    volume_percentile: float | None = None
+    recency_days: int | None = None
     reasons: list[str] = []
 
     model_config = {"from_attributes": True}
@@ -174,7 +173,7 @@ class CategoryFollowScoreItem(BaseModel):
 
 class WalletCategoryFollowScoresResponse(BaseModel):
     wallet: str
-    global_follow_score: Optional[float] = None
+    global_follow_score: float | None = None
     category_scores: list[CategoryFollowScoreItem]
 
 
@@ -182,8 +181,8 @@ class CategoryFollowLeaderboardEntry(BaseModel):
     wallet: str
     follow_score: float
     recommendation: str
-    roi_percentile: Optional[float] = None
-    win_rate: Optional[float] = None
+    roi_percentile: float | None = None
+    win_rate: float | None = None
     is_specialist: bool = False
     reasons: list[str] = []
 

@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("API_KEY", "test-key")
+
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -6,6 +10,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_db
+from app.api.dependencies.auth import require_api_key
 from app.main import app
 
 
@@ -54,7 +59,11 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db() -> AsyncGenerator[AsyncMock, None]:
         yield mock_session
 
+    async def override_require_api_key() -> str:
+        return "user"
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_api_key] = override_require_api_key
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

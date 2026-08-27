@@ -1,10 +1,10 @@
-from typing import Any
 import sys
+from decimal import Decimal
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pandas import DataFrame
-from decimal import Decimal
 
 # Mock mage_ai module before importing mage transformers
 mage_mock = MagicMock()
@@ -89,8 +89,8 @@ class TestComputeTradeEdge:
         outcomes = DataFrame([make_outcome("o1", "m1", "Yes", True)])
         results = compute_wallet_edge(trades, outcomes)
         assert len(results) == 2
-        buy1 = [r for r in results if r["entry_price"] == Decimal("0.30")][0]
-        buy2 = [r for r in results if r["entry_price"] == Decimal("0.40")][0]
+        buy1 = next(r for r in results if r["entry_price"] == Decimal("0.30"))
+        buy2 = next(r for r in results if r["entry_price"] == Decimal("0.40"))
         assert float(buy1["edge"]) == pytest.approx(0.6667, rel=1e-3)
         assert float(buy2["edge"]) == pytest.approx(1.50, rel=1e-3)
 
