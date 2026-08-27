@@ -1,7 +1,28 @@
 """Test API key authentication."""
 
+from collections.abc import AsyncGenerator
+
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from app.api.dependencies import get_db
+from app.main import app
+from app.tests.conftest import make_mock_session
+
+
+@pytest.fixture
+async def raw_client() -> AsyncGenerator[AsyncClient, None]:
+    """Client with no auth override, to exercise require_api_key for real."""
+    mock_session = make_mock_session()
+
+    async def override_get_db() -> AsyncGenerator[object, None]:
+        yield mock_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -12,47 +33,42 @@ async def test_public_endpoint_no_auth(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_follow_with_valid_key(client: AsyncClient) -> None:
-    """Valid API key should not be rejected."""
-    response = await client.get(
+async def test_follow_with_valid_key(raw_client: AsyncClient) -> None:
+    response = await raw_client.get(
         "/api/v1/follow",
-        headers={"Authorization": "Bearer devkey-change-me"},
+        headers={"Authorization": "Bearer test-key"},
     )
     assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_follow_with_any_key(client: AsyncClient) -> None:
-    """optional_api_key never rejects — invalid keys fall back to 'default'."""
-    response = await client.get(
+async def test_follow_with_invalid_key_rejected(raw_client: AsyncClient) -> None:
+    response = await raw_client.get(
         "/api/v1/follow",
-        headers={"Authorization": "Bearer any-key-works"},
+        headers={"Authorization": "Bearer wrong-key"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_follow_without_auth_defaults_to_default(client: AsyncClient) -> None:
-    """Missing auth should return 200 (optional_api_key defaults to 'default')."""
-    response = await client.get("/api/v1/follow")
-    assert response.status_code == 200
+async def test_follow_without_auth_rejected(raw_client: AsyncClient) -> None:
+    response = await raw_client.get("/api/v1/follow")
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_portfolio_with_valid_key(client: AsyncClient) -> None:
-    """Valid key on portfolio endpoint."""
-    response = await client.get(
+async def test_portfolio_with_valid_key(raw_client: AsyncClient) -> None:
+    response = await raw_client.get(
         "/api/v1/portfolio",
-        headers={"Authorization": "Bearer devkey-change-me"},
+        headers={"Authorization": "Bearer test-key"},
     )
     assert response.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_portfolio_without_auth(client: AsyncClient) -> None:
-    """Portfolio works without auth (falls back to 'default')."""
-    response = await client.get("/api/v1/portfolio")
-    assert response.status_code == 200
+async def test_portfolio_without_auth_rejected(raw_client: AsyncClient) -> None:
+    response = await raw_client.get("/api/v1/portfolio")
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio

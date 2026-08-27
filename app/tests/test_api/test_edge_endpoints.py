@@ -1,8 +1,8 @@
 from collections.abc import AsyncIterator
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from decimal import Decimal
-from unittest.mock import MagicMock, AsyncMock
 from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_db
@@ -89,7 +89,7 @@ class TestWalletEdge:
         mock_snapshot = MagicMock()
         mock_snapshot.wallet = "0xwallet1"
         mock_snapshot.snapshot_date = None
-        mock_snapshot.avg_edge = Decimal("0")
+        mock_snapshot.avg_edge = Decimal(0)
         mock_snapshot.median_edge = None
         mock_snapshot.edge_consistency = None
         mock_snapshot.edge_volatility = None

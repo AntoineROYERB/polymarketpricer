@@ -1,10 +1,9 @@
 from collections.abc import Awaitable, Callable
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import WebSocket
 
 from app.db.models import Alert
-
 
 MAX_WS_CONNECTIONS = 100
 
@@ -37,8 +36,8 @@ class ConnectionManager:
     async def broadcast_alert(
         self,
         alert: Alert,
-        follow_info: Optional[dict[str, Any]] = None,
-        copy_suggestion: Optional[dict[str, Any]] = None,
+        follow_info: dict[str, Any] | None = None,
+        copy_suggestion: dict[str, Any] | None = None,
     ) -> None:
         payload: dict[str, Any] = {
             "type": "alert",

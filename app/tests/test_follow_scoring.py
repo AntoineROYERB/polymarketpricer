@@ -1,8 +1,8 @@
 """Unit tests for follow scoring formulas (pure functions)."""
 
 import math
-import pytest
 
+import pytest
 
 # ── Category specialization (pure function helpers) ─────────────────
 

@@ -1,14 +1,12 @@
-from typing import Any, Optional
 from datetime import datetime, timezone
+from typing import Any
 
 import httpx
-from sqlalchemy import select, update, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Alert
 from app.db.models_follow import WalletFollow
-
-_USER_ID = "default"  # placeholder until auth is implemented
 
 DISCORD_EMBED_COLORS = {
     "NEW_POSITION": 0x2ECC71,
@@ -57,14 +55,16 @@ def _format_action(action: str, price: float) -> str:
 
 async def get_follow_info_for_embed(
     db: AsyncSession, wallet: str
-) -> tuple[Optional[dict[str, Any]], Optional[dict[str, Any]], str]:
-    """Look up if wallet is followed and compute copy suggestion."""
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str]:
+    """Look up if wallet is followed (by any user_id) and compute copy suggestion."""
     result = await db.execute(
-        select(WalletFollow).where(
-            WalletFollow.user_id == _USER_ID,
+        select(WalletFollow)
+        .where(
             WalletFollow.wallet == wallet,
             WalletFollow.active.is_(True),
         )
+        .order_by(WalletFollow.followed_at.desc())
+        .limit(1)
     )
     follow = result.scalar_one_or_none()
     if follow is None:
@@ -114,8 +114,8 @@ async def get_follow_info_for_embed(
 
 def build_discord_embed(
     alert: Alert,
-    follow_info: Optional[dict[str, Any]] = None,
-    copy_suggestion: Optional[dict[str, Any]] = None,
+    follow_info: dict[str, Any] | None = None,
+    copy_suggestion: dict[str, Any] | None = None,
     category_str: str = "",
 ) -> dict[str, Any]:
     color = DISCORD_EMBED_COLORS.get(str(alert.action), 0x95A5A6)

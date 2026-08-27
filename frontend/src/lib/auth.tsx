@@ -1,12 +1,29 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useSyncExternalStore, type ReactNode } from "react";
 
 const STORAGE_KEY = "pm-api-key";
+const listeners = new Set<() => void>();
 
-function readKey(): string | null {
-  if (typeof window === "undefined") return null;
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
+function subscribe(callback: () => void): () => void {
+  listeners.add(callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    listeners.delete(callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSnapshot(): string | null {
   return localStorage.getItem(STORAGE_KEY);
+}
+
+function getServerSnapshot(): string | null {
+  return null;
 }
 
 interface AuthContextValue {
@@ -19,20 +36,16 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [apiKey, setApiKeyState] = useState<string | null>(null);
-
-  useEffect(() => {
-    setApiKeyState(readKey());
-  }, []);
+  const apiKey = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const setApiKey = useCallback((key: string) => {
     localStorage.setItem(STORAGE_KEY, key);
-    setApiKeyState(key);
+    notify();
   }, []);
 
   const clearApiKey = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
-    setApiKeyState(null);
+    notify();
   }, []);
 
   return (

@@ -1,5 +1,4 @@
 from datetime import date, datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, field_validator
@@ -15,9 +14,9 @@ class LeaderboardEntry(BaseModel):
     num_trades: int
     consistency_score: float
     experience_score: float
-    edge_score: Optional[float] = None
-    edge_consistency: Optional[float] = None
-    num_edge_trades: Optional[int] = None
+    edge_score: float | None = None
+    edge_consistency: float | None = None
+    num_edge_trades: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -31,34 +30,34 @@ class LeaderboardResponse(BaseModel):
 class PositionSummary(BaseModel):
     market_id: str
     question: str
-    event_slug: Optional[str] = None
-    condition_id: Optional[str] = None
-    side: Optional[str] = None
+    event_slug: str | None = None
+    condition_id: str | None = None
+    side: str | None = None
     status: str = "OPEN"
     shares: float
     avg_entry_price: float
-    entry_time: Optional[datetime] = None
-    exit_time: Optional[datetime] = None
-    realized_pnl: Optional[float] = None
-    unrealized_pnl: Optional[float] = None
-    total_pnl: Optional[float] = None
+    entry_time: datetime | None = None
+    exit_time: datetime | None = None
+    realized_pnl: float | None = None
+    unrealized_pnl: float | None = None
+    total_pnl: float | None = None
 
     model_config = {"from_attributes": True}
 
 
 class WalletAnalyticsData(BaseModel):
-    total_pnl: Optional[float] = None
-    roi: Optional[float] = None
-    win_rate: Optional[float] = None
-    num_trades: Optional[int] = None
-    total_volume: Optional[float] = None
-    avg_position_size: Optional[float] = None
-    sharpe_ratio: Optional[float] = None
-    profit_factor: Optional[float] = None
-    max_drawdown: Optional[float] = None
-    avg_holding_duration: Optional[str] = None
-    consistency_score: Optional[float] = None
-    experience_score: Optional[float] = None
+    total_pnl: float | None = None
+    roi: float | None = None
+    win_rate: float | None = None
+    num_trades: int | None = None
+    total_volume: float | None = None
+    avg_position_size: float | None = None
+    sharpe_ratio: float | None = None
+    profit_factor: float | None = None
+    max_drawdown: float | None = None
+    avg_holding_duration: str | None = None
+    consistency_score: float | None = None
+    experience_score: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -72,16 +71,16 @@ class WalletAnalyticsData(BaseModel):
 
 class WalletEdgeSnapshot(BaseModel):
     wallet: str
-    snapshot_date: Optional[date] = None
+    snapshot_date: date | None = None
     avg_edge: float
-    median_edge: Optional[float] = None
-    edge_consistency: Optional[float] = None
-    edge_volatility: Optional[float] = None
-    edge_score: Optional[float] = None
+    median_edge: float | None = None
+    edge_consistency: float | None = None
+    edge_volatility: float | None = None
+    edge_score: float | None = None
     num_edge_trades: int
-    positive_edge_trades: Optional[int] = None
-    negative_edge_trades: Optional[int] = None
-    computed_at: Optional[datetime] = None
+    positive_edge_trades: int | None = None
+    negative_edge_trades: int | None = None
+    computed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -90,7 +89,7 @@ class EdgeLeaderboardEntry(BaseModel):
     wallet: str
     edge_score: float
     avg_edge: float
-    edge_consistency: Optional[float] = None
+    edge_consistency: float | None = None
     num_edge_trades: int
     rank: int
 
@@ -103,18 +102,18 @@ class EdgeLeaderboardResponse(BaseModel):
 
 class WalletProfile(BaseModel):
     wallet: str
-    main_wallet: Optional[str] = None
-    label: Optional[str] = None
+    main_wallet: str | None = None
+    label: str | None = None
     is_tracked: bool = True
-    first_seen: Optional[datetime] = None
-    last_seen: Optional[datetime] = None
-    last_position_sync: Optional[datetime] = None
-    last_trade_sync: Optional[datetime] = None
-    analytics: Optional[WalletAnalyticsData] = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    last_position_sync: datetime | None = None
+    last_trade_sync: datetime | None = None
+    analytics: WalletAnalyticsData | None = None
     current_positions: list[PositionSummary] = []
-    rank: Optional[int] = None
+    rank: int | None = None
     categories: list["WalletCategorySummary"] = []
-    edge_metrics: Optional[WalletEdgeSnapshot] = None
+    edge_metrics: WalletEdgeSnapshot | None = None
 
     model_config = {"from_attributes": True}
 
@@ -122,12 +121,12 @@ class WalletProfile(BaseModel):
 class CategoryLeaderboardEntry(BaseModel):
     rank: int
     wallet: str
-    wallet_score: Optional[float] = None
-    roi: Optional[float] = None
-    win_rate: Optional[float] = None
-    total_pnl: Optional[float] = None
+    wallet_score: float | None = None
+    roi: float | None = None
+    win_rate: float | None = None
+    total_pnl: float | None = None
     num_trades: int = 0
-    total_volume: Optional[float] = None
+    total_volume: float | None = None
     is_specialist: bool = False
 
     model_config = {"from_attributes": True}
@@ -143,14 +142,14 @@ class CategoryLeaderboardResponse(BaseModel):
 class WalletCategorySummary(BaseModel):
     category: str
     num_trades: int = 0
-    total_volume: Optional[float] = None
-    total_pnl: Optional[float] = None
-    roi: Optional[float] = None
-    win_rate: Optional[float] = None
-    profit_factor: Optional[float] = None
-    avg_position_size: Optional[float] = None
+    total_volume: float | None = None
+    total_pnl: float | None = None
+    roi: float | None = None
+    win_rate: float | None = None
+    profit_factor: float | None = None
+    avg_position_size: float | None = None
     is_specialist: bool = False
-    category_rank: Optional[int] = None
+    category_rank: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -164,19 +163,19 @@ class CategoryDetailResponse(BaseModel):
     wallet: str
     category: str
     num_trades: int = 0
-    total_volume: Optional[float] = None
-    total_cost_basis: Optional[float] = None
-    total_pnl: Optional[float] = None
-    total_realized_pnl: Optional[float] = None
-    total_unrealized_pnl: Optional[float] = None
-    roi: Optional[float] = None
-    win_rate: Optional[float] = None
+    total_volume: float | None = None
+    total_cost_basis: float | None = None
+    total_pnl: float | None = None
+    total_realized_pnl: float | None = None
+    total_unrealized_pnl: float | None = None
+    roi: float | None = None
+    win_rate: float | None = None
     num_resolved_positions: int = 0
-    profit_factor: Optional[float] = None
-    avg_position_size: Optional[float] = None
-    avg_holding_duration: Optional[str] = None
+    profit_factor: float | None = None
+    avg_position_size: float | None = None
+    avg_holding_duration: str | None = None
     is_specialist: bool = False
-    category_rank: Optional[int] = None
+    category_rank: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -191,15 +190,15 @@ class AlertItem(BaseModel):
     wallet: str
     market_id: str
     market_question: str
-    event_slug: Optional[str] = None
-    condition_id: Optional[str] = None
+    event_slug: str | None = None
+    condition_id: str | None = None
     action: str
     price: float
     position_size: float
     wallet_score: float
     category: str
     detected_at: datetime
-    notified_at: Optional[datetime] = None
+    notified_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -213,14 +212,14 @@ class AlertListResponse(BaseModel):
 class MarketSummary(BaseModel):
     id: str
     question: str
-    category: Optional[str] = None
-    event_slug: Optional[str] = None
-    volume_usd: Optional[float] = None
-    liquidity_usd: Optional[float] = None
-    close_time: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
-    winning_outcome: Optional[str] = None
+    category: str | None = None
+    event_slug: str | None = None
+    volume_usd: float | None = None
+    liquidity_usd: float | None = None
+    close_time: datetime | None = None
+    created_at: datetime | None = None
+    resolved_at: datetime | None = None
+    winning_outcome: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -234,32 +233,32 @@ class MarketListResponse(BaseModel):
 class OutcomeResponse(BaseModel):
     id: str
     label: str
-    price: Optional[float] = None
-    winner: Optional[bool] = None
+    price: float | None = None
+    winner: bool | None = None
 
     model_config = {"from_attributes": True}
 
 
 class ActiveTraderEntry(BaseModel):
     wallet: str
-    side: Optional[str] = None
-    position_size: Optional[float] = None
-    price: Optional[float] = None
-    total_pnl: Optional[float] = None
+    side: str | None = None
+    position_size: float | None = None
+    price: float | None = None
+    total_pnl: float | None = None
 
 
 class MarketDetailResponse(BaseModel):
     id: str
     question: str
-    category: Optional[str] = None
-    event_slug: Optional[str] = None
-    condition_id: Optional[str] = None
-    volume_usd: Optional[float] = None
-    liquidity_usd: Optional[float] = None
-    close_time: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
-    winning_outcome: Optional[str] = None
+    category: str | None = None
+    event_slug: str | None = None
+    condition_id: str | None = None
+    volume_usd: float | None = None
+    liquidity_usd: float | None = None
+    close_time: datetime | None = None
+    created_at: datetime | None = None
+    resolved_at: datetime | None = None
+    winning_outcome: str | None = None
 
     model_config = {"from_attributes": True}
     outcomes: list[OutcomeResponse] = []

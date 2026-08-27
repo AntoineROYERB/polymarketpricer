@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +73,7 @@ async def get_wallet_category_detail(
     db: AsyncSession,
     address: str,
     category: str,
-) -> Optional[CategoryAnalytic]:
+) -> CategoryAnalytic | None:
     stmt = (
         select(CategoryAnalytic)
         .where(

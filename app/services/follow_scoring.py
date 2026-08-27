@@ -2,21 +2,21 @@
 
 import math
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.scoring_constants import (
-    EDGE_WEIGHT,
     CONSISTENCY_WEIGHT,
-    SPECIALIZATION_WEIGHT,
-    RECENCY_WEIGHT,
+    EDGE_WEIGHT,
+    FREQ_MIDPOINT,
+    FREQ_SLOPE,
     FREQUENCY_WEIGHT,
     MAX_SPECIALIST_CATEGORIES,
     RECENCY_HALF_LIFE_DAYS,
-    FREQ_SLOPE,
-    FREQ_MIDPOINT,
+    RECENCY_WEIGHT,
+    SPECIALIZATION_WEIGHT,
 )
 
 
@@ -42,11 +42,11 @@ async def compute_follow_score(
     frequency = await _get_trade_frequency_score(db, wallet)
 
     score = (
-        EDGE_WEIGHT * (edge or Decimal("0"))
-        + CONSISTENCY_WEIGHT * (consistency or Decimal("0"))
-        + SPECIALIZATION_WEIGHT * (spec_score or Decimal("0"))
-        + RECENCY_WEIGHT * (recency or Decimal("0"))
-        + FREQUENCY_WEIGHT * (frequency or Decimal("0"))
+        EDGE_WEIGHT * (edge or Decimal(0))
+        + CONSISTENCY_WEIGHT * (consistency or Decimal(0))
+        + SPECIALIZATION_WEIGHT * (spec_score or Decimal(0))
+        + RECENCY_WEIGHT * (recency or Decimal(0))
+        + FREQUENCY_WEIGHT * (frequency or Decimal(0))
     )
 
     if not reasons:
@@ -72,7 +72,7 @@ async def get_follow_recommendations(
 
     recommendations = []
     for row in rows:
-        score, reasons = await compute_follow_score(db, row._mapping["wallet"])
+        _score, reasons = await compute_follow_score(db, row._mapping["wallet"])
         recommendations.append({
             "wallet": row._mapping["wallet"],
             "follow_score": row._mapping["follow_score"],
@@ -112,7 +112,7 @@ async def get_wallet_category_scores(
     return [dict(row._mapping) for row in result.all()]
 
 
-async def _get_edge_score(db: AsyncSession, wallet: str) -> Optional[Decimal]:
+async def _get_edge_score(db: AsyncSession, wallet: str) -> Decimal | None:
     result = await db.execute(
         text("""
             SELECT edge_score FROM wallet_edge_snapshots
@@ -128,7 +128,7 @@ async def _get_edge_score(db: AsyncSession, wallet: str) -> Optional[Decimal]:
     return None
 
 
-async def _get_consistency_score(db: AsyncSession, wallet: str) -> Optional[Decimal]:
+async def _get_consistency_score(db: AsyncSession, wallet: str) -> Decimal | None:
     result = await db.execute(
         text("""
             SELECT consistency_score FROM wallet_analytics
@@ -159,7 +159,7 @@ async def _get_category_specialization(
     )
     row = result.one_or_none()
     if not row:
-        return Decimal("0"), ""
+        return Decimal(0), ""
 
     specialist_count = int(row._mapping["specialist_count"] or 0)
     avg_rank = float(row._mapping["avg_rank"] or 50)
@@ -197,7 +197,7 @@ async def _get_trade_frequency_score(db: AsyncSession, wallet: str) -> Decimal:
     )
     row = result.one_or_none()
     if not row:
-        return Decimal("0")
+        return Decimal(0)
 
     total_trades = float(row._mapping["total_trades"] or 0)
     months_active = max(float(row._mapping["months_active"] or 1), 1)
