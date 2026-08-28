@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 
@@ -10,9 +11,11 @@ import { useMarketDetail } from "@/hooks/use-alerts";
 import type { Column } from "@/components/shared/data-table";
 import type { ActiveTraderEntry } from "@/types/api";
 
-const traderColumns: Column<ActiveTraderEntry>[] = [
+const buildTraderColumns = (
+  onWalletClick: (wallet: string) => void,
+): Column<ActiveTraderEntry>[] => [
   { key: "wallet", label: "Wallet", render: (r) => (
-    <button onClick={() => window.location.href = `/wallets/${r.wallet}`} className="hover:text-accent-amber transition-colors text-left">
+    <button onClick={() => onWalletClick(r.wallet)} className="hover:text-accent-amber transition-colors text-left">
       <WalletAddress address={r.wallet} />
     </button>
   )},
@@ -30,6 +33,10 @@ const traderColumns: Column<ActiveTraderEntry>[] = [
 export default function MarketViewPage() {
   const params = useParams();
   const router = useRouter();
+  const traderColumns = useMemo(
+    () => buildTraderColumns((wallet) => router.push(`/wallets/${wallet}`)),
+    [router],
+  );
   const marketId = params.id as string;
   const { data: market, isLoading } = useMarketDetail(marketId);
 
