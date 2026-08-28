@@ -84,7 +84,7 @@ flowchart LR
 ## Data Flow Summary
 
 1. **Ingestion** — Mage AI pipelines pull data from Polymarket's Gamma API (markets, events, wallets), Data API (trades, positions, activity), and CLOB API (resolution prices).
-2. **Storage** — Raw and processed data is stored in PostgreSQL across 23 tables.
+2. **Storage** — Raw and processed data is stored in PostgreSQL across 22 tables (plus `alembic_version`).
 3. **Enrichment** — Pipelines compute wallet analytics (PnL, ROI, Sharpe), rankings, category-specific metrics, and **edge scoring** (predictive accuracy via FIFO trade matching).
 4. **Detection** — The `smart_money_detection` pipeline evaluates position changes, trades, and early entries against configurable rules.
 5. **Recommendation** — `enrichment_follow_scoring` combines edge, consistency, specialization, recency and trade frequency into a global and per-category follow score with a `FOLLOW` / `WATCH` / `IGNORE` recommendation.

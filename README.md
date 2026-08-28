@@ -129,7 +129,7 @@ flowchart LR
         ING --> ENR --> DET --> VER
     end
 
-    subgraph DB["PostgreSQL 16 · 23 tables"]
+    subgraph DB["PostgreSQL 16 · 22 tables"]
         RAW[("raw<br/>events · markets · outcomes<br/>wallets · trades · positions")]
         ANA[("analytics<br/>wallet · category · edge<br/>pnl · rankings · follow scores")]
         APP[("app state<br/>alerts · follows · paper trading")]
@@ -227,7 +227,7 @@ committed snapshot, and the frontend's lint/build/test.
 app/                    FastAPI backend
   api/v1/               leaderboard · wallets · markets · categories · alerts · follow · portfolio
   services/             scoring, alerts, paper trading, WebSocket manager
-  db/                   SQLAlchemy models (23 tables)
+  db/                   SQLAlchemy models (21 tables)
   models/               Pydantic schemas and enums
   tests/                unit · API · integration
 magic/default_repo/     Mage AI project — data_loaders / transformers / data_exporters
