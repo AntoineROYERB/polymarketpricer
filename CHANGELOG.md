@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.6.1 (2026-08-28)
+
+Repository prepared for public release.
+
+### Fixes
+- **Leaderboard ranks**: `get_ranking_list` did not filter `ranking_snapshots` by
+  `snapshot_date`, so every historical run was concatenated and ranks repeated
+  (rank 1 appeared eleven times on the main leaderboard). Now pinned to the latest
+  snapshot for the requested list type.
+- **Edge leaderboard**: deduplicated to each wallet's most recent
+  `wallet_edge_snapshots` row; a wallet could previously occupy several rows.
+
+### Database snapshot
+- Replaced the 367 MB full `pg_dump` tracked in Git LFS with a ~3 MB sampled,
+  foreign-key-consistent snapshot stored in plain git. The LFS free tier would have
+  made a public repository unclonable after a handful of clones.
+- Added `scripts/make-sample-seed.sh`; removed `scripts/refresh-seed.sh` and
+  `.gitattributes`. Git LFS is no longer used anywhere in the repository.
+- Split integration-test volume thresholds into sample-safe floors and
+  production-scale thresholds gated behind `FULL_DATASET=1`.
+
+### CI
+- Run the whole non-integration suite (184 tests) instead of only the API tests.
+- Run the frontend Vitest suite; drop the LFS checkout; fail the seed restore on error.
+
+### Documentation
+- Rewrote the root README (what the system does, scoring methodology, architecture
+  diagram, screenshots, geo-blocking note) and the frontend README.
+- Added MIT LICENSE.
+- Refreshed `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and `AGENTS.md`.
+- Moved `FEASIBILITY_REPORT.md` to `docs/FEASIBILITY.md` and the phase plans/specs to
+  `docs/design/`, marked as historical records.
+- Removed AI-tooling artifacts (`.opencode/`, tracked `.claude/`,
+  `phase5-simplification-review.json`).
+
 ## v0.6.0 (2026-07-05)
 
 ### Features
