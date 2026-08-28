@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Edge Terminal — frontend
 
-## Getting Started
+Next.js 16 dashboard for the Polymarket smart money tracker. Consumes the FastAPI
+backend's REST API and subscribes to its alert WebSocket.
 
-First, run the development server:
+Full project documentation is in the [repository root](../README.md).
+
+## Pages
+
+| Route | What |
+|---|---|
+| `/leaderboard` | Main, emerging, consistent, edge and per-category rankings |
+| `/feed` | Live smart money alerts over WebSocket |
+| `/markets`, `/markets/[id]` | Market view with smart money activity |
+| `/wallets/[address]` | Wallet profile: metrics, sentiment, edge, category breakdown |
+| `/follow` | Follow list and follow-score recommendations |
+| `/portfolio` | Paper-trading portfolio, positions and trades |
+
+## Running
+
+The dashboard needs the API. From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To run the frontend alone against an API already listening on `:8000`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Requests to `/api/v1/*` are proxied by `next.config.ts` to `API_PROXY_URL`
+(default `http://localhost:8000`), so the browser never needs a CORS exemption.
+Endpoints under `/follow` and `/portfolio` require the backend's `API_KEY`, entered
+once on `/login` and kept in `localStorage`.
 
-To learn more about Next.js, take a look at the following resources:
+## Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+React 19 · TypeScript · Tailwind 4 · shadcn/ui (Base UI) · TanStack Query · Recharts ·
+Vitest + Testing Library.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm test
+npm run build
+```
