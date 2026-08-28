@@ -46,3 +46,7 @@ magic/mage_data/
 
 # Alembic
 alembic/__pycache__/
+
+# Local agent tooling
+.opencode/
+.claude/

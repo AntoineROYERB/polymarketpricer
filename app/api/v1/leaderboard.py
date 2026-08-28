@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
@@ -104,8 +104,24 @@ async def edge_leaderboard(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> EdgeLeaderboardResponse:
+    # One row per (wallet, snapshot_date): keep each wallet's most recent
+    # snapshot so a wallet cannot occupy several rows of the leaderboard.
+    latest_per_wallet = (
+        select(
+            WalletEdgeSnapshot.wallet.label("wallet"),
+            func.max(WalletEdgeSnapshot.snapshot_date).label("snapshot_date"),
+        )
+        .group_by(WalletEdgeSnapshot.wallet)
+        .subquery()
+    )
+
     stmt = (
         select(WalletEdgeSnapshot)
+        .join(
+            latest_per_wallet,
+            (WalletEdgeSnapshot.wallet == latest_per_wallet.c.wallet)
+            & (WalletEdgeSnapshot.snapshot_date == latest_per_wallet.c.snapshot_date),
+        )
         .where(WalletEdgeSnapshot.edge_score.isnot(None))
         .order_by(WalletEdgeSnapshot.edge_score.desc())
         .offset(offset)

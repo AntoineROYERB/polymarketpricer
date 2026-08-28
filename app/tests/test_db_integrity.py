@@ -8,6 +8,7 @@ These tests connect to the real database and validate:
 - Date / timestamp sanity
 """
 
+import os
 from collections.abc import Generator
 from datetime import date, datetime, timezone
 
@@ -35,21 +36,27 @@ def conn() -> Generator[Connection, None, None]:
         c.close()
 
 
-# ── Minimum expected rows per table ──────────────────────────────────
+# The sampled seed committed to the repo (docker/initdb/seed.sql.gz) carries a
+# 200-wallet slice of the production database, so volume assertions come in two
+# tiers: floors every dataset must clear, and production-scale thresholds that
+# only hold after a full ETL run (FULL_DATASET=1).
+FULL_DATASET = os.getenv("FULL_DATASET", "").lower() in {"1", "true", "yes"}
+
+# ── Minimum expected rows per table (sampled seed and up) ────────────
 ROW_THRESHOLDS = {
-    "events": 10_000,
-    "markets": 50_000,
-    "outcomes": 100_000,
-    "wallets": 1_000,
-    "positions": 5_000,
-    "trades": 50_000,
+    "events": 100,
+    "markets": 500,
+    "outcomes": 1_000,
+    "wallets": 100,
+    "positions": 100,
+    "trades": 5_000,
     "wallet_analytics": 61,
     "ranking_snapshots": 85,
     "category_analytics": 100,
     "category_rankings": 100,
     "wallet_pnl_snapshots": 100,
     "wallet_edge_snapshots": 50,
-    # Phase 5 tables (may be 0 if follow/pipeline not yet executed in seed data)
+    # Populated by the follow / paper-trading pipelines; may be empty in a seed
     "wallet_follows": 0,
     "paper_portfolios": 0,
     "paper_positions": 0,
@@ -57,11 +64,32 @@ ROW_THRESHOLDS = {
     "wallet_category_follow_scores": 0,
 }
 
-EMPTY_TABLES: set[str] = set()  # Phase 5 populates all these tables now
+# ── Volumes expected only after a full ETL run ───────────────────────
+FULL_DATASET_THRESHOLDS = {
+    "events": 10_000,
+    "markets": 50_000,
+    "outcomes": 100_000,
+    "wallets": 1_000,
+    "positions": 5_000,
+    "trades": 50_000,
+}
+
+EMPTY_TABLES: set[str] = set()  # every table above is populated by the pipelines
 
 
 @pytest.mark.parametrize("tbl,min_rows", list(ROW_THRESHOLDS.items()))
 def test_table_row_counts(conn: Connection, tbl: str, min_rows: int) -> None:
+    count: int = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar() or 0
+    assert count >= min_rows, (
+        f"{tbl} has {count} rows, expected at least {min_rows}"
+    )
+
+
+@pytest.mark.skipif(not FULL_DATASET, reason="requires a full ETL dataset (FULL_DATASET=1)")
+@pytest.mark.parametrize("tbl,min_rows", list(FULL_DATASET_THRESHOLDS.items()))
+def test_table_row_counts_full_dataset(
+    conn: Connection, tbl: str, min_rows: int
+) -> None:
     count: int = conn.execute(text(f"SELECT count(*) FROM {tbl}")).scalar() or 0
     assert count >= min_rows, (
         f"{tbl} has {count} rows, expected at least {min_rows}"

@@ -12,7 +12,9 @@
 cp .env.sample .env
 # Then edit .env with your actual values (database URL, Discord webhook, etc.)
 
-# Start infrastructure (PostgreSQL)
+# Start infrastructure (PostgreSQL). On its very first boot the container loads
+# docker/initdb/seed.sql.gz — a 3 MB sampled snapshot of the production database —
+# so you get a populated instance without touching the Polymarket APIs.
 docker compose up -d postgres
 
 # Create virtual environment
@@ -31,73 +33,72 @@ uvicorn app.main:app --reload
 
 ## Testing
 
-The project has four test suites:
-
 ```bash
-# Unit / API tests (mocked, no Docker needed)
-python -m pytest app/tests/test_api/ -v
+# Unit / API tests — mocked, no database needed (184 tests)
+python -m pytest app/tests -m "not integration"
 
-# Service / classifier unit tests (mocked, no Docker needed)
-python -m pytest app/tests/test_alert_service.py app/tests/test_ws_manager.py app/tests/test_edge_scoring.py -v
+# Integration tests — require a running, seeded database (97 tests)
+python -m pytest app/tests -m integration
 
-# Edge scoring unit tests
-python -m pytest app/tests/test_edge_scoring.py -v
-
-# Integration tests (requires docker compose up -d)
-python -m pytest app/tests/test_db_integrity.py -m integration -v
-
-# Run all tests
-python -m pytest app/tests/ -v
+# Everything
+python -m pytest app/tests
 
 # With coverage
-python -m pytest app/tests/ --cov=app -v
+python -m pytest app/tests --cov=app
+
+# Frontend component tests (19 tests)
+cd frontend && npm test
 ```
 
-The **176 tests** (47 unit/API + 63 service + 66 integration) validate row counts, referential integrity,
-not-null constraints, data quality ranges, timestamp sanity, cross-table consistency,
-data filtering, alert classification logic, Discord delivery, WebSocket streaming,
-and edge scoring (FIFO matching, normalization, edge quality ranges) —
-with all CI checks enforced via GitHub Actions (`mypy --strict` + `ruff`).
+### Unit / API tests (184)
 
-### Unit / API Tests (47 tests)
+Mock-based; they never touch PostgreSQL.
 
-Mock-based tests that verify endpoint behaviour without a real database:
+| File | What it validates |
+|---|---|
+| `test_api/test_endpoints.py` | Leaderboard, wallets, markets, health |
+| `test_api/test_category_endpoints.py` | Category leaderboards and wallet category breakdowns |
+| `test_api/test_alert_endpoints.py` | Alert list, filters, pagination, stats, error handling |
+| `test_api/test_edge_endpoints.py` | Edge leaderboard and per-wallet edge |
+| `test_api/test_follow_endpoints.py` | Follow list, recommendations, follow/unfollow |
+| `test_api/test_portfolio_endpoints.py` | Paper portfolio, positions, trades, close, reset |
+| `test_api/test_auth.py` | Bearer-token guard on write endpoints |
+| `test_alert_service.py` | `classify_action`, Discord embed and delivery, poll/mark-notified |
+| `test_ws_manager.py` | Connection lifecycle, broadcast, heartbeat, dead-connection cleanup |
+| `test_edge_scoring.py` | FIFO round-trip matching, normalization, degenerate cases |
+| `test_follow_scoring.py` | Follow-score formula, recency decay, frequency sigmoid, thresholds |
+| `test_paper_trading.py` | Copy-trade sizing, fills, PnL, market resolution |
+| `test_category_classifier.py` | Keyword classification across all categories |
 
-| File | Tests | What it validates |
-|---|---|---|
-| `test_endpoints.py` | 10 | Phase 1 endpoints (leaderboard, wallets, markets, health) |
-| `test_category_endpoints.py` | 8 | Phase 2 endpoints (category leaderboards, wallet categories) |
-| `test_alert_endpoints.py` | 13 | Phase 3 alert endpoints (list, filter, pagination, stats, 404/422 error handling) |
-| `test_edge_endpoints.py` | 6 | Phase 4 edge endpoints (leaderboard empty/with-data/pagination, wallet edge 200/404) |
-| `test_category_classifier.py` | 10 | Category classification for all 8 categories + unclassifiable + case insensitivity (at `app/tests/`) |
+### Integration tests (97)
 
-### Service / Unit Tests (63 tests)
+`test_db_integrity.py` and `test_db_integrity_advanced.py` connect to a real database and
+assert on ETL output: row-count floors, referential integrity across every FK, not-null
+constraints on critical columns, value ranges (win rate, ROI, edge score, drawdown,
+profit factor), timestamp sanity, and cross-table consistency.
 
-Pure function and mocked-service tests:
+Volume thresholds come in two tiers. The default floors hold against the committed
+sampled seed, so the suite runs in CI. Production-scale thresholds (50k markets, 50k
+trades, ...) are gated behind an environment flag and only make sense after a full ETL
+run:
 
-| File | Tests | What it validates |
-|---|---|---|
-| `test_alert_service.py` | 39 | `classify_action`, `_format_action`, `send_discord_alert`, `poll_unnotified_alerts`, `mark_notified`, edge cases |
-| `test_ws_manager.py` | 14 | Connection lifecycle, broadcast, heartbeat, dead connection cleanup |
-| `test_edge_scoring.py` | 10 | Edge computation (FIFO matching, normalization, empty/zero edge cases) |
+```bash
+FULL_DATASET=1 python -m pytest app/tests -m integration
+```
 
-### Integration Tests (66 tests)
+### Refreshing the seed
 
-Connect to the actual PostgreSQL instance and validate ETL pipeline output:
+After a full ETL run, regenerate the committed snapshot:
 
-| Category | Tests | What it validates |
-|---|---|---|
-| Row counts | 12 | Each populated table meets a minimum row threshold |
-| Referential integrity | 9 | No orphaned foreign keys across all FK relationships (incl. `wallet_pnl_snapshots`) |
-| Not-null constraints | 8 | Critical columns (`question`, `price`, `timestamp`, `wallet`, analytics metrics, category analytics, pnl_snapshot keys) have no NULLs |
-| Analytics quality | 7 | PNL within ±500k, win_rate in [0,1], wallet_score in [0,100], drawdown ≤ 0, profit_factor ≥ 0, category ROI/win_rate in range |
-| PnL snapshot quality | 2 | `total_pnl = realized + unrealized`, PnL ≤ 100× cost basis |
-| Timestamp sanity | 2 | No future timestamps in `trades` or future dates in `wallet_analytics` |
-| Cross-table consistency | 5 | Analytics/trade wallets exist in `wallets`, markets have at least one outcome, category wallets exist in `wallets`, pnl_snapshot FK valid |
-| ROI range (relaxed) | 1 | Category analytics ROI within [-100000, 500000] |
-| Alerts (Phase 3) | 8 | Alerts table queryable, alert_rules global default, FK (wallet, market), NOT NULL (8 cols), score range [0,100], position_size > 0, valid action enums |
-| PnL snapshot | 3 | Consistency, bounds, plus 1 combined with row counts |
-| Edge Scoring (Phase 4) | 9 | Edge snapshots queryable, FK, NOT NULL (4 cols), edge_score in [0,1], edge_consistency in [0,1], edge_volatility ≥ 0, avg_edge bounds, edge_score column in wallet_analytics, edge_score column in ranking_snapshots |
+```bash
+./scripts/make-sample-seed.sh    # writes docker/initdb/seed.sql.gz (~3 MB)
+```
+
+The script samples the 200 highest-scoring wallets, their 120 most recent trades each,
+and every event / market / outcome those trades reference, so the result stays
+foreign-key consistent. It blanks `alert_rules.discord_webhook_url` — the seed is
+committed to a public repository. Keep the file small: it lives in plain git, not Git
+LFS.
 
 ## Code Quality
 
@@ -136,6 +137,8 @@ cp .env.sample .env
 | `POSTGRES_DB` | ✅ | `polymarket` | `postgres` service | Database name |
 | `POSTGRES_USER` | ✅ | `app` | `postgres` service | Database user |
 | `POSTGRES_PASSWORD` | ✅ | `devpassword` | `postgres` service | Database password |
+| `API_KEY` | ✅ | — | `app/`, frontend | Bearer token guarding `/follow` and `/portfolio`. The app refuses to start without it — generate with `openssl rand -hex 32` |
+| `CORS_ORIGINS` | ❌ | `["http://localhost:3000"]` | `app/` | JSON list of allowed browser origins; empty blocks all cross-origin requests |
 | `DISCORD_WEBHOOK_URL` | ❌ | empty | `app/` | Discord webhook for smart money alerts |
 | `ALERT_POLL_INTERVAL_SECONDS` | ❌ | `10` | `app/` | Background poll interval for new alerts |
 | `MAGE_MEM_LIMIT` | ❌ | none | `mage` service | Docker memory limit |

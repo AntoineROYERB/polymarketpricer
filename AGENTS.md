@@ -13,13 +13,13 @@ docker compose exec mage mage run /home/src/default_repo ingestion_market_discov
 docker compose exec postgres psql -U app -d polymarket < docker/initdb/seed.sql.gz
 
 # Tests (no DB needed)
-python -m pytest app/tests/test_api/ -v
-python -m pytest app/tests/test_follow_scoring.py app/tests/test_paper_trading.py -v
+python -m pytest app/tests -m "not integration"
 ruff check app/
 mypy app/
 
-# Integration (needs postgres running)
-python -m pytest app/tests/test_db_integrity.py -m integration -v
+# Integration (needs a running, seeded postgres)
+python -m pytest app/tests -m integration
+FULL_DATASET=1 python -m pytest app/tests -m integration   # after a full ETL run
 ```
 
 ## Architecture
@@ -39,7 +39,7 @@ The orchestration pipeline (`orchestration/`) runs all 12 data pipelines plus a 
 - Paper trade generation: polls every 10s, `FOR UPDATE SKIP LOCKED` for exactly-once
 - WebSocket heartbeat: every 30s at `/api/v1/alerts/ws`
 
-**22 Alembic migrations** under `alembic/versions/`. Always run `alembic upgrade head` after restoring seed or pulling new migrations.
+**21 Alembic migrations** under `alembic/versions/`. Always run `alembic upgrade head` after restoring seed or pulling new migrations.
 
 **Phase 5 implemented**: Follow recommendation engine (`app/services/follow_scoring.py`, scoring weights in `app/services/scoring_constants.py`), paper trading (`app/services/paper_trading.py`), follow/portfolio API endpoints, DB models `WalletFollow`, `PaperPortfolio`, `PaperPosition`, `PaperTrade`, `WalletCategoryFollowScore`.
 
@@ -49,17 +49,21 @@ The orchestration pipeline (`orchestration/`) runs all 12 data pipelines plus a 
 
 | Suite | Command | Needs DB? |
 |-------|---------|-----------|
-| API mock tests | `python -m pytest app/tests/test_api/ -v` | No |
-| Service unit tests | `python -m pytest app/tests/test_follow_scoring.py app/tests/test_paper_trading.py app/tests/test_edge_scoring.py app/tests/test_alert_service.py app/tests/test_ws_manager.py -v` | No |
-| Integration tests | `python -m pytest app/tests/test_db_integrity.py -m integration -v` | Yes |
+| Unit + API (184) | `python -m pytest app/tests -m "not integration"` | No |
+| Integration (97) | `python -m pytest app/tests -m integration` | Yes |
+| Frontend (19) | `cd frontend && npm test` | No |
 
 API mock tests use ASGITransport with mocked session (`conftest.py`). Integration tests use sync psycopg2; sync URL derived by replacing `postgresql+asyncpg://` → `postgresql+psycopg2://`.
 
 ## Environment gotchas
 
 - `DATABASE_URL` differs inside Docker (`postgres` hostname) vs `.env` (`localhost`). Docker compose hardcodes `postgresql+asyncpg://app:devpassword@postgres:5432/polymarket`.
-- `docker/initdb/seed.sql.gz` tracked via Git LFS — run `git lfs pull` after clone.
+- `docker/initdb/seed.sql.gz` is a ~3 MB **sampled** snapshot in plain git (no Git LFS).
+  Postgres loads it automatically on first boot via `/docker-entrypoint-initdb.d`.
+  Regenerate with `./scripts/make-sample-seed.sh` after a full ETL run; keep it small.
 - Seed restore order: seed data → `alembic upgrade head` (never reverse).
+- Integration-test volume thresholds have two tiers: sample-safe floors by default,
+  production volumes behind `FULL_DATASET=1`. Keep both in sync when the schema grows.
 
 ## Reference docs
 
@@ -70,8 +74,6 @@ API mock tests use ASGITransport with mocked session (`conftest.py`). Integratio
 | `docs/ALERTS.md` | Alert pipeline, Discord setup |
 | `docs/DATABASE.md` | Schema, category classification, migrations |
 | `docs/DEVELOPMENT.md` | Local setup, testing, code quality |
-| `.opencode/opencode.jsonc` | OpenCode agent configurations |
-| `.opencode/agents/qa-engineer.md` | QA review agent instructions |
-| `.opencode/commands/commit.md` | Commit command (runs pre-commit checks) |
-| `.opencode/plans/` | Phase specifications for coding agents |
+| `docs/FEASIBILITY.md` | Phase 0 data-source validation and rate limits |
+| `docs/design/plans/` | Historical phase specifications and implementation plans |
 | `frontend/AGENTS.md` | Next.js 16 breaking changes warning |
