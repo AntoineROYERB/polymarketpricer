@@ -25,6 +25,12 @@ and paper-trades the copy so the strategy can be evaluated before any real money
   <em>Wallet profile — performance, sentiment split and edge metrics</em>
 </p>
 
+<p align="center">
+  <img src="docs/images/markets.png" alt="Markets — every ingested market, searchable and filterable" width="900">
+  <br>
+  <em>Markets — the 210k ingested markets, searchable and filterable by category</em>
+</p>
+
 ---
 
 ## Why there is no hosted demo
@@ -36,7 +42,8 @@ designed to run entirely on a laptop:
 - **`docker compose up` gives you a working instance with real data.** A 3 MB sampled
   snapshot of the production database (200 wallets, 24k trades, 1.3k markets, plus every
   derived analytics table) is committed to the repo and loaded on first boot. No API
-  access needed to explore the app, the API, or the dashboard.
+  access needed to explore the app, the API, or the dashboard — the leaderboards, the
+  market browser and every wallet profile are populated from the moment it starts.
 - The ETL layer that *does* need Polymarket is isolated behind Mage AI pipelines. It is
   fully implemented and documented, and it is what produced the snapshot — but nothing
   else in the stack depends on it being reachable.

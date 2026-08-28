@@ -67,6 +67,41 @@ async def test_markets_with_category(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_markets_unknown_category_returns_empty(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/markets?category=not-a-category")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"] == []
+    assert data["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_markets_response_carries_total(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/markets")
+    assert response.status_code == 200
+    assert "total" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_markets_accepts_search(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/markets?search=bitcoin")
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sort", ["volume", "liquidity", "recent"])
+async def test_markets_accepts_known_sorts(client: AsyncClient, sort: str) -> None:
+    response = await client.get(f"/api/v1/markets?sort={sort}")
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_markets_rejects_unknown_sort(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/markets?sort=bogus")
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_market_summary_shape(client: AsyncClient) -> None:
     response = await client.get("/api/v1/markets?limit=1")
     assert response.status_code == 200

@@ -1,8 +1,11 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func as sa_func
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.elements import UnaryExpression
 
 from app.api.dependencies import get_db
 from app.db.models import Alert, Market, Outcome, Position
@@ -23,30 +26,64 @@ router = APIRouter()
     "",
     response_model=MarketListResponse,
     summary="List Markets",
-    description="All markets, optionally filtered by category.",
+    description=(
+        "Ingested markets, most traded first. Optionally filtered by category and "
+        "full-text search on the market question."
+    ),
 )
 async def markets(
     category: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
+    sort: str = Query(default="volume", pattern="^(volume|liquidity|recent)$"),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> MarketListResponse:
-    stmt = select(Market)
+    # Markets carry the category the API reported plus the one the classifier
+    # derived; either is a legitimate match.
+    filters = []
     if category is not None:
         norm_category = validate_category(category)
         if norm_category is None:
-            return MarketListResponse(data=[], limit=limit, offset=offset)
-        stmt = stmt.where(Market.category == norm_category)
-    stmt = stmt.limit(limit).offset(offset)
+            return MarketListResponse(data=[], total=0, limit=limit, offset=offset)
+        filters.append(
+            or_(Market.category == norm_category, Market.mapped_category == norm_category)
+        )
+    if search:
+        filters.append(Market.question.ilike(f"%{search}%"))
+
+    count_stmt = select(sa_func.count(Market.id))
+    if filters:
+        count_stmt = count_stmt.where(*filters)
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    order_columns: dict[str, UnaryExpression[Any]] = {
+        "volume": Market.volume_usd.desc().nullslast(),
+        "liquidity": Market.liquidity_usd.desc().nullslast(),
+        "recent": Market.created_at.desc().nullslast(),
+    }
+
+    stmt = select(Market)
+    if filters:
+        stmt = stmt.where(*filters)
+    stmt = stmt.order_by(order_columns[sort], Market.id).limit(limit).offset(offset)
 
     result = await db.execute(stmt)
     rows = result.scalars().all()
 
     return MarketListResponse(
-        data=[MarketSummary.model_validate(r) for r in rows],
+        data=[_to_summary(r) for r in rows],
+        total=total,
         limit=limit,
         offset=offset,
     )
+
+
+def _to_summary(market: Market) -> MarketSummary:
+    summary = MarketSummary.model_validate(market)
+    if summary.category is None:
+        summary.category = market.mapped_category  # type: ignore[assignment]
+    return summary
 
 
 @router.get(

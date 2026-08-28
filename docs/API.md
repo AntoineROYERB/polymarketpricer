@@ -76,13 +76,19 @@ The `edge_metrics` field (when available) contains the edge scoring snapshot for
 
 ## `GET /api/v1/markets`
 
-List known markets.
+Every ingested market, most traded first.
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `category` | string | — | Filter by category |
+| `category` | string | — | Filter by category. Matches either the category reported by the Polymarket API or the one derived by the classifier — ~70% of markets only have the derived one |
+| `search` | string | — | Case-insensitive substring match on the market question (max 200 chars) |
+| `sort` | string | `volume` | `volume`, `liquidity` or `recent` (creation date). Anything else returns `422` |
 | `limit` | int | 50 | Results per page (max 500) |
 | `offset` | int | 0 | Pagination offset |
+
+The response carries a `total` alongside `data`, `limit` and `offset`, so a client can
+paginate without over-fetching. An unknown `category` returns an empty page with
+`total: 0` rather than an error.
 
 ## `GET /api/v1/categories`
 

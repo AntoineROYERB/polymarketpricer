@@ -11,7 +11,7 @@ Full project documentation is in the [repository root](../README.md).
 |---|---|
 | `/leaderboard` | Main, emerging, consistent, edge and per-category rankings |
 | `/feed` | Live smart money alerts over WebSocket |
-| `/markets`, `/markets/[id]` | Market view with smart money activity |
+| `/markets`, `/markets/[id]` | Browse every ingested market (search, category filter, sort) and drill into one |
 | `/wallets/[address]` | Wallet profile: metrics, sentiment, edge, category breakdown |
 | `/follow` | Follow list and follow-score recommendations |
 | `/portfolio` | Paper-trading portfolio, positions and trades |

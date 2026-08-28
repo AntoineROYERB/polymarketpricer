@@ -13,6 +13,8 @@ import type {
   PaperTradeListResponse,
   PortfolioResetResponse,
   MarketDetailResponse,
+  MarketListResponse,
+  MarketSortKey,
 } from "@/types/api";
 
 const API_URL = "/api/v1";
@@ -55,6 +57,16 @@ export const api = {
     fetchJson<CategoryLeaderboardResponse>(`/leaderboard/${category}?limit=${limit}&offset=${offset}`),
 
   // Markets
+  markets: (params: { category?: string; search?: string; sort?: MarketSortKey; limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.category && params.category !== "All") q.set("category", params.category);
+    if (params.search) q.set("search", params.search);
+    q.set("sort", params.sort ?? "volume");
+    q.set("limit", String(params.limit ?? 50));
+    q.set("offset", String(params.offset ?? 0));
+    return fetchJson<MarketListResponse>(`/markets?${q.toString()}`);
+  },
+
   marketDetail: (marketId: string) =>
     fetchJson<MarketDetailResponse>(`/markets/${marketId}`),
 

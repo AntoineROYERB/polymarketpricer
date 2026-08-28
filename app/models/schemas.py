@@ -226,6 +226,7 @@ class MarketSummary(BaseModel):
 
 class MarketListResponse(BaseModel):
     data: list[MarketSummary]
+    total: int = 0
     limit: int
     offset: int
 

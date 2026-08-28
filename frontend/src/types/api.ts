@@ -243,6 +243,28 @@ export interface ActiveTraderEntry {
   total_pnl: number | null;
 }
 
+export interface MarketSummary {
+  id: string;
+  question: string;
+  category: string | null;
+  event_slug: string | null;
+  volume_usd: number | null;
+  liquidity_usd: number | null;
+  close_time: string | null;
+  created_at: string | null;
+  resolved_at: string | null;
+  winning_outcome: string | null;
+}
+
+export interface MarketListResponse {
+  data: MarketSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type MarketSortKey = "volume" | "liquidity" | "recent";
+
 export interface MarketDetailResponse {
   id: string;
   question: string;
