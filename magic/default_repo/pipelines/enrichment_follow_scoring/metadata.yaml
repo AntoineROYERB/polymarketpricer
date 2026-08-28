@@ -53,8 +53,7 @@ blocks:
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
-  downstream_blocks:
-  - trigger_follow_scoring
+  downstream_blocks: []
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -70,8 +69,7 @@ blocks:
 - all_upstream_blocks_executed: false
   color: null
   configuration: {}
-  downstream_blocks:
-  - trigger_follow_scoring
+  downstream_blocks: []
   executor_config: null
   executor_type: local_python
   has_callback: null
@@ -84,23 +82,6 @@ blocks:
   upstream_blocks:
   - compute_category_follow_scores
   uuid: export_category_follow_scores
-- all_upstream_blocks_executed: false
-  color: null
-  configuration: {}
-  downstream_blocks: []
-  executor_config: null
-  executor_type: local_python
-  has_callback: null
-  language: python
-  name: trigger_follow_scoring
-  retry_config: null
-  status: not_executed
-  timeout: null
-  type: data_exporter
-  upstream_blocks:
-  - export_follow_scores
-  - export_category_follow_scores
-  uuid: trigger_follow_scoring
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}
