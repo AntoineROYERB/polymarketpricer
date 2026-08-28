@@ -55,3 +55,4 @@ def load_data_from_api(**kwargs) -> DataFrame:
 @test
 def test_output(df) -> None:
     assert df is not None, 'The output is undefined'
+    assert not df.empty, 'No wallets discovered'
