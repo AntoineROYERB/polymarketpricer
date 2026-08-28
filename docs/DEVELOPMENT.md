@@ -21,8 +21,10 @@ docker compose up -d postgres
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies.
+# requirements.txt is runtime only — what ships in the image.
+# requirements-dev.txt adds pytest, ruff, mypy, bandit and pip-audit.
+pip install -r requirements-dev.txt
 
 # Run migrations
 alembic upgrade head
@@ -34,7 +36,7 @@ uvicorn app.main:app --reload
 ## Testing
 
 ```bash
-# Unit / API tests — mocked, no database needed (184 tests)
+# Unit / API tests — mocked, no database needed (212 tests)
 python -m pytest app/tests -m "not integration"
 
 # Integration tests — require a running, seeded database (97 tests)
@@ -50,7 +52,7 @@ python -m pytest app/tests --cov=app
 cd frontend && npm test
 ```
 
-### Unit / API tests (184)
+### Unit / API tests (212)
 
 Mock-based; they never touch PostgreSQL.
 
@@ -63,6 +65,9 @@ Mock-based; they never touch PostgreSQL.
 | `test_api/test_follow_endpoints.py` | Follow list, recommendations, follow/unfollow |
 | `test_api/test_portfolio_endpoints.py` | Paper portfolio, positions, trades, close, reset |
 | `test_api/test_auth.py` | Bearer-token guard on write endpoints |
+| `test_api/test_ws_auth.py` | Alert WebSocket rejects missing, empty and wrong keys, and foreign origins |
+| `test_api/test_rate_limit.py` | Default rate limit applies to the routes mounted through `include_router` |
+| `test_sql_utils.py` | LIKE metacharacter escaping in search filters |
 | `test_alert_service.py` | `classify_action`, Discord embed and delivery, poll/mark-notified |
 | `test_ws_manager.py` | Connection lifecycle, broadcast, heartbeat, dead-connection cleanup |
 | `test_edge_scoring.py` | FIFO round-trip matching, normalization, degenerate cases |
