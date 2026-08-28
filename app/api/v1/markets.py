@@ -18,6 +18,7 @@ from app.models.schemas import (
 )
 from app.utils.category import validate_category
 from app.utils.decimal_helpers import to_decimal
+from app.utils.sql import escape_like
 
 router = APIRouter()
 
@@ -50,7 +51,7 @@ async def markets(
             or_(Market.category == norm_category, Market.mapped_category == norm_category)
         )
     if search:
-        filters.append(Market.question.ilike(f"%{search}%"))
+        filters.append(Market.question.ilike(f"%{escape_like(search)}%", escape="\\"))
 
     count_stmt = select(sa_func.count(Market.id))
     if filters:

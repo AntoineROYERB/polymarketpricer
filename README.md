@@ -143,7 +143,7 @@ flowchart LR
     end
 
     subgraph API["FastAPI — :8000"]
-        REST["29 REST endpoints<br/>leaderboard · wallets · markets<br/>categories · alerts · follow · portfolio"]
+        REST["28 REST endpoints<br/>leaderboard · wallets · markets<br/>categories · alerts · follow · portfolio"]
         WS["WebSocket /alerts/ws"]
         BG["background loop<br/>alert delivery + copy trading"]
     end
@@ -172,7 +172,7 @@ Detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | **Database** | PostgreSQL 16 · Alembic (21 migrations) · `NUMERIC(28,12)` throughout — no floats in money paths |
 | **ETL** | Mage AI · pandas · 13 pipelines (loaders → transformers → exporters) with an integrity gate that fails the run on bad output |
 | **Frontend** | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui · TanStack Query · Recharts |
-| **Quality** | 281 Python tests (unit · API · integration) · Vitest component tests · `ruff` · `mypy --strict` · `bandit` · `safety` · pre-commit |
+| **Quality** | 309 Python tests (unit · API · integration) · 19 Vitest component tests · `ruff` · `mypy --strict` · `bandit` · `pip-audit` · `npm audit` · pre-commit |
 | **Ops** | Docker Compose (4 services) · GitHub Actions CI on every push and PR |
 
 ---
@@ -212,7 +212,7 @@ covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 ## Tests
 
 ```bash
-pytest app/tests -m "not integration"   # 191 unit + API tests, no database needed
+pytest app/tests -m "not integration"   # 212 unit + API tests, no database needed
 pytest app/tests -m integration         # data-quality suite against a live database
 cd frontend && npm test                 # Vitest component tests
 ```
@@ -222,9 +222,11 @@ volume floors on the ETL output. Production-scale volume thresholds are gated be
 `FULL_DATASET=1` so the same suite passes against the sampled seed in CI and against a
 full ETL run locally.
 
-CI runs lint (`ruff`), types (`mypy --strict`), security (`bandit`, `safety`), the unit
-and API suites, the integration suite against a fresh PostgreSQL seeded from the
-committed snapshot, and the frontend's lint/build/test.
+CI runs lint (`ruff`), types (`mypy --strict`), security (`bandit` and `pip-audit` on the
+Python side, `npm audit` on the frontend), the unit and API suites, the integration suite
+against a fresh PostgreSQL seeded from the committed snapshot, the frontend's
+lint/build/test, and a Docker smoke test that follows the quick start below verbatim and
+asserts the stack comes up serving seeded data. Every one of those gates fails the build.
 
 ---
 
@@ -258,6 +260,7 @@ scripts/                seed generation, backfills, pipeline orchestration
 | [Alerts](docs/ALERTS.md) | Detection pipeline, rules engine, Discord delivery |
 | [Development](docs/DEVELOPMENT.md) | Local setup, testing, code quality, configuration |
 | [Feasibility study](docs/FEASIBILITY.md) | Phase 0: data-source validation, rate limits, cost model |
+| [Security](SECURITY.md) | Threat model, controls in place, what to change before exposing it |
 | [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md) | Phase status and history |
 
 ---

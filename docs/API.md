@@ -275,6 +275,18 @@ When no edge data exists, returns a default response with `avg_edge: 0` and `num
 
 Real-time WebSocket stream of new smart money alerts. The server sends heartbeat pings (`{"type": "ping"}`) and alert payloads (`{"type": "alert", "payload": {...}}`). Clients should respond with `{"type": "pong"}` to keep the connection alive.
 
+**Authentication is required.** Browsers cannot set headers on a WebSocket handshake, so
+the key travels as a query parameter instead of an `Authorization` header:
+
+```
+ws://localhost:8000/api/v1/alerts/ws?api_key=<API_KEY>
+```
+
+A missing, empty or incorrect key closes the socket with code `4001`, as does a request
+carrying an `Origin` header outside `CORS_ORIGINS`. Because the key appears in the URL it
+can be captured by proxy and access logs; behind a real deployment, terminate TLS and
+rotate the key rather than treating the URL as private.
+
 
 ---
 

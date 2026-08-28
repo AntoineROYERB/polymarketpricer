@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.6.2 (2026-08-28)
+
+Pre-publication security audit. Full-history secret scan (969 blobs, 138 commits) found
+no committed credentials; the findings below were all in application code or tooling.
+
+### Security
+- **WebSocket auth bypass** (breaking): `/api/v1/alerts/ws` only rejected an *incorrect*
+  `api_key`, never a missing one, so any non-browser client could attach to the alert
+  stream. The key was documented as "optional" in v0.6.0; it is now required, and a
+  missing, empty or wrong key closes with `4001` alike. Clients that connected without a
+  key must now send one.
+- **Rate limiting was inactive on every API route**: since FastAPI 0.13x, `include_router`
+  is represented by a single `_IncludedRouter` with no `endpoint` attribute, so slowapi's
+  middleware found no handler and treated all 28 `/api/v1/*` routes as exempt. `/health`
+  and `/docs` stayed limited, which hid the gap. Replaced with `app/api/rate_limit.py`,
+  which keys the check on the request path; `/health` is now explicitly exempt so
+  container health probes are never throttled.
+- **Timing-safe key comparison**: `secrets.compare_digest` on both auth paths.
+- **LIKE metacharacter escaping**: a caller-supplied `%` in the market search or the alert
+  wallet filter turned the filter into a match-everything. Added `app/utils/sql.py`;
+  bounded the alert wallet filter at 100 characters.
+- **Wallet validation**: `^0x.+$` accepted anything 0x-prefixed while the error message
+  promised a 42-character hex address. Tightened to match the message.
+- **Secret spread**: `env_file: .env` handed the frontend container `API_KEY`,
+  `POSTGRES_PASSWORD` and `DATABASE_URL`, none of which it uses. Removed.
+- Added `SECURITY.md` — threat model, controls in place, and what to change before
+  exposing the stack.
+
+### CI
+- `bandit` and `safety` ran with `|| true` and could never fail the build, and `bandit -c
+  pyproject.toml` pointed at a file with no `[tool.bandit]` section. Added the section
+  (excluding tests, whose `assert` and hardcoded-table queries were the only findings),
+  dropped the `|| true`, and replaced the deprecated `safety` with `pip-audit`.
+- Added `npm audit --audit-level=high` to the frontend job.
+- Added a `docker-smoke` job that follows the README quick start verbatim and asserts the
+  stack comes up serving seeded data.
+
+### Dependencies
+- Frontend: 11 advisories (9 high) → 0, via `next` 16.2.10 → 16.3.3.
+- Python: `pytest` PYSEC-2026-1845 → 0, via `pytest>=9.0.3`.
+- Split `requirements.txt` (runtime) from `requirements-dev.txt` (pytest, ruff, mypy,
+  bandit, pip-audit). The application image no longer ships test tooling: 753 MB → 573 MB.
+- `.dockerignore` now excludes `frontend/` and `node_modules/`; a local `npm install`
+  previously dragged ~700 MB into the backend build context.
+- Refreshed pre-commit hook revisions to match the pinned tool versions, added
+  `pydantic-settings` to the mypy hook, and added `check-yaml`, `check-merge-conflict`
+  and `detect-private-key`.
+
+### Tests
+- 281 → 309. New: WebSocket auth (missing / empty / wrong key, foreign origin), rate
+  limiting on included routes, LIKE escaping, malformed wallet rejection. The rate-limit
+  and WebSocket suites were verified to fail against the pre-fix code.
+
+### Fixes
+- Client-side navigation in the market detail table used `window.location.href`, forcing a
+  full page reload; now `router.push`.
+- Removed dead reconnect timer in `use-websocket.ts` and skipped the connection attempt
+  when no key is stored, rather than opening a socket the server will close.
+
+### Documentation
+- Corrected README counts: 281 → 309 tests, 191 → 212 non-integration, "29 REST
+  endpoints" → 28 REST plus the WebSocket.
+- Documented that WebSocket auth is required, and that the key travels in the URL and is
+  therefore visible to proxy and access logs.
+
 ## v0.6.1 (2026-08-28)
 
 Repository prepared for public release.

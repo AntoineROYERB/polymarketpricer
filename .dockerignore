@@ -20,3 +20,12 @@ venv/
 plans/
 scripts/
 .opencode/
+
+# The Next.js app builds from its own context; the Python image never needs it.
+# Without this, a local `npm install` drags ~700 MB of node_modules into the build.
+frontend/
+node_modules/
+
+# Documentation and images are not used at runtime
+docs/
+*.md

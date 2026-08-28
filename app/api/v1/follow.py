@@ -34,7 +34,7 @@ from app.utils.category import validate_category_or_404
 router = APIRouter()
 
 _MAX_FOLLOWS = 500
-_WALLET_RE = re.compile(r"^0x.+$")
+_WALLET_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
 
 def _validate_wallet(wallet: str) -> None:
@@ -42,7 +42,7 @@ def _validate_wallet(wallet: str) -> None:
     if not _WALLET_RE.match(wallet):
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid wallet address format: '{wallet}'. Expected 0x-prefixed 42-char hex address.",
+            detail="Invalid wallet address format. Expected a 0x-prefixed 42-character hex address.",
         )
 
 

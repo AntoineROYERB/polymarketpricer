@@ -1,0 +1,12 @@
+# Test and tooling dependencies. Not installed in the application image —
+# see Dockerfile, which installs requirements.txt only.
+-r requirements.txt
+
+pytest>=9.0.3,<10
+# 0.x caps pytest below 9, which keeps PYSEC-2026-1845 in the tree.
+pytest-asyncio>=1.0,<2
+respx>=0.23,<1
+ruff>=0.16,<0.17
+mypy>=1.15,<2
+bandit>=1.8,<2
+pip-audit>=2.7,<3

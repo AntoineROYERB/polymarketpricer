@@ -7,10 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies.auth import verify_api_key
 from app.config import settings
 from app.db.models import Alert, Market, Wallet
 from app.models.schemas import AlertItem, AlertListResponse
 from app.services.ws_manager import manager
+from app.utils.sql import escape_like
 
 router = APIRouter()
 
@@ -26,7 +28,7 @@ async def list_alerts(
     offset: int = Query(default=0, ge=0),
     category: str | None = None,
     min_score: Decimal | None = None,
-    wallet: str | None = None,
+    wallet: str | None = Query(default=None, max_length=100),
     db: AsyncSession = Depends(get_db),
 ) -> AlertListResponse:
     stmt = (
@@ -40,7 +42,9 @@ async def list_alerts(
     if min_score is not None:
         stmt = stmt.where(Alert.wallet_score >= min_score)
     if wallet:
-        stmt = stmt.where(Alert.wallet.ilike(f"%{wallet}%"))
+        # Escape LIKE metacharacters so a caller-supplied "%" matches a literal
+        # percent sign instead of turning the filter into a match-everything.
+        stmt = stmt.where(Alert.wallet.ilike(f"%{escape_like(wallet)}%", escape="\\"))
 
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
@@ -100,12 +104,17 @@ async def alert_websocket(
     websocket: WebSocket,
     api_key: str | None = Query(default=None),
 ) -> None:
-    """Real-time smart money alert stream via WebSocket."""
-    if api_key and api_key != settings.api_key:
+    """Real-time smart money alert stream via WebSocket.
+
+    Browsers cannot set headers on a WebSocket handshake, so the key travels as a
+    query parameter. It is still required: a missing key is rejected exactly like a
+    wrong one.
+    """
+    if not verify_api_key(api_key):
         await websocket.close(code=4001)
         return
     origin = websocket.headers.get("origin", "")
-    if origin and settings.cors_origins and origin not in settings.cors_origins:
+    if origin and origin not in settings.cors_origins:
         await websocket.close(code=4001)
         return
     await manager.connect(websocket)

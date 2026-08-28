@@ -16,12 +16,23 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
-      - run: pip install bandit safety
+      - run: pip install -r requirements-dev.txt
       - run: ruff check app/
       - run: mypy app/
-      - run: bandit -r app/ -c pyproject.toml || true
-      - run: safety check -r requirements.txt || true
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Static analysis
+        run: bandit -r app/ -c pyproject.toml
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -31,7 +42,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - run: python -m pytest app/tests -m "not integration" -v
 
   integration-tests:
@@ -59,7 +70,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - name: Restore sampled seed data
         run: gunzip -c docker/initdb/seed.sql.gz | psql -U app -d polymarket -h localhost -v ON_ERROR_STOP=1
         env:
@@ -82,6 +93,33 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Follow the README quick start verbatim
+        run: |
+          cp .env.sample .env
+          sed -i "s/^API_KEY=.*/API_KEY=$(openssl rand -hex 32)/" .env
+          docker compose up -d --build
+      - name: Wait for the API to become healthy
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/health > /dev/null; then exit 0; fi
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+      - name: Assert the seeded data is served
+        run: |
+          test "$(curl -s 'http://localhost:8000/api/v1/leaderboard?limit=5' | jq '.data | length')" = "5"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/leaderboard)" = "200"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/follow)" = "401"
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

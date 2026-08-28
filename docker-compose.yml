@@ -54,8 +54,6 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       API_PROXY_URL: http://app:8000
-    env_file:
-      - .env
     depends_on:
       - app
     restart: unless-stopped
