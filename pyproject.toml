@@ -18,3 +18,8 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "f
 ignore_missing_imports = true
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+[tool.bandit]
+# Tests assert with `assert` (B101) and build integrity queries from hardcoded
+# table names (B608); neither is a finding in application code.
+exclude_dirs = ["app/tests"]
