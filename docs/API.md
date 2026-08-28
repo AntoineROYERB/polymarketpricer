@@ -1,5 +1,19 @@
 # API Reference
 
+All routes are under `/api/v1` unless stated otherwise. Interactive documentation is
+served at `http://localhost:8000/docs`.
+
+**Authentication.** Read endpoints are open. Every `/follow` and `/portfolio` endpoint
+except `/follow/recommendations*` requires a bearer token matching the backend's
+`API_KEY`, and returns `401` without it:
+
+```
+Authorization: Bearer <API_KEY>
+```
+
+The alert WebSocket accepts an optional `api_key` query parameter and closes with code
+`4001` on mismatch. Rate limit: 60 requests per minute per client (slowapi).
+
 ## `GET /health`
 
 Health check.
@@ -254,3 +268,110 @@ When no edge data exists, returns a default response with `avg_edge: 0` and `num
 ## `WS /api/v1/alerts/ws`
 
 Real-time WebSocket stream of new smart money alerts. The server sends heartbeat pings (`{"type": "ping"}`) and alert payloads (`{"type": "alert", "payload": {...}}`). Clients should respond with `{"type": "pong"}` to keep the connection alive.
+
+
+---
+
+## `GET /api/v1/markets/{market_id}`
+
+Detailed market info: outcomes with current prices, buy/sell sentiment ratio, and the
+tracked wallets active in the market.
+
+---
+
+# Follow
+
+Requires `Authorization: Bearer <API_KEY>` unless noted.
+
+## `GET /api/v1/follow`
+
+List the wallets the user follows.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `active` | bool | `true` | Only active follows |
+| `auto_copy` | bool | — | Filter on whether copy trading is enabled |
+
+Each entry: `id`, `wallet`, `label`, `active`, `auto_copy_enabled`, `copy_mode`,
+`copy_value`, `category_filter`, `followed_at`, `updated_at`.
+
+## `POST /api/v1/follow/{wallet}`
+
+Start following a wallet.
+
+```json
+{
+  "label": "sports specialist",
+  "auto_copy_enabled": true,
+  "copy_mode": "fixed",
+  "copy_value": "50.00",
+  "category_filter": "sports"
+}
+```
+
+`copy_mode` is one of `fixed` (a fixed USD amount per copied trade), `proportional`
+(scaled to the followed wallet's position size) or `percentage` (a share of the paper
+portfolio balance). `category_filter` restricts copying to a single category.
+
+## `PATCH /api/v1/follow/{wallet}`
+
+Update a follow's configuration. Same fields as above, plus `active`.
+
+## `DELETE /api/v1/follow/{wallet}`
+
+Unfollow (soft delete — the row is kept with `unfollowed_at` set).
+
+## `GET /api/v1/follow/recommendations`
+
+Wallets ranked by global follow score, each with a `FOLLOW` / `WATCH` / `IGNORE`
+recommendation and the reasons behind it. No authentication required.
+
+**Score formula:** `0.30×edge + 0.20×consistency + 0.20×specialization + 0.15×recency + 0.15×frequency`,
+where recency decays as `e^(−days/90)` and frequency is a sigmoid over trades per month.
+Thresholds: `FOLLOW` at ≥ 0.70, `WATCH` at ≥ 0.35.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | int | 20 | Results per page |
+| `offset` | int | 0 | Pagination offset |
+
+## `GET /api/v1/follow/recommendations/by-category/{category}`
+
+Same, restricted to one category and scored with the per-category weights
+(`0.25×edge + 0.25×roi_percentile + 0.20×win_rate + 0.15×specialist_bonus + 0.10×volume_percentile + 0.05×recency`).
+
+## `GET /api/v1/follow/recommendations/{wallet}/by-category`
+
+Per-category follow scores for a single wallet.
+
+---
+
+# Portfolio (paper trading)
+
+Requires `Authorization: Bearer <API_KEY>`. All trades are simulated; the service never
+touches a wallet or real funds.
+
+## `GET /api/v1/portfolio`
+
+Portfolio overview: `initial_balance`, `current_balance`, `total_realized_pnl`,
+`total_unrealized_pnl`, `total_pnl`, `total_roi`, `total_trades`, `total_volume`.
+
+## `GET /api/v1/portfolio/positions`
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `status` | str | `OPEN` | `OPEN` or `CLOSED` |
+| `limit` | int | 50 | Results per page |
+| `offset` | int | 0 | Pagination offset |
+
+## `GET /api/v1/portfolio/trades`
+
+Paper trade history, most recent first (`limit`, `offset`).
+
+## `POST /api/v1/portfolio/positions/{position_id}/close`
+
+Close an open position at the current market price.
+
+## `POST /api/v1/portfolio/reset`
+
+Clear all positions and trades and set a new starting balance.

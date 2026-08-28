@@ -32,7 +32,7 @@ FULL_DATASET=1 python -m pytest app/tests -m integration   # after a full ETL ru
 
 The orchestration pipeline (`orchestration/`) runs all 12 data pipelines plus a notify block. New pipelines must be added there too.
 
-**API routes** in `app/api/v1/` aggregated in `app/api/router.py`. Rate limit: 60 req/min (slowapi). API key auth via `Authorization: Bearer <token>` header — two dependencies: `require_api_key` (401 on fail) and `optional_api_key` (returns `"user"` or `"default"`).
+**API routes** in `app/api/v1/` aggregated in `app/api/router.py`. Rate limit: 60 req/min (slowapi). API key auth via `Authorization: Bearer <token>` header, enforced by the `require_api_key` dependency (401 on missing or wrong token) on every `/follow` and `/portfolio` route except `/follow/recommendations*`.
 
 **Background loops** in `app/main.py`:
 - Alert delivery: polls `ALERT_POLL_INTERVAL_SECONDS` (default 10s), broadcasts via WebSocket + optional Discord
