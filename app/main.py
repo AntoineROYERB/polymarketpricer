@@ -8,10 +8,10 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy import select, text
 
+from app.api.rate_limit import RateLimitMiddleware
 from app.api.router import api_router
 from app.config import settings
 from app.db.engine import async_session
@@ -206,7 +206,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.5.0",
+    version="0.6.2",
     debug=settings.debug,
     lifespan=lifespan,
 )
@@ -224,7 +224,7 @@ app.add_middleware(
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 app.state.limiter = limiter
 app.add_exception_handler(429, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
-app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 
 @app.get("/health")

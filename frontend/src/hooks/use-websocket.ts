@@ -2,14 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-function getWsUrl() {
+function getWsUrl(key: string) {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  let url = `${proto}//${window.location.host}/api/v1/alerts/ws`;
-  const key = localStorage.getItem("pm-api-key");
-  if (key) {
-    url += `?api_key=${encodeURIComponent(key)}`;
-  }
-  return url;
+  return `${proto}//${window.location.host}/api/v1/alerts/ws?api_key=${encodeURIComponent(key)}`;
 }
 
 export interface WsAlert {
@@ -31,13 +26,19 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const [alerts, setAlerts] = useState<WsAlert[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    // The server requires the key; connecting without one just gets closed with 4001.
+    const key = localStorage.getItem("pm-api-key");
+    if (!key) {
+      setStatus("disconnected");
+      return;
+    }
     setStatus("connecting");
 
-    const ws = new WebSocket(getWsUrl());
+    const ws = new WebSocket(getWsUrl(key));
     wsRef.current = ws;
 
     ws.onopen = () => setStatus("connected");
@@ -67,10 +68,6 @@ export function useWebSocket() {
   }, []);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimer.current) {
-      clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = null;
-    }
     wsRef.current?.close();
     wsRef.current = null;
     setStatus("disconnected");
@@ -78,7 +75,6 @@ export function useWebSocket() {
 
   useEffect(() => {
     return () => {
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };
   }, []);
