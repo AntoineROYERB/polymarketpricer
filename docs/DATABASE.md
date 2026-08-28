@@ -21,12 +21,22 @@
 | `alerts` | Detected high-signal trading events (smart money) |
 | `alert_rules` | Configurable threshold configuration for alert generation |
 | `pipeline_run_log` | Execution history of Mage ETL pipeline runs |
+| `wallet_category_follow_scores` | Per-wallet, per-category follow score, recommendation and reasons |
+| `wallet_follows` | Wallets a user follows, with copy mode and category filter |
+| `paper_portfolios` | Simulated portfolios (balance, realized/unrealized PnL, ROI) |
+| `paper_positions` | Open and closed simulated positions |
+| `paper_trades` | Simulated fills, linked to the source alert and followed wallet |
 
 ### Key Relationships
 
 - `wallet_edge_snapshots.wallet` → `wallets.wallet` (FK), composite PK `(wallet, snapshot_date)`
 - `wallet_analytics.edge_score` → computed from `wallet_edge_snapshots` (LEFT JOIN)
 - `ranking_snapshots.edge_score` → propagated from `wallet_analytics`
+- `wallet_category_follow_scores` composite PK `(wallet, category, snapshot_date)`, FKs to `wallets` and `categories`
+- `paper_positions` / `paper_trades` → `paper_portfolios`, `markets`, `wallets` (followed wallet) and optionally `alerts` (source alert)
+
+All monetary and score columns use `NUMERIC` rather than floating point, so PnL and ROI
+arithmetic is exact end to end.
 
 ## Category Classification
 
@@ -65,6 +75,10 @@ Database migrations are managed via Alembic under `alembic/versions/`:
 | `015_increase_wallet_analytics_precision.py` | Widen numeric precision to `NUMERIC(28,6)` |
 | `016_increase_ranking_snapshots_precision.py` | Same precision widening for ranking_snapshots |
 | `017_add_edge_scoring.py` | New `wallet_edge_snapshots` table + `edge_score` columns on `wallet_analytics` and `ranking_snapshots` |
+| `018_add_wallet_follows.py` | `wallet_follows` table (label, copy mode, copy value, category filter, soft delete) |
+| `019_add_paper_trading.py` | `paper_portfolios`, `paper_positions`, `paper_trades` tables |
+| `020_add_follow_score.py` | `follow_score` column on `wallet_analytics` |
+| `021_add_category_follow_scores.py` | `wallet_category_follow_scores` table + `category_follow_scores` column on `wallet_analytics` |
 
 ### Migration 017 — Edge Scoring Details
 
